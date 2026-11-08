@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (2. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (3. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -78,6 +78,33 @@ service cloud.firestore {
         && d.hizmetler is list && d.hizmetler.size() <= 200
         && d.mesai is map && d.mesai.keys().hasOnly(['pzt', 'sal', 'car', 'per', 'cum', 'cmt', 'paz'])
         && d.izinler is list && d.izinler.size() <= 100
+        && d.guncelleme == request.time;
+    }
+
+
+    function randevuYolu(salonId, rid) {
+      return /databases/$(database)/documents/salons/$(salonId)/randevular/$(rid);
+    }
+
+    function kilitYolu(salonId, kid) {
+      return /databases/$(database)/documents/salons/$(salonId)/slotlar/$(kid);
+    }
+
+    // Randevu yazabilenler: yönetici, kıdemli yetkili, sekreter, usta (ortak yalnız görür)
+    function randevuYazar(salonId) {
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'sekreter', 'usta'];
+    }
+
+    function randevuTemel() {
+      let d = request.resource.data;
+      return d.musteriAd is string && d.musteriAd.size() >= 2 && d.musteriAd.size() <= 60
+        && d.musteriTel is string && d.musteriTel.size() <= 20
+        && d.not is string && d.not.size() <= 200
+        && d.tarih is string && d.tarih.size() == 10
+        && d.bas is int && d.bas >= 0 && d.bas < 1440
+        && d.bit is int && d.bit > d.bas && d.bit <= 1440
+        && d.kalemler is list && d.kalemler.size() >= 1 && d.kalemler.size() <= 6
+        && d.kilitler is list && d.kilitler.size() >= 1 && d.kilitler.size() <= 400
         && d.guncelleme == request.time;
     }
 
@@ -216,6 +243,39 @@ service cloud.firestore {
           && request.resource.data.urunPrimi >= 0 && request.resource.data.urunPrimi <= 100
           && request.resource.data.guncelleme == request.time;
         allow delete: if false;
+      }
+
+      // ---- Randevular (silinmez, iptal edilir) ----
+      // "kilitler": randevunun tuttuğu ustanın 5 dakikalık dilimlerinin belge adları.
+      // Her kilit ayrı bir belgedir; aynı adlı belge ikinci kez OLUŞTURULAMAZ. Çakışma kilidini sunucu böyle sağlar.
+      match /randevular/{rid} {
+        allow read: if uyeMi(salonId);
+        allow create: if randevuYazar(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['musteriAd', 'musteriTel', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'olusturan', 'olusturma', 'guncelleme'])
+          && request.resource.data.durum == 'bekliyor'
+          && request.resource.data.olusturan == request.auth.uid
+          && request.resource.data.olusturma == request.time
+          && randevuTemel()
+          && existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0]));
+        allow update: if randevuYazar(salonId) && lisansAktif(salonId)
+          && resource.data.durum == 'bekliyor'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['musteriAd', 'musteriTel', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'iptalNedeni', 'guncelleme'])
+          && request.resource.data.durum in ['bekliyor', 'iptal']
+          && randevuTemel()
+          && (request.resource.data.durum == 'iptal' || existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0])));
+        allow delete: if false;
+      }
+
+      match /slotlar/{kid} {
+        allow read: if uyeMi(salonId);
+        allow create: if randevuYazar(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['rid', 'ustaUid', 'tarih'])
+          && request.resource.data.rid is string
+          && existsAfter(randevuYolu(salonId, request.resource.data.rid))
+          && kid in getAfter(randevuYolu(salonId, request.resource.data.rid)).data.kilitler
+          && request.resource.data.tarih == getAfter(randevuYolu(salonId, request.resource.data.rid)).data.tarih;
+        allow update: if false;
+        allow delete: if randevuYazar(salonId) && lisansAktif(salonId);
       }
     }
 

@@ -7,7 +7,6 @@ import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle } from '../ver
 import { goster } from '../main.js';
 
 const YAKINDA = [
-  { ad: 'Takvim ve randevu', ikon: '📅', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { ad: 'Ödeme ve kasa', ikon: '💳', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { ad: 'Müşteri defteri', ikon: '📒', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { ad: 'Stok ve sipariş', ikon: '📦', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter'] },

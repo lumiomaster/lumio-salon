@@ -1,47 +1,38 @@
-# LUMIO SALON – 2. Teslim (Salon ayarları)
+# LUMIO SALON – 3. Teslim (Takvim ve randevu)
 
-Bu teslimde yeni olanlar: **Salon** sekmesi (yönetici, kıdemli yetkili, ortak görür) ve içinde üç bölüm:
+Yeni: alttaki menüde **Takvim** (herkes görür). İçinde:
 
-- **Genel:** kart (POS) komisyon oranı, takvimde randevu adımı, salon telefonu.
-- **Hizmetler:** hizmet adı, grup, fiyat, süre. Boya gibi **aşamalı** hizmetler (sür – bekle – durula) ve "bekleme" aşamasında ustanın başka işe bakabilmesi. Boş salon için hazır paketler (kadın kuaförü, erkek berberi, tırnak ve güzellik).
-- **Ustalar:** her ustanın yaptığı hizmetler, **gün gün çalışma saatleri** (Cumartesi kısa olabilir, kapalı gün = haftalık izin), **planlı izinler** (tarih aralığı), **usta yüzdesi** ve **ürün satışı primi**. Yönetici, kıdemli yetkili ve ortak da salonda çalışıyorsa "randevu alıyor" diye işaretlenebilir.
+- **Gün görünümü:** tarih okları, usta filtresi, o gün izinde olan ustalar.
+- **+ Randevu:** müşteri adı/telefon, tarih, saat, **birden fazla hizmet** (kalem). Her hizmet için uygun usta **otomatik önerilir** (o gün en az dolu olan). Seçenekte "müsait / dolu / izinli / mesai dışı" yazar; dolu ve izinli seçilemez.
+- **Çakışma kilidi:** bir ustanın aynı saati iki kişiye verilemez. Kilit sunucuda olduğu için iki sekreter aynı anda denese bile biri reddedilir ("bu saat az önce başka randevuya verildi").
+- **Aşamalı hizmet (boya):** yalnız "usta çalışıyor" aşamaları kilitlenir; bekleme sırasında usta başka müşteriye bakabilir.
+- **İptal:** saat hemen boşalır. **Düzenle / ertele:** saat, gün, usta, hizmet değişir.
+- **İzin uyarısı:** bir ustaya izin eklenince o tarihte randevusu olan müşteriler listelenir ("müşteriyi arayın"). Takvimin üstünde de önümüzdeki 30 gün için "aranacak" kartı çıkar; Ara ve Ertele düğmeleri var.
 
-Ana sayfada yönetici ve kıdemli yetkili için **Salon kurulumu** listesi çıkar; eksik adımları gösterir.
+Randevu alabilen/iptal edebilen: yönetici, kıdemli yetkili, sekreter, usta. Ortak yalnız görür.
 
-Usta yüzdesi ayrı bir belgede tutulur: yalnızca yönetici, kıdemli yetkili, ortak ve ustanın kendisi görür. Maliyet ve kâr zaten sonraki tesliminde aynı korumayla gelecek.
-
-## A. Dosyaları GitHub'a yükle (üzerine yazılır)
-
-1. Zip'i bilgisayarda **ayıkla** (sağ tık > Tümünü ayıkla).
-2. https://github.com/lumiomaster/lumio-salon > **Add file > Upload files**.
-3. Ayıkladığın klasörün içindeki **her şeyi** sürükle (css, icons, js klasörleri ve dosyalar). Aynı isimli dosyalar yenisiyle değişir.
-4. **Commit changes** de. 1–2 dakika bekle.
-5. Uygulamayı açınca eski ekran görünürse sayfayı **Ctrl+Shift+R** ile yenile. Telefonda: tarayıcıyı kapatıp aç ya da ana ekran simgesini silip yeniden ekle.
+## A. GitHub'a yükle
+1. Zip'i **ayıkla**. 2. GitHub > **Add file > Upload files** > ayıkladığın klasörün içindeki **her şeyi** sürükle. 3. **Commit changes**, 1–2 dk bekle. 4. **Ctrl+Shift+R**. (Yeni dosyalar: `js/ekranlar/takvim.js`, `js/takvim-mantik.js`; 12 dosya değişti/eklendi.)
 
 ## B. Kuralları yenile (YENİ KURALLAR VAR, mutlaka yap)
-
-1. Firebase > **Firestore Database > Rules**.
-2. Kutudaki her şeyi sil, yeni `firestore.rules` dosyasının **tamamını** yapıştır, **Publish** de.
+Firebase > Firestore Database > **Rules** > her şeyi sil, yeni `firestore.rules` dosyasının tamamını yapıştır > **Publish**. Hata verirse ekran görüntüsünü gönder.
 
 ## C. Test listesi
+Önce Salon > Ustalar'da en az **iki ustanın** hizmetlerini ve çalışma saatlerini ayarla (Teslim 2'dekiler yeterli).
 
-1. **Salon > Genel:** Kart komisyonuna `2,5` yaz, adım 15 dk, **Kaydet**. "Kaydedildi" çıkmalı. `25` yazarsan hata vermeli (en çok 20).
-2. **Salon > Hizmetler:** "Hızlı başla" altından **Kadın kuaförü** paketini ekle. 8 hizmet gelmeli, hepsinde "Fiyat girin" uyarısı olmalı.
-3. **Dip boya > Düzenle:** 3 aşama görünmeli (boyayı sür, bekleme, durula). Toplam süre 90 dk olmalı. Fiyat yaz (örn. 1500), **Kaydet**. Listede fiyat görünmeli.
-4. **+ Hizmet:** Kendi hizmetini ekle (aşamasız), süreyi 3 dakika yazınca hata vermeli, 20 yazınca eklenmeli.
-5. **Salon > Ustalar:** Bir ustayı **Ayarla**: hizmetlerini işaretle, **Cumartesi** bitişini 15:00 yap, **Pazar** kapalı kalsın, bir **izin** ekle (başlangıç ve bitiş tarihi), usta yüzdesini `40`, ürün primini `10` yaz, **Kaydet**.
-6. **Ana sayfa:** "Salon kurulumu" listesindeki adımlar tek tek ✓ olmalı. Hepsi bitince liste kaybolur.
-7. **Ortak ile giriş:** Ekip'ten bir ortak ekle, onunla (başka tarayıcıda) gir. Salon sekmesini görmeli ama **Kaydet** düğmesi olmamalı, "Ayarla" yerine "Gör" yazmalı. Usta yüzdesini görebilmeli.
-8. **Usta ile giriş:** Ustada **Salon sekmesi olmamalı**.
-9. **Sekreter ile giriş:** Sekreterde de Salon sekmesi olmamalı.
-10. **Firebase'de bak:** `salons > (salonun) >` altında `ayarlar`, `hizmetler`, `ustalar`, `ustaMali` koleksiyonları olmalı. Usta yüzdesi `ustaMali` içinde, `ustalar` içinde değil.
+1. **Takvim > + Randevu:** bir müşteri, yarın 10:00, "Saç kesimi". Usta otomatik gelmeli, kaydedince kart görünmeli (10:00–10:45).
+2. **Aynı saate ikinci randevu:** ilk usta "dolu" yazmalı, ikincisi önerilmeli.
+3. **Üçüncü randevu aynı saatte:** "uygun usta yok" uyarısı çıkmalı, kaydetmemeli.
+4. **Çakışma kilidi (en önemli):** iki farklı cihazdan (ya da iki tarayıcıdan) aynı ustaya aynı saati **aynı anda** vermeyi dene. Biri "az önce başka randevuya verildi" demeli. Firebase'de `slotlar` koleksiyonunda her 5 dakika için bir belge olmalı.
+5. **Çok kalemli:** "Dip boya" 14:00 + **+ Hizmet ekle** "Fön". Fön'ün başlangıcını 14:30'a çek: aynı usta olabilmeli (bekleme sırası). 15:00'e çekersen (usta meşgul) "dolu" demeli.
+6. **İptal:** bir randevuya dokun > **İptal et**. Liste dışına çıkmalı, "İptal edilenleri göster" ile görünmeli, saat tekrar alınabilmeli.
+7. **Düzenle / ertele:** başka saate al, kaydet; eski saat boşalmalı.
+8. **İzin uyarısı:** randevusu olan ustaya o güne izin ekle (Salon > Ustalar). "Müşterileri arayın" penceresi çıkmalı; Takvim'de randevu turuncu ⚠ ile işaretli olmalı.
+9. **Usta ile giriş:** takvimi görmeli, randevu alabilmeli. **Ortak ile giriş:** görür ama + Randevu ve İptal düğmesi yok.
+10. **Sekreter ile giriş:** takvimi görür ve randevu alır.
 
-## D. Bir şey çalışmazsa
-
-Ekran görüntüsü + ne yaptığın + mümkünse F12 > Console'daki kırmızı yazılar.
-
-## E. Dürüst notlar
-
-- Kuralların yeni bölümlerini yine gerçek Firebase'de deneyemiyorum; ekran akışını sahte bir Firebase ile denedim (hepsi geçti). Gerçek denemede küçük düzeltme çıkabilir. Özellikle "Kaydet" dediğinde kırmızı **"yetkiniz yok"** çıkarsa haber ver.
-- Sekreter için ayrı bir ekran henüz yok; takvim geldiğinde (3. teslim) görecek.
-- Saat alanları telefonunun dil ayarına göre 24 saat ya da AM/PM görünür.
+## D. Dürüst notlar
+- Kuralları gerçek Firebase'de deneyemiyorum; ekran akışını sahte Firebase ile denedim (hepsi geçti). Kırmızı **"yetkiniz yok"** çıkarsa haber ver; çakışma ile karışmasın diye çakışma mesajı ayrıca gösterilir.
+- Aynı ustaya aynı anda iki iş vermeyi kural da engeller; ama sunucu kuralı "bu kilit gerçekten bu randevunun" kontrolünü yapar, her kilidin saatinin doğruluğunu hesaplayamaz. Yani yalnızca salon çalışanları (zaten giriş yapmış) bunu atlatabilir; dışarıdan biri yapamaz.
+- Randevu bu teslimde yalnız "bekliyor" ya da "iptal" olur. Ödeme alınca "tamamlandı" olması 4. teslimde (ödeme ve kasa) gelir.
+- Müşteri defteri (kayıtlı müşteri listesi) 5. teslimde; şimdilik ad ve telefon her randevuya yazılır.

@@ -23,8 +23,13 @@ export function yonetebilir(ben, hedef) {
 // Sekmeler: hangi rol hangi sekmeyi görür
 export const SEKMELER = [
   { id: 'ana', ad: 'Ana sayfa', ikon: '🏠', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
+  { id: 'takvim', ad: 'Takvim', ikon: '📅', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { id: 'ekip', ad: 'Ekip', ikon: '👥', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'salon', ad: 'Salon', ikon: '💈', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'ayarlar', ad: 'Ayarlar', ikon: '⚙️', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
 ];
 export function sekmelerim(rol) { return SEKMELER.filter(s => s.roller.includes(rol)); }
+
+// Randevu alabilen, değiştirebilen ve iptal edebilen roller (ortak yalnız görür)
+export const RANDEVU_YAZAR = ['yonetici', 'kidemli', 'sekreter', 'usta'];
+export function randevuYazarMi(rol) { return RANDEVU_YAZAR.includes(rol); }

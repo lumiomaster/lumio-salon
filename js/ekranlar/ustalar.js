@@ -5,6 +5,7 @@ import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle } from '../veri.js';
+import { izinCakisanlariGoster } from './takvim.js';
 
 export const GUNLER = [
   ['pzt', 'Pazartesi'], ['sal', 'Salı'], ['car', 'Çarşamba'], ['per', 'Perşembe'], ['cum', 'Cuma'], ['cmt', 'Cumartesi'], ['paz', 'Pazar']
@@ -135,6 +136,10 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
             uid: auth.currentUser.uid, islem: 'usta_ayar', hedef: u.id, ayrinti: u.ad + ': %' + y + ', ürün primi %' + p + ', ' + idler.length + ' hizmet', zaman: serverTimestamp()
           });
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
+          // Yeni eklenen izinlerin üstüne düşen randevular varsa müşteriyi aratmak için göster
+          const eskiIzin = new Set((profil ? profil.izinler : []).map(i => i.bas + '|' + i.bit));
+          const yeniIzin = izinler.filter(i => !eskiIzin.has(i.bas + '|' + i.bit));
+          if (yeniIzin.length) izinCakisanlariGoster(u.id, u.ad, yeniIzin).catch(e2 => console.error(e2));
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
     } },

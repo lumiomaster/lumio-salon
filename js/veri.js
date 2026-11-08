@@ -49,3 +49,22 @@ export async function ustalariYukle(zorla) {
 export function uyelerGecersiz() { V.uyeler = null; }
 
 export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null }); }
+
+// ---- Takvim verisi: her seferinde taze okunur (önbellek yok; başkası randevu almış olabilir) ----
+// Tarih aralığındaki randevular (bas ve bit dahil), saate göre sıralı
+export async function randevulariYukle(bas, bit) {
+  kontrol();
+  const q = bas === bit
+    ? query(yol('randevular'), where('tarih', '==', bas))
+    : query(yol('randevular'), where('tarih', '>=', bas), where('tarih', '<=', bit));
+  const sn = await getDocs(q);
+  return sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.tarih.localeCompare(b.tarih) || a.bas - b.bas);
+}
+
+// Bir günün dolu dilimleri: { kilitId: randevuId }
+export async function kilitleriYukle(tarih) {
+  kontrol();
+  const sn = await getDocs(query(yol('slotlar'), where('tarih', '==', tarih)));
+  const m = {}; sn.docs.forEach(d => { m[d.id] = d.data().rid; });
+  return m;
+}
