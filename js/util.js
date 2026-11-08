@@ -112,3 +112,10 @@ export function rastgeleSifre() {
   const a = new Uint32Array(1); crypto.getRandomValues(a);
   return String(100000 + (a[0] % 900000));
 }
+
+export function para(n) { return (Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + ' ₺'; }
+// "12,5" ve "12.5" ikisini de sayıya çevirir; geçersizse NaN
+export function sayi(v) { const s = String(v == null ? '' : v).trim().replace(',', '.'); return s === '' ? NaN : Number(s); }
+
+// Bir kutunun içini temizleyip yeni çocuklarla doldurur (dizi, null ve metin kabul eder)
+export function doldur(el, ...kids) { const g = h('div', null, ...kids); el.replaceChildren(...g.childNodes); }

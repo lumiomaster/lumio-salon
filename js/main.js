@@ -8,12 +8,15 @@ import { girisEkrani } from './ekranlar/giris.js';
 import { anaEkrani } from './ekranlar/ana.js';
 import { ekipEkrani } from './ekranlar/ekip.js';
 import { ayarlarEkrani } from './ekranlar/ayarlar.js';
+import { salonEkrani } from './ekranlar/salon.js';
+import { veriSifirla } from './veri.js';
+import { ekipYenile } from './ekranlar/ekip.js';
 
 const kok = document.getElementById('uygulama');
 
 export async function oturumuYukle() {
   const u = auth.currentUser;
-  if (!u) { S.profil = null; S.salon = null; return goster(); }
+  if (!u) { S.profil = null; S.salon = null; veriSifirla(); ekipYenile(); return goster(); }
   try {
     const ps = await getDoc(doc(db, 'kullanicilar', u.uid));
     if (!ps.exists()) { S.profil = null; S.salon = null; S.mesaj = t('Hesabınız bir salona bağlı değil. Yöneticinizle görüşün.'); return goster(); }
@@ -35,7 +38,7 @@ export function goster() {
   kok.replaceChildren();
   if (!auth.currentUser || !S.profil) { kok.append(girisEkrani()); return; }
   const sekmeler = sekmelerim(S.profil.rol);
-  const ekran = { ana: anaEkrani, ekip: ekipEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
+  const ekran = { ana: anaEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
     h('header', { class: 'ust' },
       h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),

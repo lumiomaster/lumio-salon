@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (1. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (2. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -51,6 +51,34 @@ service cloud.firestore {
       let s = get(salonYolu(salonId)).data;
       return (s.durum == 'AKTIF' && s.bitisMs > request.time.toMillis())
         || (s.durum == 'DENEME' && request.time < s.olusturma + duration.value(14, 'd'));
+    }
+
+
+    // Bu kişi (uid) aynı salonun üyesi mi?
+    function uyeSalonda(salonId, uid) {
+      return exists(kullaniciYolu(uid)) && get(kullaniciYolu(uid)).data.salonId == salonId;
+    }
+
+    function hizmetGecerli() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['ad', 'kategori', 'fiyat', 'sure', 'asamalar', 'aktif', 'guncelleme'])
+        && d.ad is string && d.ad.size() >= 2 && d.ad.size() <= 60
+        && d.kategori is string && d.kategori.size() <= 40
+        && d.fiyat is number && d.fiyat >= 0 && d.fiyat <= 1000000
+        && d.sure is int && d.sure >= 5 && d.sure <= 600
+        && d.asamalar is list && d.asamalar.size() <= 6
+        && d.aktif is bool
+        && d.guncelleme == request.time;
+    }
+
+    function ustaGecerli() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['calisir', 'hizmetler', 'mesai', 'izinler', 'guncelleme'])
+        && d.calisir is bool
+        && d.hizmetler is list && d.hizmetler.size() <= 200
+        && d.mesai is map && d.mesai.keys().hasOnly(['pzt', 'sal', 'car', 'per', 'cum', 'cmt', 'paz'])
+        && d.izinler is list && d.izinler.size() <= 100
+        && d.guncelleme == request.time;
     }
 
     // ---- Üyeler (kullanicilar/{uid}) ----
@@ -145,6 +173,49 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.zaman == request.time;
         allow update, delete: if false;
+      }
+
+      // ---- Genel ayarlar (POS oranı, randevu adımı) ----
+      match /ayarlar/{ayarId} {
+        allow read: if uyeMi(salonId);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && ayarId == 'genel'
+          && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'guncelleme'])
+          && request.resource.data.posOrani is number
+          && request.resource.data.posOrani >= 0 && request.resource.data.posOrani <= 20
+          && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
+          && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
+      }
+
+      // ---- Hizmetler (silinmez, pasif yapılır) ----
+      match /hizmetler/{hizmetId} {
+        allow read: if uyeMi(salonId);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId) && hizmetGecerli();
+        allow delete: if false;
+      }
+
+      // ---- Usta profili: çalışma durumu, hizmetleri, mesai, izin (salondaki herkes okur) ----
+      match /ustalar/{ustaUid} {
+        allow read: if uyeMi(salonId);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && uyeSalonda(salonId, ustaUid) && ustaGecerli();
+        allow delete: if false;
+      }
+
+      // ---- Usta payı ve ürün primi: yalnız yönetici, kıdemli, ortak ve ustanın kendisi okur ----
+      match /ustaMali/{ustaUid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && uyeSalonda(salonId, ustaUid)
+          && request.resource.data.keys().hasOnly(['yuzde', 'urunPrimi', 'guncelleme'])
+          && request.resource.data.yuzde is number
+          && request.resource.data.yuzde >= 0 && request.resource.data.yuzde <= 100
+          && request.resource.data.urunPrimi is number
+          && request.resource.data.urunPrimi >= 0 && request.resource.data.urunPrimi <= 100
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
       }
     }
 

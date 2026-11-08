@@ -8,6 +8,7 @@ import {
   doc, collection, getDocs, query, where, writeBatch, serverTimestamp
 } from '../fb.js';
 import { goster } from '../main.js';
+import { uyelerGecersiz } from '../veri.js';
 
 const SIRA = { yonetici: 0, kidemli: 1, ortak: 2, sekreter: 3, usta: 4 };
 let liste = null, listeSalon = null, yukleniyor = false, hata = '';
@@ -92,7 +93,7 @@ function ekleFormu() {
           kayitEkle(b, 'uye_ekle', uid, adTemiz + ' (' + rol.value + ')');
           await b.commit();
           await signOut(auth2);
-          liste = null;
+          liste = null; uyelerGecersiz();
           icerik.replaceChildren(sonuc(adTemiz, d, sifre.value, pencere));
           goster();
         } catch (err) {
@@ -150,7 +151,7 @@ function duzenleFormu(k) {
           if (!degisen.length) { pencere.kapat(); return; }
           kayitEkle(b, 'uye_degistir', k.id, k.ad + ': ' + degisen.join(', '));
           await b.commit();
-          pencere.kapat(); liste = null; bildir(t('Kaydedildi')); goster();
+          pencere.kapat(); liste = null; uyelerGecersiz(); bildir(t('Kaydedildi')); goster();
         } catch (err) { console.error(err); hataKutu.textContent = hataMetni(err); }
       });
     } },

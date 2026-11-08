@@ -24,6 +24,7 @@ export function yonetebilir(ben, hedef) {
 export const SEKMELER = [
   { id: 'ana', ad: 'Ana sayfa', ikon: '🏠', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { id: 'ekip', ad: 'Ekip', ikon: '👥', roller: ['yonetici', 'kidemli', 'ortak'] },
+  { id: 'salon', ad: 'Salon', ikon: '💈', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'ayarlar', ad: 'Ayarlar', ikon: '⚙️', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
 ];
 export function sekmelerim(rol) { return SEKMELER.filter(s => s.roller.includes(rol)); }
