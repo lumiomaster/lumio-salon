@@ -1,0 +1,156 @@
+rules_version = '2';
+
+// LUMIO SALON - Firestore güvenlik kuralları (1. teslim)
+// Kural özeti:
+//  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
+//  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
+//  - Yönetici belgesi hiçbir zaman değiştirilemez ve silinemez.
+//  - Kıdemli yetkiliyi yalnızca yönetici ekler, pasif yapar ya da rolünü değiştirir.
+//  - Hiçbir üye belgesi silinemez (pasif yapılır); işlem kayıtları değiştirilemez ve silinemez.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Yardımcılar ----
+    function girisli() {
+      return request.auth != null;
+    }
+
+    function kullaniciYolu(uid) {
+      return /databases/$(database)/documents/kullanicilar/$(uid);
+    }
+
+    function salonYolu(salonId) {
+      return /databases/$(database)/documents/salons/$(salonId);
+    }
+
+    // Giriş yapan kişinin üyelik belgesi
+    function ben() {
+      return get(kullaniciYolu(request.auth.uid)).data;
+    }
+
+    function uyeMi(salonId) {
+      return girisli()
+        && exists(kullaniciYolu(request.auth.uid))
+        && ben().salonId == salonId
+        && ben().aktif == true;
+    }
+
+    // Yönetici ve kıdemli yetkili
+    function yetkiliMi(salonId) {
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli'];
+    }
+
+    // Maliyet ve kayıtları görebilenler: yönetici, kıdemli yetkili, ortak
+    function gorenMi(salonId) {
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak'];
+    }
+
+    // Lisans: deneme süresi SUNUCU saatine göre, aktif lisans bitiş tarihine göre
+    function lisansAktif(salonId) {
+      let s = get(salonYolu(salonId)).data;
+      return (s.durum == 'AKTIF' && s.bitisMs > request.time.toMillis())
+        || (s.durum == 'DENEME' && request.time < s.olusturma + duration.value(14, 'd'));
+    }
+
+    // ---- Üyeler (kullanicilar/{uid}) ----
+    match /kullanicilar/{uid} {
+      allow read: if girisli() && (request.auth.uid == uid || uyeMi(resource.data.salonId));
+
+      allow create: if girisli()
+        && request.resource.data.keys().hasOnly(['salonId', 'ad', 'telefon', 'rol', 'aktif', 'olusturma', 'ekleyen', 'yasalOnay'])
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() >= 2
+        && request.resource.data.ad.size() <= 60
+        && request.resource.data.telefon is string
+        && request.resource.data.aktif == true
+        && request.resource.data.olusturma == request.time
+        && (
+          // 1) Salonu kuran kişi: aynı işlemde salon belgesi de oluşturulur ve sahibi kendisidir
+          (
+            request.auth.uid == uid
+            && request.resource.data.rol == 'yonetici'
+            && request.resource.data.ekleyen == uid
+            && existsAfter(salonYolu(request.resource.data.salonId))
+            && getAfter(salonYolu(request.resource.data.salonId)).data.ownerUid == uid
+          )
+          ||
+          // 2) Yönetici ya da kıdemli yetkili yeni kişi ekliyor
+          (
+            uid != request.auth.uid
+            && !exists(kullaniciYolu(uid))
+            && request.resource.data.ekleyen == request.auth.uid
+            && yetkiliMi(request.resource.data.salonId)
+            && lisansAktif(request.resource.data.salonId)
+            && (
+              (ben().rol == 'yonetici' && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'])
+              || (ben().rol == 'kidemli' && request.resource.data.rol in ['ortak', 'sekreter', 'usta'])
+            )
+          )
+        );
+
+      // Rol, aktiflik ve ad değişimi. Yönetici belgesine kimse dokunamaz;
+      // kıdemli yetkiliye yalnızca yönetici dokunabilir.
+      allow update: if yetkiliMi(resource.data.salonId)
+        && lisansAktif(resource.data.salonId)
+        && uid != request.auth.uid
+        && resource.data.rol != 'yonetici'
+        && (resource.data.rol != 'kidemli' || ben().rol == 'yonetici')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rol', 'aktif', 'ad'])
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() >= 2
+        && request.resource.data.ad.size() <= 60
+        && (
+          (ben().rol == 'yonetici' && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'])
+          || (ben().rol == 'kidemli' && request.resource.data.rol in ['ortak', 'sekreter', 'usta'])
+        );
+
+      allow delete: if false;
+    }
+
+    // ---- Salon ----
+    match /salons/{salonId} {
+      allow read: if uyeMi(salonId);
+
+      // Salon yalnızca kurucunun üyelik belgesiyle AYNI işlemde kurulabilir (boş salon yığılmasın)
+      allow create: if girisli()
+        && request.resource.data.keys().hasOnly(['ad', 'ownerUid', 'durum', 'paket', 'olusturma'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.durum == 'DENEME'
+        && request.resource.data.paket == 'salon'
+        && request.resource.data.olusturma == request.time
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() >= 2
+        && request.resource.data.ad.size() <= 80
+        && !exists(kullaniciYolu(request.auth.uid))
+        && existsAfter(kullaniciYolu(request.auth.uid))
+        && getAfter(kullaniciYolu(request.auth.uid)).data.salonId == salonId;
+
+      // Şimdilik yalnızca salon adı değişebilir; lisans alanlarını yalnızca Firebase konsolundan sen değiştirirsin
+      allow update: if yetkiliMi(salonId)
+        && lisansAktif(salonId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad'])
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() >= 2
+        && request.resource.data.ad.size() <= 80;
+
+      allow delete: if false;
+
+      // ---- İşlem kayıtları: yalnız eklenir, değiştirilemez, silinemez ----
+      match /kayitlar/{kayitId} {
+        allow read: if gorenMi(salonId);
+        allow create: if uyeMi(salonId)
+          && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['uid', 'islem', 'hedef', 'ayrinti', 'zaman'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---- Geri kalan her şey kapalı ----
+    match /{diger=**} {
+      allow read, write: if false;
+    }
+  }
+}
