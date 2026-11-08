@@ -1,5 +1,6 @@
 // Salon verilerinin yüklenmesi ve önbelleği. Ekranlar buradan okur, değişiklikten sonra zorla yeniler.
 import { S } from './durum.js';
+import { gorenMi } from './roller.js';
 import { db, doc, getDoc, getDocs, collection, query, where } from './fb.js';
 
 const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null };
@@ -39,7 +40,10 @@ export async function uyeleriYukle(zorla) {
 export async function ustalariYukle(zorla) {
   kontrol();
   if (V.ustalar && V.ustaMali && !zorla) return { profil: V.ustalar, mali: V.ustaMali };
-  const [a, b] = await Promise.all([getDocs(yol('ustalar')), getDocs(yol('ustaMali'))]);
+  // Usta payları yalnız yönetici, kıdemli ve ortak için toplu okunur. Usta ve sekreter okuyamaz
+  // (kurallar koleksiyonun tamamını okumaya izin vermez), bu yüzden onlar için boş bırakılır.
+  const mali = gorenMi(S.profil.rol);
+  const [a, b] = await Promise.all([getDocs(yol('ustalar')), mali ? getDocs(yol('ustaMali')) : Promise.resolve({ docs: [] })]);
   V.ustalar = {}; a.docs.forEach(d => { V.ustalar[d.id] = d.data(); });
   V.ustaMali = {}; b.docs.forEach(d => { V.ustaMali[d.id] = d.data(); });
   return { profil: V.ustalar, mali: V.ustaMali };
