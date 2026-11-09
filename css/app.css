@@ -101,3 +101,12 @@ label.onay input[type=checkbox] { flex: none; width: 20px; height: 20px; }
 .satirlar { display: grid; gap: 12px; } .satir { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--cizgi); border-radius: 12px; background: var(--kart2); }
 .satir-ust { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; } .randevu-ozet { margin-top: 8px; }
 .iki-sutun { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* 4. teslim: ödeme ve kasa */
+.kart.odeme { display: grid; gap: 4px; width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; } .kart.odeme.iptal { opacity: .55; }
+.kasa-ozet { display: grid; gap: 6px; } .ust-cizgi { border-top: 1px solid var(--cizgi); padding-top: 6px; margin-top: 2px; }
+.hesap-satir { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: .92rem; } .hesap-satir span:first-child { color: var(--soluk); }
+.usta-hesap { display: grid; gap: 4px; } .eksi { color: var(--kotu); }
+.odendi-rozet { background: #123a2a; color: #8ef0c0; } .salt-yazi { padding: 12px 0; color: var(--yazi); }
+.mut-gun { font-size: .75rem; } .mut-gun input { padding: 6px 8px; }
+h3.ilk { margin-top: 0; }

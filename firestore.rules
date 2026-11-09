@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (3. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (4. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -93,6 +93,25 @@ service cloud.firestore {
     // Randevu yazabilenler: yönetici, kıdemli yetkili, sekreter, usta (ortak yalnız görür)
     function randevuYazar(salonId) {
       return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'sekreter', 'usta'];
+    }
+
+
+    function ayarYolu(salonId, ayarId) {
+      return /databases/$(database)/documents/salons/$(salonId)/ayarlar/$(ayarId);
+    }
+
+    function odemeYolu(salonId, oid) {
+      return /databases/$(database)/documents/salons/$(salonId)/odemeler/$(oid);
+    }
+
+    // Şu anki hesap dönemi (Hesabı kapat her seferinde 1 artırır). Hiç kapatılmadıysa 0.
+    function suankiDonem(salonId) {
+      return exists(ayarYolu(salonId, 'kapanis')) ? get(ayarYolu(salonId, 'kapanis')).data.donem : 0;
+    }
+
+    // Ödeme alabilenler: yönetici, kıdemli yetkili, sekreter
+    function odemeYazar(salonId) {
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'sekreter'];
     }
 
     function randevuTemel() {
@@ -202,17 +221,29 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // ---- Genel ayarlar (POS oranı, randevu adımı) ----
+      // ---- Genel ayarlar (POS oranı, randevu adımı) ve hesap dönemi sayacı ----
       match /ayarlar/{ayarId} {
         allow read: if uyeMi(salonId);
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
-          && ayarId == 'genel'
-          && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'guncelleme'])
-          && request.resource.data.posOrani is number
-          && request.resource.data.posOrani >= 0 && request.resource.data.posOrani <= 20
-          && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
-          && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
-          && request.resource.data.guncelleme == request.time;
+          && (
+            (
+              ayarId == 'genel'
+              && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'guncelleme'])
+              && request.resource.data.posOrani is number
+              && request.resource.data.posOrani >= 0 && request.resource.data.posOrani <= 20
+              && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
+              && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
+              && request.resource.data.guncelleme == request.time
+            )
+            ||
+            (
+              ayarId == 'kapanis'
+              && request.resource.data.keys().hasOnly(['donem', 'guncelleme'])
+              && request.resource.data.donem is int
+              && request.resource.data.donem == suankiDonem(salonId) + 1
+              && request.resource.data.guncelleme == request.time
+            )
+          );
         allow delete: if false;
       }
 
@@ -257,12 +288,32 @@ service cloud.firestore {
           && request.resource.data.olusturma == request.time
           && randevuTemel()
           && existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0]));
-        allow update: if randevuYazar(salonId) && lisansAktif(salonId)
-          && resource.data.durum == 'bekliyor'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['musteriAd', 'musteriTel', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'iptalNedeni', 'guncelleme'])
-          && request.resource.data.durum in ['bekliyor', 'iptal']
-          && randevuTemel()
-          && (request.resource.data.durum == 'iptal' || existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0])));
+        allow update: if (
+            // 1) düzenleme / erteleme / iptal
+            randevuYazar(salonId) && lisansAktif(salonId)
+            && resource.data.durum == 'bekliyor'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['musteriAd', 'musteriTel', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'iptalNedeni', 'guncelleme'])
+            && request.resource.data.durum in ['bekliyor', 'iptal']
+            && randevuTemel()
+            && (request.resource.data.durum == 'iptal' || existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0])))
+          ) || (
+            // 2) ödeme alındı: aynı işlemde ödeme belgesi de oluşur
+            odemeYazar(salonId) && lisansAktif(salonId)
+            && resource.data.durum == 'bekliyor'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'odemeId', 'guncelleme'])
+            && request.resource.data.durum == 'odendi'
+            && request.resource.data.odemeId is string
+            && existsAfter(odemeYolu(salonId, request.resource.data.odemeId))
+            && request.resource.data.guncelleme == request.time
+          ) || (
+            // 3) ödeme iptal edildi: randevu yeniden "bekliyor" olur
+            yetkiliMi(salonId) && lisansAktif(salonId)
+            && resource.data.durum == 'odendi'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'odemeId', 'guncelleme'])
+            && request.resource.data.durum == 'bekliyor'
+            && request.resource.data.odemeId == ''
+            && request.resource.data.guncelleme == request.time
+          );
         allow delete: if false;
       }
 
@@ -276,6 +327,92 @@ service cloud.firestore {
           && request.resource.data.tarih == getAfter(randevuYolu(salonId, request.resource.data.rid)).data.tarih;
         allow update: if false;
         allow delete: if randevuYazar(salonId) && lisansAktif(salonId);
+      }
+
+      // ---- Ödemeler: yalnız eklenir; iptal edilince durum "iptal" olur, silinmez ----
+      // Usta yalnızca kendi adının geçtiği ödemeleri görür ("ustalar" listesi ile).
+      match /odemeler/{oid} {
+        allow read: if uyeMi(salonId)
+          && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar);
+        allow create: if odemeYazar(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['rid', 'tarih', 'donem', 'yontem', 'musteriAd', 'kalemler', 'ustalar', 'toplam', 'komisyonOrani', 'komisyon', 'durum', 'alan', 'zaman'])
+          && request.resource.data.durum == 'gecerli'
+          && request.resource.data.alan == request.auth.uid
+          && request.resource.data.zaman == request.time
+          && request.resource.data.yontem in ['nakit', 'kart']
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.donem == suankiDonem(salonId)
+          && request.resource.data.toplam is number && request.resource.data.toplam >= 0 && request.resource.data.toplam <= 10000000
+          && request.resource.data.komisyon is number && request.resource.data.komisyon >= 0 && request.resource.data.komisyon <= request.resource.data.toplam
+          && request.resource.data.komisyonOrani is number
+          && request.resource.data.komisyonOrani == (request.resource.data.yontem == 'kart' && exists(ayarYolu(salonId, 'genel')) ? get(ayarYolu(salonId, 'genel')).data.posOrani : 0)
+          && request.resource.data.kalemler is list && request.resource.data.kalemler.size() >= 1 && request.resource.data.kalemler.size() <= 12
+          && request.resource.data.ustalar is list && request.resource.data.ustalar.size() <= 12
+          && request.resource.data.musteriAd is string && request.resource.data.musteriAd.size() <= 60
+          && request.resource.data.rid is string
+          && (request.resource.data.rid == '' || existsAfter(randevuYolu(salonId, request.resource.data.rid)));
+        // Yalnızca iptal: yönetici / kıdemli, yalnızca içinde bulunulan dönemdeki ödeme
+        allow update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && resource.data.durum == 'gecerli'
+          && resource.data.donem == suankiDonem(salonId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalNedeni'])
+          && request.resource.data.durum == 'iptal'
+          && request.resource.data.iptalNedeni is string && request.resource.data.iptalNedeni.size() <= 100;
+        allow delete: if false;
+      }
+
+      // ---- Avans (düzeltme için eksi tutar girilebilir; değiştirilmez, silinmez) ----
+      match /avanslar/{aid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['ustaUid', 'tutar', 'tarih', 'donem', 'not', 'veren', 'zaman'])
+          && uyeSalonda(salonId, request.resource.data.ustaUid)
+          && request.resource.data.tutar is number && request.resource.data.tutar != 0
+          && request.resource.data.tutar >= -1000000 && request.resource.data.tutar <= 1000000
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.donem == suankiDonem(salonId)
+          && request.resource.data.not is string && request.resource.data.not.size() <= 100
+          && request.resource.data.veren == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+
+      // ---- Akşam mutabakatı: usta kendi gününü onaylar ya da itiraz eder ----
+      match /mutabakat/{mid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['ustaUid', 'tarih', 'durum', 'not', 'tutar', 'guncelleme'])
+          && request.resource.data.ustaUid == request.auth.uid
+          && mid == request.auth.uid + '_' + request.resource.data.tarih
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.durum in ['onay', 'itiraz']
+          && request.resource.data.not is string && request.resource.data.not.size() <= 200
+          && request.resource.data.tutar is number
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
+      }
+
+      // ---- Ustanın dönemden devreden borcu (yalnız Hesabı kapat yazar) ----
+      match /ustaDevir/{ustaUid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && uyeSalonda(salonId, ustaUid)
+          && request.resource.data.keys().hasOnly(['devir', 'guncelleme'])
+          && request.resource.data.devir is number && request.resource.data.devir <= 0 && request.resource.data.devir >= -10000000
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
+      }
+
+      // ---- Kapanmış dönemlerin dökümü ----
+      match /donemler/{did} {
+        allow read: if gorenMi(salonId);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['donem', 'ustalar', 'toplam', 'kapatan', 'zaman'])
+          && request.resource.data.donem == suankiDonem(salonId)
+          && request.resource.data.ustalar is list && request.resource.data.ustalar.size() <= 50
+          && request.resource.data.kapatan == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
       }
     }
 

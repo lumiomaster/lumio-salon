@@ -10,6 +10,7 @@ import { ekipEkrani } from './ekranlar/ekip.js';
 import { ayarlarEkrani } from './ekranlar/ayarlar.js';
 import { salonEkrani } from './ekranlar/salon.js';
 import { takvimEkrani } from './ekranlar/takvim.js';
+import { kasaEkrani } from './ekranlar/kasa.js';
 import { veriSifirla } from './veri.js';
 import { ekipYenile } from './ekranlar/ekip.js';
 
@@ -39,7 +40,7 @@ export function goster() {
   kok.replaceChildren();
   if (!auth.currentUser || !S.profil) { kok.append(girisEkrani()); return; }
   const sekmeler = sekmelerim(S.profil.rol);
-  const ekran = { ana: anaEkrani, takvim: takvimEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
+  const ekran = { ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
     h('header', { class: 'ust' },
       h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),

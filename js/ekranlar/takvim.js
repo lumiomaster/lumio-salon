@@ -1,7 +1,8 @@
 import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisansDurumu, telNormalize, telGoster } from '../util.js';
 import { S } from '../durum.js';
-import { randevuYazarMi } from '../roller.js';
+import { randevuYazarMi, odemeYazarMi } from '../roller.js';
+import { odemeFormu } from './odeme-formu.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
 import {
@@ -97,7 +98,7 @@ function aramaKarti(aranacak, ctx, duzenleyebilir, yenile) {
 function randevuKarti(r, ctx, yazar, yenile) {
   const flag = izinCakisanKalemler(r, ctx.profil).length > 0;
   return h('button', { class: 'kart randevu' + (r.durum === 'iptal' ? ' iptal' : '') + (flag ? ' izinli' : ''), type: 'button', onclick: () => ayrinti(r, ctx, yazar, yenile) },
-    h('div', { class: 'uye-ust' }, h('strong', null, dkMetin(r.bas) + '–' + dkMetin(r.bit)), r.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : null),
+    h('div', { class: 'uye-ust' }, h('strong', null, dkMetin(r.bas) + '–' + dkMetin(r.bit)), r.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : (r.durum === 'odendi' ? h('span', { class: 'rozet odendi-rozet' }, t('Ödendi')) : null)),
     h('div', { class: 'randevu-musteri' }, r.musteriAd),
     h('div', { class: 'kucuk' }, r.kalemler.map(k => ctx.ad(k.ustaUid).split(' ')[0] + ': ' + k.ad).join(' · ')),
     flag ? h('div', { class: 'kucuk uyari-yazi' }, t('⚠ Usta izinli — müşteriyi arayın')) : null);
@@ -109,9 +110,9 @@ function ayrinti(r, ctx, yazar, yenile) {
   const aktif = r.durum === 'bekliyor';
   const toplam = r.kalemler.reduce((s, k) => s + (Number(k.fiyat) || 0), 0);
   const olusturan = ctx.uyeler.find(u => u.id === r.olusturan);
-  icerik.append(
+  doldur(icerik,
     h('div', { class: 'ayrinti' },
-      h('div', null, h('strong', null, r.musteriAd), r.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : null),
+      h('div', null, h('strong', null, r.musteriAd), r.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : (r.durum === 'odendi' ? h('span', { class: 'rozet odendi-rozet' }, t('Ödendi')) : null)),
       h('div', { class: 'soluk' }, tarihYazi(r.tarih) + ' · ' + dkMetin(r.bas) + '–' + dkMetin(r.bit)),
       r.musteriTel ? h('div', { class: 'dugme-satir sol' },
         h('span', { class: 'soluk' }, telGoster(r.musteriTel)),
@@ -124,6 +125,8 @@ function ayrinti(r, ctx, yazar, yenile) {
       r.not ? h('p', { class: 'kucuk' }, t('Not: ') + r.not) : null,
       r.iptalNedeni ? h('p', { class: 'kucuk' }, t('İptal nedeni: ') + r.iptalNedeni) : null,
       olusturan ? h('p', { class: 'kucuk' }, t('Randevuyu alan: ') + olusturan.ad) : null),
+    aktif && odemeYazarMi(S.profil.rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
+      h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); odemeFormu(r, yenile); } }, t('Ödeme al'))) : null,
     aktif && yazar ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null);
@@ -136,7 +139,7 @@ function kayit(b, ayrinti) {
 }
 const kilitDoc = (kid) => doc(db, 'salons', S.salon.id, 'slotlar', kid);
 
-function iptalFormu(r, ctx, yenile) {
+export function iptalFormu(r, ctx, yenile) {
   const neden = h('input', { type: 'text', maxlength: 100, placeholder: t('İptal nedeni (isteğe bağlı)') });
   const hata = h('div', { class: 'hata', role: 'alert' });
   const dugme = h('button', { class: 'dugme', type: 'submit' }, t('Randevuyu iptal et'));
