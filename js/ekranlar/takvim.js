@@ -3,8 +3,9 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisan
 import { S } from '../durum.js';
 import { randevuYazarMi, odemeYazarMi } from '../roller.js';
 import { odemeFormu } from './odeme-formu.js';
+import { formulFormu, formulYazabilir, formulOkur } from './islem.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir } from '../veri.js';
+import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, islemleriYukle } from '../veri.js';
 import {
   DILIM, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
   ustaDurumu, randevuKilitleri, izinCakisanKalemler
@@ -158,9 +159,10 @@ function ayrinti(r, ctx, yazar, yenile) {
         h('span', { class: 'soluk' }, telGoster(r.musteriTel)),
         h('a', { class: 'dugme ikincil kucuk-dugme', href: 'tel:' + telLink(r.musteriTel) }, t('Ara')),
         h('a', { class: 'dugme ikincil kucuk-dugme', href: 'https://wa.me/' + r.musteriTel, target: '_blank', rel: 'noopener' }, 'WhatsApp')) : null,
-      h('div', { class: 'kalemler' }, r.kalemler.map(k => h('div', { class: 'kalem' },
+      h('div', { class: 'kalemler' }, r.kalemler.map((k, i) => h('div', { class: 'kalem' },
         h('div', { class: 'uye-ust' }, h('strong', null, k.ad), h('span', null, k.fiyat > 0 ? para(k.fiyat) : '')),
-        h('div', { class: 'kucuk' }, ctx.ad(k.ustaUid) + ' · ' + dkMetin(k.bas) + '–' + dkMetin(k.bit))))),
+        h('div', { class: 'kucuk' }, ctx.ad(k.ustaUid) + ' · ' + dkMetin(k.bas) + '–' + dkMetin(k.bit)),
+        h('div', { class: 'formul-kutu', 'data-i': String(i) })))),
       h('div', { class: 'uye-ust' }, h('span', { class: 'soluk' }, t('Toplam')), h('strong', null, para(toplam))),
       r.not ? h('p', { class: 'kucuk' }, t('Not: ') + r.not) : null,
       r.iptalNedeni ? h('p', { class: 'kucuk' }, t('İptal nedeni: ') + r.iptalNedeni) : null,
@@ -170,6 +172,23 @@ function ayrinti(r, ctx, yazar, yenile) {
     aktif && yazar ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null);
+
+  // Formül ve not: usta kendi kalemini yazar; yönetici/kıdemli hepsini; ortak okur; sekreter göremez
+  const formulleriDoldur = () => {
+    if (!formulOkur() || r.durum === 'iptal') return;
+    islemleriYukle('rid', r.id).then(liste => {
+      r.kalemler.forEach((k, i) => {
+        const kutu = icerik.querySelector('.formul-kutu[data-i="' + i + '"]'); if (!kutu) return;
+        const kayitli = liste.find(x => x.id === r.id + '_' + i);
+        const yaz = formulYazabilir(k) && lisansDurumu(S.salon).aktif;
+        doldur(kutu,
+          kayitli && kayitli.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), kayitli.formul) : null,
+          kayitli && kayitli.not ? h('div', { class: 'kucuk' }, t('Not: ') + kayitli.not) : null,
+          yaz ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { p.kapat(); formulFormu(r, i, kayitli || null, yenile); } }, kayitli ? t('Formül / notu düzenle') : t('Formül / not ekle')) : null);
+      });
+    }).catch(e => console.error(e));
+  };
+  formulleriDoldur();
 }
 
 function kayit(b, ayrinti) {
@@ -390,7 +409,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
         else {
           const mref = telD ? doc(db, 'salons', S.salon.id, 'musteriler', telD) : doc(collection(db, 'salons', S.salon.id, 'musteriler'));
           mid = mref.id;
-          b.set(mref, { ad, tel: telD, not: '', ustalar: ustalarListe, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
+          b.set(mref, { ad, tel: telD, not: '', dogum: '', sonraki: '', sonZiyaret: '', ustalar: ustalarListe, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
         }
         const veri = { musteriAd: ad, musteriTel: telD, musteriId: mid, ustalar: ustalarListe, tarih, bas, bit, kalemler, kilitler, not: notK.value.trim() };
         let rid;

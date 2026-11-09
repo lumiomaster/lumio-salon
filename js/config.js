@@ -1,7 +1,7 @@
 // LUMIO SALON - ayarlar (ad, logo ve bağlantılar tek yerden değişir)
 export const UYGULAMA = {
   ad: 'LUMIO SALON',
-  surum: '0.5.0 (5. teslim)',
+  surum: '0.5.1 (5. teslim, ek)',
   logo: 'icons/logo.png'
 };
 

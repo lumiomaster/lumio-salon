@@ -59,6 +59,9 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
   let izinler = profil ? profil.izinler.map(i => ({ ...i })) : [];
   const yuzde = h('input', { type: 'text', inputmode: 'decimal', value: mali ? String(mali.yuzde).replace('.', ',') : '', placeholder: 'örn. 40', disabled: kapali });
   const urun = h('input', { type: 'text', inputmode: 'decimal', value: mali ? String(mali.urunPrimi).replace('.', ',') : '0', placeholder: '0', disabled: kapali });
+  const urunKasa = h('div', { class: 'kucuk' });
+  const urunKasaGuncelle = () => { const v = sayi(urun.value === '' ? '0' : urun.value); urunKasa.textContent = Number.isFinite(v) && v >= 0 && v <= 100 ? t('Kâr paylaşımı: usta %{u}, kasa %{k}', { u: String(v).replace('.', ','), k: String(Math.round((100 - v) * 100) / 100).replace('.', ',') }) : ''; };
+  urun.addEventListener('input', urunKasaGuncelle); urunKasaGuncelle();
   const hata = h('div', { class: 'hata', role: 'alert' });
   const dugme = h('button', { class: 'dugme', type: 'submit' }, t('Kaydet'));
 
@@ -156,7 +159,8 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
     izinKutu,
     h('h3', null, t('Pay oranları')),
     h('label', null, t('Hizmet kazancından usta yüzdesi, %'), yuzde),
-    h('label', null, t('Ürün satışı primi, %'), urun),
+    h('label', null, t('Ürün satışı primi (kârdan), %'), urun), urunKasa,
+    h('p', { class: 'kucuk' }, t('Ürün satışında önce kart komisyonu, sonra alış fiyatı düşülür; kalan kâr bu yüzdeye göre ustaya, geri kalanı kasaya yazılır. Her salon kendi oranını girer, istediğiniz zaman değiştirebilirsiniz.')),
     h('p', { class: 'kucuk' }, t('Bu oranları yalnızca yönetici, kıdemli yetkili, ortak ve ustanın kendisi görür.')),
     hata, kapali ? null : dugme,
     kapali && !yetkili ? h('p', { class: 'kucuk' }, t('Ayarları yönetici ya da kıdemli yetkili değiştirir.')) : null));

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -230,11 +230,12 @@ service cloud.firestore {
           && (
             (
               ayarId == 'genel'
-              && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'guncelleme'])
+              && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'kayipGun', 'guncelleme'])
               && request.resource.data.posOrani is number
               && request.resource.data.posOrani >= 0 && request.resource.data.posOrani <= 20
               && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
               && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
+              && request.resource.data.kayipGun is int && request.resource.data.kayipGun >= 7 && request.resource.data.kayipGun <= 730
               && request.resource.data.guncelleme == request.time
             )
             ||
@@ -317,6 +318,13 @@ service cloud.firestore {
             && request.resource.data.durum == 'bekliyor'
             && request.resource.data.odemeId == ''
             && request.resource.data.guncelleme == request.time
+          ) || (
+            // 4) eski kayıtları yeni düzene çevirme: yalnız "ustalar" alanı eklenir
+            yetkiliMi(salonId) && lisansAktif(salonId)
+            && !('ustalar' in resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ustalar', 'guncelleme'])
+            && request.resource.data.ustalar is list && request.resource.data.ustalar.size() <= 6
+            && request.resource.data.guncelleme == request.time
           );
         allow delete: if false;
       }
@@ -369,11 +377,12 @@ service cloud.firestore {
       match /ustaSatirlari/{sid} {
         allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
         allow create: if odemeYazar(salonId) && lisansAktif(salonId)
-          && request.resource.data.keys().hasOnly(['ustaUid', 'odemeId', 'tarih', 'donem', 'musteriAd', 'ad', 'tutar', 'tur', 'yontem', 'komisyonOrani', 'durum'])
+          && request.resource.data.keys().hasOnly(['ustaUid', 'odemeId', 'tarih', 'donem', 'musteriAd', 'ad', 'tutar', 'alis', 'tur', 'yontem', 'komisyonOrani', 'durum'])
           && request.resource.data.durum == 'gecerli'
           && request.resource.data.donem == suankiDonem(salonId)
           && request.resource.data.ustaUid is string
           && request.resource.data.tutar is number && request.resource.data.tutar >= 0
+          && request.resource.data.alis is number && request.resource.data.alis >= 0
           && request.resource.data.tur in ['hizmet', 'urun']
           && request.resource.data.yontem in ['nakit', 'kart']
           && request.resource.data.odemeId is string
@@ -384,6 +393,25 @@ service cloud.firestore {
           && resource.data.donem == suankiDonem(salonId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum'])
           && request.resource.data.durum == 'iptal';
+        allow delete: if false;
+      }
+
+      // ---- İşlem kayıtları: müşterinin her hizmetindeki formül ve not ----
+      // Usta yalnız kendi kayıtlarını yazar/okur. Yönetici ve kıdemli hepsini yazar, ortak okur. Sekreter göremez.
+      match /islemler/{iid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
+          && (ben().rol in ['yonetici', 'kidemli'] || (ben().rol == 'usta' && request.resource.data.ustaUid == request.auth.uid))
+          && request.resource.data.keys().hasOnly(['musteriId', 'ustaUid', 'rid', 'tarih', 'hizmet', 'formul', 'not', 'guncelleme'])
+          && request.resource.data.musteriId is string
+          && request.resource.data.ustaUid is string
+          && request.resource.data.rid is string
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.hizmet is string && request.resource.data.hizmet.size() <= 60
+          && request.resource.data.formul is string && request.resource.data.formul.size() <= 500
+          && request.resource.data.not is string && request.resource.data.not.size() <= 300
+          && request.resource.data.guncelleme == request.time
+          && (request.method == 'create' || (resource.data.ustaUid == request.resource.data.ustaUid && resource.data.rid == request.resource.data.rid));
         allow delete: if false;
       }
 
@@ -449,11 +477,14 @@ service cloud.firestore {
         allow list: if uyeMi(salonId)
           && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar);
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
-          && request.resource.data.keys().hasOnly(['ad', 'tel', 'not', 'ustalar', 'olusturan', 'olusturma', 'guncelleme'])
+          && request.resource.data.keys().hasOnly(['ad', 'tel', 'not', 'dogum', 'sonraki', 'sonZiyaret', 'ustalar', 'olusturan', 'olusturma', 'guncelleme'])
           && request.resource.data.ad is string && request.resource.data.ad.size() >= 2 && request.resource.data.ad.size() <= 60
           && request.resource.data.tel is string && request.resource.data.tel.size() <= 20
           && (request.resource.data.tel == '' || mid == request.resource.data.tel)
           && request.resource.data.not is string && request.resource.data.not.size() <= 500
+          && request.resource.data.dogum is string && request.resource.data.dogum.matches('^$|^[0-3][0-9][.][01][0-9]$')
+          && request.resource.data.sonraki is string && request.resource.data.sonraki.matches('^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.sonZiyaret is string && request.resource.data.sonZiyaret.matches('^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
           && request.resource.data.ustalar is list && request.resource.data.ustalar.size() <= 30
           && request.resource.data.olusturan == request.auth.uid
           && request.resource.data.olusturma == request.time
@@ -470,12 +501,22 @@ service cloud.firestore {
             ||
             // 2) bilgi / not düzenleme (usta yalnızca kendi müşterisinde)
             (
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad', 'tel', 'not', 'guncelleme'])
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad', 'tel', 'not', 'dogum', 'sonraki', 'guncelleme'])
+              && request.resource.data.dogum is string && request.resource.data.dogum.matches('^$|^[0-3][0-9][.][01][0-9]$')
+              && request.resource.data.sonraki is string && request.resource.data.sonraki.matches('^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
               && request.resource.data.ad is string && request.resource.data.ad.size() >= 2 && request.resource.data.ad.size() <= 60
               && request.resource.data.tel is string && request.resource.data.tel.size() <= 20
               && (request.resource.data.tel == resource.data.tel || resource.data.tel == '')
               && request.resource.data.not is string && request.resource.data.not.size() <= 500
               && (ben().rol != 'usta' || request.auth.uid in resource.data.ustalar)
+            )
+            ||
+            // 3) ödeme alınınca son ziyaret ve (varsa) sonraki ziyaret önerisi işlenir
+            (
+              odemeYazar(salonId)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sonZiyaret', 'sonraki', 'guncelleme'])
+              && request.resource.data.sonZiyaret.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+              && request.resource.data.sonraki.matches('^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
             )
           );
         allow delete: if false;

@@ -4,7 +4,7 @@ import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle } from '../veri.js';
 import { tarihMetin, dkMetin } from '../takvim-mantik.js';
-import { yuvarla } from '../kasa-mantik.js';
+import { yuvarla, urunKari } from '../kasa-mantik.js';
 
 // Ödeme alma formu. randevu verilirse kalemleri hazır gelir; verilmezse "ürün satışı" olur.
 // bitti(): ödeme yazılınca ekranı yenilemek için çağrılır.
@@ -17,10 +17,11 @@ export async function odemeFormu(randevu, bitti) {
   const ustaAday = uyeler.filter(x => x.aktif && u.profil[x.id] && u.profil[x.id].calisir);
 
   const satirlar = randevu
-    ? randevu.kalemler.map(k => ({ ustaUid: k.ustaUid, ad: k.ad, tutar: String(k.fiyat || 0).replace('.', ','), tur: 'hizmet' }))
-    : [{ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', tur: 'urun' }];
+    ? randevu.kalemler.map(k => ({ ustaUid: k.ustaUid, ad: k.ad, tutar: String(k.fiyat || 0).replace('.', ','), alis: '', tur: 'hizmet' }))
+    : [{ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }];
   let yontem = 'nakit';
   const musteri = h('input', { type: 'text', maxlength: 60, value: randevu ? randevu.musteriAd : '', placeholder: randevu ? '' : t('Müşteri (isteğe bağlı)') });
+  const sonraki = h('input', { type: 'date' });
   const hata = h('div', { class: 'hata', role: 'alert' });
   const dugme = h('button', { class: 'dugme', type: 'submit' }, t('Ödemeyi kaydet'));
   const satirKutu = h('div', { class: 'satirlar' });
@@ -44,12 +45,33 @@ export async function odemeFormu(randevu, bitti) {
               ustaAday.map(x => h('option', { value: x.id, selected: x.id === s.ustaUid }, x.ad)),
               h('option', { value: '', selected: s.ustaUid === '' }, t('Salon (prim yok)')))
             : h('div', { class: 'salt-yazi' }, ad(s.ustaUid))),
-        h('label', null, t('Tutar (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.tutar, placeholder: '0',
-          oninput: (e) => { s.tutar = e.target.value; ozetCiz(); } }))))),
-      satirlar.length < 12 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', tur: 'urun' }); ciz(); } }, t('+ Ürün satışı ekle')) : null);
+        h('label', null, s.tur === 'urun' ? t('Satış fiyatı (₺)') : t('Tutar (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.tutar, placeholder: '0',
+          oninput: (e) => { s.tutar = e.target.value; ozetCiz(); } }))),
+      s.tur === 'urun' ? h('label', null, t('Alış fiyatı (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.alis, placeholder: '0',
+        oninput: (e) => { s.alis = e.target.value; ozetCiz(); } })) : null,
+      s.tur === 'urun' ? h('div', { class: 'kucuk urun-ozet', 'data-i': String(i) }) : null)),
+      satirlar.length < 12 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }); ciz(); } }, t('+ Ürün satışı ekle')) : null);
     ozetCiz();
   }
+  // Ürün satırı dökümü: satış - komisyon - alış = kâr; kâr ustaya (ürün primi) ve kasaya bölünür.
+  // Usta yüzdelerini yalnız yönetici/kıdemli/ortak görebilir; sekreterde yalnız kâr gösterilir.
+  function urunOzetleri() {
+    satirlar.forEach((s, i) => {
+      if (s.tur !== 'urun') return;
+      const el = satirKutu.querySelector('.urun-ozet[data-i="' + i + '"]'); if (!el) return;
+      const tut = Math.max(0, sayi(s.tutar) || 0), al = Math.max(0, sayi(s.alis) || 0);
+      if (!tut) { el.textContent = ''; return; }
+      const o = { komisyonOrani: yontem === 'kart' ? oran : 0 }, k = { tutar: tut, alis: al };
+      const kom = yuvarla(tut * o.komisyonOrani / 100), kar = urunKari(o, k);
+      const mali = s.ustaUid ? u.mali[s.ustaUid] : null;
+      let metin = t('Kâr: {kar} (satış {s}{k} − alış {a})', { kar: para(kar), s: para(tut), k: kom ? ' − ' + t('komisyon') + ' ' + para(kom) : '', a: para(al) });
+      if (s.ustaUid === '') metin += ' · ' + t('tamamı kasaya');
+      else if (mali) { const up = yuvarla(kar * (mali.urunPrimi || 0) / 100); metin += ' · ' + t('usta %{y}: {u}, kasa: {k}', { y: String(mali.urunPrimi || 0).replace('.', ','), u: para(up), k: para(yuvarla(kar - up)) }); }
+      el.textContent = metin;
+    });
+  }
   function ozetCiz() {
+    urunOzetleri();
     const top = toplamHesapla(), kom = yontem === 'kart' ? yuvarla(top * oran / 100) : 0;
     doldur(ozet,
       h('div', { class: 'uye-ust' }, h('span', { class: 'soluk' }, t('Toplam')), h('strong', null, para(top))),
@@ -66,7 +88,9 @@ export async function odemeFormu(randevu, bitti) {
     h('label', null, t('Müşteri'), musteri),
     h('h3', null, t('Kalemler')), satirKutu,
     h('h3', null, t('Ödeme yöntemi')), yontemKutu,
-    ozet, hata, dugme));
+    ozet,
+    randevu && randevu.musteriId ? h('label', null, t('Sonraki ziyaret önerisi (isteğe bağlı)'), sonraki) : null,
+    hata, dugme));
   ciz();
 
   function kaydet() {
@@ -78,7 +102,9 @@ export async function odemeFormu(randevu, bitti) {
         if (!s.ad.trim()) { if (v === 0) continue; hata.textContent = t('Ürünün adını yazın.'); return; }
         if (v <= 0) { hata.textContent = t('Ürünün tutarını yazın.'); return; }
       }
-      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), tur: s.tur });
+      const al = s.tur === 'urun' ? (s.alis === '' ? 0 : sayi(s.alis)) : 0;
+      if (!Number.isFinite(al) || al < 0) { hata.textContent = t('Alış fiyatını sayı olarak yazın (bilmiyorsanız 0).'); return; }
+      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), alis: yuvarla(al), tur: s.tur });
     }
     if (!kalemler.length) { hata.textContent = t('En az bir kalem olmalı.'); return; }
     const toplam = yuvarla(kalemler.reduce((a, k) => a + k.tutar, 0));
@@ -98,9 +124,10 @@ export async function odemeFormu(randevu, bitti) {
         });
         // Her ustanın kendi satırı ayrı belge: usta yalnız bunu okuyabilir
         kalemler.filter(k => k.ustaUid).forEach(k => b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), {
-          ustaUid: k.ustaUid, odemeId: ref.id, tarih: tarihMetin(new Date()), donem, musteriAd: musteri.value.trim(), ad: k.ad, tutar: k.tutar, tur: k.tur,
+          ustaUid: k.ustaUid, odemeId: ref.id, tarih: tarihMetin(new Date()), donem, musteriAd: musteri.value.trim(), ad: k.ad, tutar: k.tutar, alis: k.alis, tur: k.tur,
           yontem, komisyonOrani: oranT, durum: 'gecerli'
         }));
+        if (randevu && randevu.musteriId) b.update(doc(db, 'salons', S.salon.id, 'musteriler', randevu.musteriId), { sonZiyaret: tarihMetin(new Date()), sonraki: sonraki.value || '', guncelleme: serverTimestamp() });
         if (randevu) b.update(doc(db, 'salons', S.salon.id, 'randevular', randevu.id), { durum: 'odendi', odemeId: ref.id, guncelleme: serverTimestamp() });
         b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
           uid: auth.currentUser.uid, islem: 'odeme', hedef: ref.id, ayrinti: (randevu ? 'Randevu ödemesi ' : 'Satış ') + toplam + ' ₺ ' + yontem, zaman: serverTimestamp()

@@ -1,9 +1,9 @@
 import { t } from '../i18n.js';
-import { h, hataMetni, bildir, kilitli, sayi, lisansDurumu } from '../util.js';
+import { h, doldur, hataMetni, bildir, kilitli, sayi, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { ayariYukle } from '../veri.js';
+import { ayariYukle, eskiRandevulariYukle } from '../veri.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
 
@@ -18,17 +18,20 @@ function ciz(kutu, ayar) {
   const kapali = !yetkili || !lisansDurumu(S.salon).aktif;
   const pos = h('input', { type: 'text', inputmode: 'decimal', value: ayar ? String(ayar.posOrani).replace('.', ',') : '', placeholder: 'örn. 2,5', disabled: kapali });
   const adim = h('select', { disabled: kapali }, ADIMLAR.map(a => h('option', { value: String(a), selected: a === (ayar ? ayar.randevuAdimi : 15) }, a + ' ' + t('dakika'))));
+  const kayip = h('input', { type: 'text', inputmode: 'numeric', value: String(ayar && ayar.kayipGun ? ayar.kayipGun : 60), disabled: kapali });
   const tel = h('input', { type: 'tel', inputmode: 'tel', value: ayar ? ayar.salonTel : '', placeholder: t('Salonun telefonu (isteğe bağlı)'), maxlength: 30, disabled: kapali });
   const hata = h('div', { class: 'hata', role: 'alert' });
   const dugme = h('button', { class: 'dugme', type: 'submit', disabled: kapali }, t('Kaydet'));
-  kutu.replaceChildren(h('form', { class: 'kart form', novalidate: true,
+  doldur(kutu, h('form', { class: 'kart form', novalidate: true,
     onsubmit: (e) => {
       e.preventDefault(); hata.textContent = '';
       const p = sayi(pos.value);
+      const kg = parseInt(kayip.value, 10);
+      if (!Number.isInteger(kg) || kg < 7 || kg > 730) { hata.textContent = t('Kayıp müşteri günü 7 ile 730 arasında olmalı.'); return; }
       if (!Number.isFinite(p) || p < 0 || p > 20) { hata.textContent = t('Kart komisyon oranı 0 ile 20 arasında bir sayı olmalı. Yoksa 0 yazın.'); return; }
       kilitli(dugme, async () => {
         try {
-          const veri = { posOrani: p, randevuAdimi: Number(adim.value), salonTel: tel.value.trim(), guncelleme: serverTimestamp() };
+          const veri = { posOrani: p, randevuAdimi: Number(adim.value), salonTel: tel.value.trim(), kayipGun: parseInt(kayip.value, 10), guncelleme: serverTimestamp() };
           const b = writeBatch(db);
           b.set(doc(db, 'salons', S.salon.id, 'ayarlar', 'genel'), veri);
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
@@ -44,7 +47,29 @@ function ciz(kutu, ayar) {
     h('label', null, t('Kart (POS) komisyon oranı, %'), pos),
     h('p', { class: 'kucuk' }, t('Kartla alınan ödemelerden bu oran önce düşülür, kalan tutar ustanın yüzdesine göre bölünür. Usta ve salon komisyonu birlikte taşır.')),
     h('label', null, t('Takvimde randevu adımı'), adim),
+    h('label', null, t('Kayıp müşteri alarmı (kaç gündür gelmeyen), gün'), kayip),
+    h('p', { class: 'kucuk' }, t('Müşteriler sekmesinde, bu kadar gündür gelmeyen müşteriler "geri çağır" listesine düşer.')),
     h('label', null, t('Salon telefonu'), tel),
     hata, kapali ? null : dugme,
-    yetkili ? null : h('p', { class: 'kucuk' }, t('Bu ayarları yönetici ya da kıdemli yetkili değiştirir.'))));
+    yetkili ? null : h('p', { class: 'kucuk' }, t('Bu ayarları yönetici ya da kıdemli yetkili değiştirir.'))),
+    yetkili && !kapali ? bakimKarti() : null);
+}
+
+// Eski (usta alanı eklenmeden önce alınmış) randevuları yeni düzene çevirir: ustalar kendi randevularını görebilsin.
+function bakimKarti() {
+  const durum = h('p', { class: 'kucuk' });
+  const dugme = h('button', { class: 'dugme ikincil', type: 'button', onclick: () => kilitli(dugme, async () => {
+    try {
+      const eski = await eskiRandevulariYukle();
+      if (!eski.length) { durum.textContent = t('Güncellenecek eski randevu yok.'); return; }
+      for (let i = 0; i < eski.length; i += 400) {
+        const b = writeBatch(db);
+        eski.slice(i, i + 400).forEach(r => b.update(doc(db, 'salons', S.salon.id, 'randevular', r.id), { ustalar: [...new Set((r.kalemler || []).map(k => k.ustaUid))], guncelleme: serverTimestamp() }));
+        await b.commit();
+      }
+      durum.textContent = t('{n} eski randevu güncellendi.', { n: eski.length });
+    } catch (err) { console.error(err); durum.textContent = hataMetni(err); }
+  }) }, t('Eski randevuları yeni düzene çevir'));
+  return h('div', { class: 'kart bilgi' }, h('strong', null, t('Bakım')),
+    h('p', null, t('Yeni sürüme geçmeden önce alınmış randevuları ustalar göremiyorsa bir kez basın.')), dugme, durum);
 }

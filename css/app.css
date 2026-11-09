@@ -116,3 +116,10 @@ h3.ilk { margin-top: 0; }
 .kart.randevu.dolu { border-left-color: var(--cizgi); opacity: .8; cursor: default; }
 textarea.liste-metin { width: 100%; background: var(--kart2); color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px; font: inherit; font-size: .9rem; }
 .sayfa > input[type=text] { margin: 6px 0 12px; }
+
+/* 5. teslim ek: formül, işlem geçmişi, hatırlatma */
+.formul-yazi { font-size: .88rem; background: var(--kart); border: 1px solid var(--cizgi); border-radius: 8px; padding: 6px 8px; margin: 4px 0; white-space: pre-wrap; }
+.formul-kutu { display: grid; gap: 4px; margin-top: 4px; }
+.gecmis-satir { padding: 8px 0; border-top: 1px solid var(--cizgi); } .gecmis-kalem { padding: 2px 0 2px 8px; font-size: .9rem; }
+.hatirlatma .ust-baslik { margin-top: 10px; font-weight: 600; color: var(--yazi); } .urun-ozet { color: var(--soluk); }
+textarea.liste-metin { resize: vertical; }

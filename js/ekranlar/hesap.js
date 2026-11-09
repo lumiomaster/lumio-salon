@@ -5,7 +5,7 @@ import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
   uyeleriYukle, ustalariYukle, donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle,
-  gunMutabakatiniYukle, donemleriYukle, randevulariYukle
+  gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle
 } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaOzetleri, gunOzeti, odenecek, yuvarla } from '../kasa-mantik.js';
@@ -23,11 +23,11 @@ async function yukle(kutu, yenile) {
   try {
     const bugun = tarihMetin(new Date());
     const donem = await donemiYukle();
-    const [uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, randevular] = await Promise.all([
+    const [uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, randevular, ayar] = await Promise.all([
       uyeleriYukle(), ustalariYukle(), donemOdemeleriniYukle(donem), avanslariYukle(donem), devirleriYukle(),
-      gunMutabakatiniYukle(H.tarih), donemleriYukle(), randevulariYukle(tarihEkle(bugun, -30), bugun)
+      gunMutabakatiniYukle(H.tarih), donemleriYukle(), randevulariYukle(tarihEkle(bugun, -30), bugun), ayariYukle()
     ]);
-    ciz(kutu, { donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
+    ciz(kutu, { taban: (ayar && ayar.urunTaban) || 'kar', donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -36,7 +36,7 @@ async function yukle(kutu, yenile) {
 
 // Her ustanın dönem özeti
 function hesapla(D) {
-  const ozet = ustaOzetleri(D.odemeler, D.u.mali);
+  const ozet = ustaOzetleri(D.odemeler, D.u.mali, D.taban);
   const avans = {}; D.avanslar.forEach(a => { avans[a.ustaUid] = (avans[a.ustaUid] || 0) + a.tutar; });
   const idler = new Set([...Object.keys(ozet), ...Object.keys(avans), ...Object.keys(D.devirler),
     ...D.uyeler.filter(x => x.aktif && D.u.profil[x.id] && D.u.profil[x.id].calisir).map(x => x.id)]);

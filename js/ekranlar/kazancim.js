@@ -2,7 +2,7 @@ import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { auth, db, doc, writeBatch, serverTimestamp } from '../fb.js';
-import { donemiYukle, ustaSatirlariniYukle, avanslariYukle, devirleriYukle, benimMutabakatim, benimMalim } from '../veri.js';
+import { ayariYukle, donemiYukle, ustaSatirlariniYukle, avanslariYukle, devirleriYukle, benimMutabakatim, benimMalim } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaOzetleri, ustaGunSatirlari, odenecek, yuvarla } from '../kasa-mantik.js';
 
@@ -20,10 +20,10 @@ async function yukle(kutu, yenile) {
   const uid = auth.currentUser.uid;
   try {
     const donem = await donemiYukle();
-    const [mali, odemeler, avanslar, devirler, mut] = await Promise.all([
-      benimMalim(uid), ustaSatirlariniYukle(donem, uid), avanslariYukle(donem, uid), devirleriYukle(uid), benimMutabakatim(uid, G.tarih)
+    const [mali, odemeler, avanslar, devirler, mut, ayar] = await Promise.all([
+      benimMalim(uid), ustaSatirlariniYukle(donem, uid), avanslariYukle(donem, uid), devirleriYukle(uid), benimMutabakatim(uid, G.tarih), ayariYukle()
     ]);
-    ciz(kutu, uid, { mali, odemeler, avanslar, devir: devirler[uid] || 0, mut }, yenile);
+    ciz(kutu, uid, { mali, odemeler, avanslar, devir: devirler[uid] || 0, mut, taban: (ayar && ayar.urunTaban) || 'kar' }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('h1', null, t('Kazancım')), h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -33,9 +33,9 @@ async function yukle(kutu, yenile) {
 function ciz(kutu, uid, D, yenile) {
   const bugun = tarihMetin(new Date());
   const lisansOk = lisansDurumu(S.salon).aktif;
-  const satirlar = ustaGunSatirlari(D.odemeler, uid, G.tarih, D.mali);
+  const satirlar = ustaGunSatirlari(D.odemeler, uid, G.tarih, D.mali, D.taban);
   const gunPay = yuvarla(satirlar.reduce((a, s) => a + s.pay, 0));
-  const ozet = ustaOzetleri(D.odemeler, { [uid]: D.mali })[uid] || { hizmet: 0, urun: 0, hakedis: 0 };
+  const ozet = ustaOzetleri(D.odemeler, { [uid]: D.mali }, D.taban)[uid] || { hizmet: 0, urun: 0, hakedis: 0 };
   const avans = yuvarla(D.avanslar.reduce((a, x) => a + x.tutar, 0));
   const not = h('input', { type: 'text', maxlength: 200, placeholder: t('İtiraz nedeni (örn. Ayşe Hanım\'ın boyası eksik yazılmış)') });
   const hata = h('div', { class: 'hata', role: 'alert' });
