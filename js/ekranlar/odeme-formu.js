@@ -92,10 +92,15 @@ export async function odemeFormu(randevu, bitti) {
         const b = writeBatch(db);
         const ref = doc(collection(db, 'salons', S.salon.id, 'odemeler'));
         b.set(ref, {
-          rid: randevu ? randevu.id : '', tarih: tarihMetin(new Date()), donem, yontem, musteriAd: musteri.value.trim(), kalemler,
+          rid: randevu ? randevu.id : '', musteriId: randevu ? (randevu.musteriId || '') : '', tarih: tarihMetin(new Date()), donem, yontem, musteriAd: musteri.value.trim(), kalemler,
           ustalar: [...new Set(kalemler.map(k => k.ustaUid).filter(Boolean))], toplam, komisyonOrani: oranT, komisyon,
           durum: 'gecerli', alan: auth.currentUser.uid, zaman: serverTimestamp()
         });
+        // Her ustanın kendi satırı ayrı belge: usta yalnız bunu okuyabilir
+        kalemler.filter(k => k.ustaUid).forEach(k => b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), {
+          ustaUid: k.ustaUid, odemeId: ref.id, tarih: tarihMetin(new Date()), donem, musteriAd: musteri.value.trim(), ad: k.ad, tutar: k.tutar, tur: k.tur,
+          yontem, komisyonOrani: oranT, durum: 'gecerli'
+        }));
         if (randevu) b.update(doc(db, 'salons', S.salon.id, 'randevular', randevu.id), { durum: 'odendi', odemeId: ref.id, guncelleme: serverTimestamp() });
         b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
           uid: auth.currentUser.uid, islem: 'odeme', hedef: ref.id, ayrinti: (randevu ? 'Randevu ödemesi ' : 'Satış ') + toplam + ' ₺ ' + yontem, zaman: serverTimestamp()

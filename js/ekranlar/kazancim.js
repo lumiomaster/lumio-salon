@@ -2,7 +2,7 @@ import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { auth, db, doc, writeBatch, serverTimestamp } from '../fb.js';
-import { donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle, benimMutabakatim, benimMalim } from '../veri.js';
+import { donemiYukle, ustaSatirlariniYukle, avanslariYukle, devirleriYukle, benimMutabakatim, benimMalim } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaOzetleri, ustaGunSatirlari, odenecek, yuvarla } from '../kasa-mantik.js';
 
@@ -21,7 +21,7 @@ async function yukle(kutu, yenile) {
   try {
     const donem = await donemiYukle();
     const [mali, odemeler, avanslar, devirler, mut] = await Promise.all([
-      benimMalim(uid), donemOdemeleriniYukle(donem, uid), avanslariYukle(donem, uid), devirleriYukle(uid), benimMutabakatim(uid, G.tarih)
+      benimMalim(uid), ustaSatirlariniYukle(donem, uid), avanslariYukle(donem, uid), devirleriYukle(uid), benimMutabakatim(uid, G.tarih)
     ]);
     ciz(kutu, uid, { mali, odemeler, avanslar, devir: devirler[uid] || 0, mut }, yenile);
   } catch (e) {

@@ -3,7 +3,7 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, lisansDurumu } 
 import { S } from '../durum.js';
 import { gorenMi, odemeYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { uyeleriYukle, gunOdemeleriniYukle, randevulariYukle, donemiYukle } from '../veri.js';
+import { uyeleriYukle, gunOdemeleriniYukle, randevulariYukle, donemiYukle, odemeSatirlariniYukle } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin } from '../takvim-mantik.js';
 import { gunOzeti } from '../kasa-mantik.js';
 import { goster } from '../main.js';
@@ -117,6 +117,7 @@ function odemeIptal(o, yenile) {
         try {
           const b = writeBatch(db);
           b.update(doc(db, 'salons', S.salon.id, 'odemeler', o.id), { durum: 'iptal', iptalNedeni: neden.value.trim() });
+          (await odemeSatirlariniYukle(o.id)).forEach(x => b.update(doc(db, 'salons', S.salon.id, 'ustaSatirlari', x.id), { durum: 'iptal' }));
           if (o.rid) b.update(doc(db, 'salons', S.salon.id, 'randevular', o.rid), { durum: 'bekliyor', odemeId: '', guncelleme: serverTimestamp() });
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_iptal', hedef: o.id, ayrinti: o.toplam + ' ₺: ' + neden.value.trim(), zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Ödeme iptal edildi.')); yenile();

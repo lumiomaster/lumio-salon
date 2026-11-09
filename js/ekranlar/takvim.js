@@ -3,10 +3,10 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisan
 import { S } from '../durum.js';
 import { randevuYazarMi, odemeYazarMi } from '../roller.js';
 import { odemeFormu } from './odeme-formu.js';
-import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
+import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
+import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir } from '../veri.js';
 import {
-  dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
+  DILIM, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
   ustaDurumu, randevuKilitleri, izinCakisanKalemler
 } from '../takvim-mantik.js';
 
@@ -20,16 +20,23 @@ export function takvimEkrani() {
   return kutu;
 }
 
+// Randevu formunun ve takvimin ihtiyaç duyduğu ortak veriler
+export async function takvimCtx() {
+  const [uyeler, u, hizmetler, ayar] = await Promise.all([uyeleriYukle(), ustalariYukle(), hizmetleriYukle(), ayariYukle()]);
+  return { uyeler, profil: u.profil, hizmetler, ayar, ad: (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad };
+}
+
 async function yukle(kutu, yenile) {
   try {
     const bugun = tarihMetin(new Date());
-    const [uyeler, u, hizmetler, ayar, gun, yaklasan] = await Promise.all([
-      uyeleriYukle(), ustalariYukle(), hizmetleriYukle(), ayariYukle(),
+    const usta = S.profil.rol === 'usta';
+    const [ctx, gun, yaklasan, kilit] = await Promise.all([
+      takvimCtx(),
       randevulariYukle(T.tarih, T.tarih),
-      randevulariYukle(bugun, tarihEkle(bugun, 30))
+      randevulariYukle(bugun, tarihEkle(bugun, 30)),
+      usta ? kilitleriYukle(T.tarih) : Promise.resolve({})
     ]);
-    const ctx = { uyeler, profil: u.profil, hizmetler, ayar, ad: (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad };
-    ciz(kutu, ctx, gun, yaklasan, yenile);
+    ciz(kutu, ctx, gun, yaklasan, kilit, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -39,7 +46,7 @@ async function yukle(kutu, yenile) {
 const ustalar = (ctx) => ctx.uyeler.filter(u => u.aktif && ctx.profil[u.id] && ctx.profil[u.id].calisir);
 const telLink = (d) => d ? '+' + d : '';
 
-function ciz(kutu, ctx, gun, yaklasan, yenile) {
+function ciz(kutu, ctx, gun, yaklasan, kilit, yenile) {
   const yazar = randevuYazarMi(S.profil.rol);
   const lisansOk = lisansDurumu(S.salon).aktif;
   const bugun = tarihMetin(new Date());
@@ -49,6 +56,8 @@ function ciz(kutu, ctx, gun, yaklasan, yenile) {
   let liste = gun.filter(r => T.iptaller || r.durum !== 'iptal');
   if (T.usta) liste = liste.filter(r => r.kalemler.some(k => k.ustaUid === T.usta));
   const iptalSayisi = gun.filter(r => r.durum === 'iptal').length;
+  // Usta başkalarının randevu ayrıntısını görmez; yalnız "dolu" saatleri görür (slotlardan).
+  const bloklar = S.profil.rol === 'usta' ? doluBloklar(kilit, gun, T.usta) : [];
 
   // O gün izinde olan ustalar
   const izinliler = ustaListe.filter(u => {
@@ -75,11 +84,42 @@ function ciz(kutu, ctx, gun, yaklasan, yenile) {
       ustaListe.map(u => h('button', { type: 'button', class: 'cip' + (T.usta === u.id ? ' secili' : ''), onclick: () => { T.usta = u.id; yenile(); } }, u.ad.split(' ')[0]))) : null,
     izinliler.length ? h('div', { class: 'uyari' }, t('İzinli: {adlar}', { adlar: izinliler.map(u => u.ad).join(', ') })) : null,
     ustaListe.length === 0 ? h('div', { class: 'kart bilgi' }, h('p', null, t('Takvimde görünecek usta yok. Salon > Ustalar bölümünden "Randevu alıyor" işaretleyin.'))) : null,
-    liste.length === 0 ? h('p', { class: 'soluk' }, t('Bu gün için randevu yok.')) : null,
-    liste.map(r => randevuKarti(r, ctx, yazar && lisansOk, yenile)),
+    liste.length === 0 && bloklar.length === 0 ? h('p', { class: 'soluk' }, t('Bu gün için randevu yok.')) : null,
+    S.profil.rol === 'usta'
+      ? [...liste.map(r => ({ bas: r.bas, el: randevuKarti(r, ctx, yazar && lisansOk, yenile) })), ...bloklar.map(b => ({ bas: b.bas, el: doluKarti(b, ctx) }))].sort((a, b) => a.bas - b.bas).map(x => x.el)
+      : liste.map(r => randevuKarti(r, ctx, yazar && lisansOk, yenile)),
     iptalSayisi ? h('label', { class: 'onay iptal-secim' },
       h('input', { type: 'checkbox', checked: T.iptaller, onchange: (e) => { T.iptaller = e.target.checked; yenile(); } }),
       h('span', null, t('İptal edilenleri de göster ({n})', { n: iptalSayisi }))) : null);
+}
+
+// Kilitlerden (kendi randevularım hariç) ustalara göre ardışık dolu aralıklar
+function doluBloklar(kilit, benim, filtre) {
+  const benimIdler = new Set(benim.map(r => r.id));
+  const grup = {};
+  Object.keys(kilit).forEach(id => {
+    if (benimIdler.has(kilit[id])) return;
+    const i = id.lastIndexOf('_'), uid = id.split('_')[0], dilim = Number(id.slice(i + 1));
+    (grup[uid] = grup[uid] || []).push(dilim);
+  });
+  const sonuc = [];
+  Object.entries(grup).forEach(([uid, dl]) => {
+    if (filtre && filtre !== uid) return;
+    dl.sort((a, b) => a - b);
+    let bas = dl[0], son = dl[0];
+    for (const d of dl.slice(1).concat([null])) {
+      if (d !== null && d === son + 1) { son = d; continue; }
+      sonuc.push({ uid, bas: bas * DILIM, bit: (son + 1) * DILIM });
+      bas = son = d;
+    }
+  });
+  return sonuc;
+}
+
+function doluKarti(b, ctx) {
+  return h('div', { class: 'kart randevu dolu' },
+    h('div', { class: 'uye-ust' }, h('strong', null, dkMetin(b.bas) + '–' + dkMetin(b.bit)), h('span', { class: 'rozet' }, t('Dolu'))),
+    h('div', { class: 'kucuk' }, ctx.ad(b.uid)));
 }
 
 function aramaKarti(aranacak, ctx, duzenleyebilir, yenile) {
@@ -163,7 +203,7 @@ export function iptalFormu(r, ctx, yenile) {
 }
 
 // ---- Randevu formu: yeni, düzenleme ve erteleme aynı formdan ----
-function randevuFormu(mevcut, ctx, tarih0, yenile) {
+export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
   const yeni = !mevcut;
   const adim = (ctx.ayar && ctx.ayar.randevuAdimi) || 15;
   const aktifHizmetler = ctx.hizmetler.filter(x => x.aktif);
@@ -171,8 +211,28 @@ function randevuFormu(mevcut, ctx, tarih0, yenile) {
   let kilitHarita = {};      // sunucudaki dolu dilimler (kendi randevum hariç)
   let yuklemeNo = 0;
 
-  const musteri = h('input', { type: 'text', maxlength: 60, value: mevcut ? mevcut.musteriAd : '', placeholder: t('Müşterinin adı'), autocomplete: 'off' });
-  const tel = h('input', { type: 'tel', inputmode: 'tel', maxlength: 20, value: mevcut && mevcut.musteriTel ? telGoster(mevcut.musteriTel) : '', placeholder: t('Telefon (isteğe bağlı)') });
+  const dolgu = onDolgu || {};
+  let musteriId = mevcut ? (mevcut.musteriId || '') : (dolgu.musteriId || '');
+  let kayitli = [];
+  const musteriListe = h('datalist', { id: 'musteri-listesi' });
+  const etiket = (m) => m.ad + (m.tel ? ' · ' + telGoster(m.tel) : '');
+  const musteri = h('input', { type: 'text', maxlength: 60, list: 'musteri-listesi', value: mevcut ? mevcut.musteriAd : (dolgu.musteriAd || ''), placeholder: t('Müşterinin adı (kayıtlıysa seçin)'), autocomplete: 'off' });
+  const tel = h('input', { type: 'tel', inputmode: 'tel', maxlength: 20, value: (mevcut ? mevcut.musteriTel : dolgu.musteriTel) ? telGoster(mevcut ? mevcut.musteriTel : dolgu.musteriTel) : '', placeholder: t('Telefon (isteğe bağlı)') });
+  // Defterde kayıtlı müşteri seçilince telefon ve kimlik dolar
+  musteri.addEventListener('change', () => {
+    const m = kayitli.find(x => etiket(x) === musteri.value);
+    if (m) { musteri.value = m.ad; tel.value = m.tel ? telGoster(m.tel) : ''; musteriId = m.id; }
+    else musteriId = '';
+  });
+  tel.addEventListener('change', async () => {
+    const d = telNormalize(tel.value);
+    if (!d) { musteriId = ''; return; }
+    try {
+      const m = kayitli.find(x => x.tel === d) || await musteriGetir(d);
+      if (m) { musteriId = m.id; if (!musteri.value.trim()) musteri.value = m.ad; } else musteriId = '';
+    } catch (e) { console.error(e); }
+  });
+  musterileriYukle().then(l => { kayitli = l; doldur(musteriListe, l.map(m => h('option', { value: etiket(m) }))); }).catch(e => console.error(e));
   const tarihK = h('input', { type: 'date', value: tarih0 });
   const saatK = h('input', { type: 'time', step: String(adim * 60), value: mevcut ? dkMetin(mevcut.bas) : '10:00' });
   const notK = h('input', { type: 'text', maxlength: 200, value: mevcut ? (mevcut.not || '') : '', placeholder: t('Not (isteğe bağlı)') });
@@ -284,7 +344,7 @@ function randevuFormu(mevcut, ctx, tarih0, yenile) {
   const pencere = pencereAc(yeni ? t('Yeni randevu') : t('Randevuyu düzenle / ertele'), icerik);
   icerik.append(h('form', { class: 'form', novalidate: true,
     onsubmit: (e) => { e.preventDefault(); hata.textContent = ''; kaydet(); } },
-    h('label', null, t('Müşteri'), musteri),
+    h('label', null, t('Müşteri'), musteri), musteriListe,
     h('label', null, t('Telefon'), tel),
     h('div', { class: 'iki-sutun' }, h('label', null, t('Tarih'), tarihK), h('label', null, t('Saat'), saatK)),
     h('h3', null, t('Hizmetler')),
@@ -322,7 +382,17 @@ function randevuFormu(mevcut, ctx, tarih0, yenile) {
 
         const b = writeBatch(db);
         const bas = Math.min(...kalemler.map(k => k.bas)), bit = Math.max(...kalemler.map(k => k.bit));
-        const veri = { musteriAd: ad, musteriTel: telD, tarih, bas, bit, kalemler, kilitler, not: notK.value.trim() };
+        // Müşteri defteri: kayıtlıysa ustaları ekle, değilse yeni kayıt aç (telefon varsa belge adı telefondur)
+        const ustalarListe = [...new Set(kalemler.map(k => k.ustaUid))];
+        let mid = musteriId;
+        if (!mid && telD) { const var_ = await musteriGetir(telD); if (var_) mid = var_.id; }
+        if (mid) b.update(doc(db, 'salons', S.salon.id, 'musteriler', mid), { ustalar: arrayUnion(...ustalarListe), guncelleme: serverTimestamp() });
+        else {
+          const mref = telD ? doc(db, 'salons', S.salon.id, 'musteriler', telD) : doc(collection(db, 'salons', S.salon.id, 'musteriler'));
+          mid = mref.id;
+          b.set(mref, { ad, tel: telD, not: '', ustalar: ustalarListe, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
+        }
+        const veri = { musteriAd: ad, musteriTel: telD, musteriId: mid, ustalar: ustalarListe, tarih, bas, bit, kalemler, kilitler, not: notK.value.trim() };
         let rid;
         if (yeni) {
           const ref = doc(collection(db, 'salons', S.salon.id, 'randevular'));

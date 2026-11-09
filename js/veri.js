@@ -58,8 +58,11 @@ export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: nul
 // Tarih aralığındaki randevular (bas ve bit dahil), saate göre sıralı
 export async function randevulariYukle(bas, bit) {
   kontrol();
+  // Usta yalnızca adının geçtiği randevuları okuyabilir (kurallar). Aralık sorgusu ile birleşmez, bu yüzden usta için tek gün sorulur.
+  const usta = S.profil.rol === 'usta' ? [where('ustalar', 'array-contains', S.profil.id)] : [];
+  if (usta.length && bas !== bit) return [];
   const q = bas === bit
-    ? query(yol('randevular'), where('tarih', '==', bas))
+    ? query(yol('randevular'), where('tarih', '==', bas), ...usta)
     : query(yol('randevular'), where('tarih', '>=', bas), where('tarih', '<=', bit));
   const sn = await getDocs(q);
   return sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.tarih.localeCompare(b.tarih) || a.bas - b.bas);
@@ -131,4 +134,45 @@ export async function benimMalim(uid) {
 export async function donemleriYukle() {
   kontrol();
   return liste(await getDocs(yol('donemler'))).sort((a, b) => b.donem - a.donem);
+}
+
+// ---- Müşteri defteri ----
+export async function musterileriYukle() {
+  kontrol();
+  const q = S.profil.rol === 'usta' ? query(yol('musteriler'), where('ustalar', 'array-contains', S.profil.id)) : yol('musteriler');
+  const sn = await getDocs(q);
+  return sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+}
+// Telefonla tek müşteri (belge adı telefon); yoksa null
+export async function musteriGetir(id) {
+  kontrol();
+  const d = await getDoc(doc(db, 'salons', S.salon.id, 'musteriler', id));
+  return d.exists() ? { id: d.id, ...d.data() } : null;
+}
+// Bir müşterinin randevuları ve (yetkili roller için) ödemeleri
+export async function musteriGecmisi(id) {
+  kontrol();
+  const usta = S.profil.rol === 'usta';
+  const ek = usta ? [where('ustalar', 'array-contains', S.profil.id)] : [];
+  const rs = await getDocs(query(yol('randevular'), where('musteriId', '==', id), ...ek));
+  const randevular = rs.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.tarih.localeCompare(a.tarih) || b.bas - a.bas);
+  let odemeler = [];
+  if (!usta) odemeler = (await getDocs(query(yol('odemeler'), where('musteriId', '==', id)))).docs.map(d => ({ id: d.id, ...d.data() }));
+  return { randevular, odemeler };
+}
+
+
+// Ustanın kendi kazanç satırları (başkasının tutarı içermez). Hesap fonksiyonlarının beklediği "ödeme" biçimine çevrilir.
+export async function ustaSatirlariniYukle(donem, uid) {
+  kontrol();
+  const sn = await getDocs(query(yol('ustaSatirlari'), where('donem', '==', donem), where('ustaUid', '==', uid)));
+  return liste(sn).map(x => ({
+    id: x.id, durum: x.durum, tarih: x.tarih, donem: x.donem, yontem: x.yontem, komisyonOrani: x.komisyonOrani, musteriAd: x.musteriAd,
+    kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, tur: x.tur }]
+  })).sort((a, b) => a.tarih.localeCompare(b.tarih));
+}
+// Bir ödemenin satır belgeleri (iptal için; yönetici/kıdemli)
+export async function odemeSatirlariniYukle(odemeId) {
+  kontrol();
+  return liste(await getDocs(query(yol('ustaSatirlari'), where('odemeId', '==', odemeId))));
 }

@@ -1,40 +1,36 @@
-# LUMIO SALON – 4. Teslim (Ödeme ve kasa)
+# LUMIO SALON – 5. Teslim (Müşteri defteri + usta gizliliği düzeltmesi)
 
-Yeni: alttaki menüde **Kasa**.
+## Düzeltme: usta başkasının müşterisini ve parasını göremez
+- **Takvim:** usta kendi randevularını tam görür. Diğer ustaların randevuları yalnızca **"Dolu"** saat bloğu olarak görünür (yoğunluk), **müşteri adı, hizmet, tutar yok**.
+- **Ödemeler:** usta yalnız **kendi satırını** görür (Kasa > Kazancım). Aynı müşterinin başka ustaya ait tutarı ya da ürün satışı ona görünmez. Bu artık Firebase kurallarıyla zorlanıyor, sadece ekranda gizlenmiyor.
+- Eski (test) randevu ve ödemeler yeni yapıya uymaz: **eski test randevularını ustalar göremez**, eski test ödemeleri ustanın "Kazancım"ında çıkmaz. Yönetici/kıdemli/sekreter/ortak hepsini görmeye devam eder. Test verisini bu yüzden **yeniden oluşturman** gerekir; gerçek kullanıma geçmeden önce Firebase'deki test verisini silmek en temizi.
 
-**Yönetici, kıdemli, sekreter, ortak** için iki bölüm:
-- **Günlük kasa:** tarih seç, o günün nakit / kart / kart komisyonu / net toplamı ve ödeme listesi. **Ödemesi alınmamış randevular** burada uyarı olarak çıkar (son 14 gün): **Öde** ya da **İptal**. **+ Ürün satışı** ile randevusuz satış girilir.
-- **Usta hesapları** (yönetici, kıdemli, ortak görür): usta usta hizmet cirosu, ürün satışı, hakediş (komisyon düşülmüş), avans, önceki dönemden borç ve **ödenecek**; salon toplamı; ustanın akşam **mutabakat** durumu (Onayladı / İtiraz var + notu); **Avans ver**; **Hesabı kapat**; kapanmış dönemler.
-
-**Usta** için **Kazancım:** günün satırları ve payı, **Onaylıyorum / İtirazım var (not)**, dönem özeti, avanslar.
-
-Ödeme alabilenler: yönetici, kıdemli, sekreter. Ödemeyi **yönetici/kıdemli iptal** edebilir (yalnız içinde bulunulan dönemde; randevu "ödeme bekliyor"a döner). Kapanmış dönemdeki ödeme değiştirilemez.
-
-Hesap kuralı (LUMIO'daki gibi): kartla alınan ödemede komisyon **önce** düşülür, kalan tutar ustanın yüzdesine göre bölünür; usta ve salon komisyonu birlikte taşır. Ürün satışında usta, kendi **ürün primi** kadar alır. Hakedişten fazla avans alan ustanın farkı **borç** olarak sonraki döneme devreder.
+## Yeni: Müşteriler sekmesi (herkes görür)
+- **Tek ortak defter.** Yönetici, kıdemli, ortak, sekreter hepsini görür. **Usta yalnız hizmet verdiği müşterileri** görür; ustaya yeni randevu alındığında müşteri ona otomatik eklenir.
+- Randevu alırken ad yazınca kayıtlı müşteriler çıkar; **telefon yazınca müşteri otomatik bulunur** (aynı telefon iki kez açılmaz).
+- Müşteri ayrıntısı: ad, telefon, **not** (alerji, tercih), **randevu geçmişi**, toplam harcama ve ziyaret sayısı (ustaya gösterilmez), **Ara / WhatsApp / Randevu al**.
+- **+ Müşteri:** randevusuz müşteri ekleme. Ad ya da telefonla arama.
+- **Ayrılan usta listesi** (yalnız yönetici/kıdemli): ustayı seç, ismini ve telefonlarını kopyala ya da CSV indir. İşlem kayıtlara yazılır.
 
 ## A. GitHub'a yükle
-Zip'i **ayıkla** > GitHub **Add file > Upload files** > ayıkladığın klasörün içindeki **her şeyi** sürükle > **Commit changes** > 1–2 dk bekle > **Ctrl+Shift+R**. (Yeni dosyalar: `ekranlar/kasa.js, hesap.js, kazancim.js, odeme-formu.js`, `kasa-mantik.js`.)
+Zip'i **ayıkla** > GitHub **Add file > Upload files** > ayıkladığın klasörün içindeki **her şeyi** sürükle > **Commit changes** > 1–2 dk bekle > **Ctrl+Shift+R**.
 
 ## B. Kuralları yenile (YENİ KURALLAR VAR, mutlaka yap)
-Firebase > Firestore Database > **Rules** > her şeyi sil, yeni `firestore.rules`ın tamamını yapıştır > **Publish**. Hata verirse ekran görüntüsünü gönder.
+Firebase > Firestore Database > **Rules** > her şeyi sil, yeni `firestore.rules`ın tamamını yapıştır > **Publish**.
 
-## C. Test listesi
-Hazırlık: Salon > Genel'de **kart komisyonu** (örn. 2) kayıtlı olsun; ustalarda **yüzde** girili olsun (örn. 40).
-
-1. Bir randevu al, **geçmiş bir güne** (örn. dün). **Kasa**'da sarı "Ödemesi alınmamış 1 randevu" uyarısı çıkmalı.
-2. **Öde:** tutarı yaz (1000), **Kart** seç. Komisyon önizlemesi (2% = 20) görünmeli. **Ödemeyi kaydet.** Uyarı kaybolmalı; Takvim'de randevuda "Ödendi" yazmalı.
-3. **Günlük kasa:** kart 1.000, komisyon 20, net 980. **+ Ürün satışı:** "Şampuan" 200 TL nakit, satan usta seç.
-4. **Usta hesapları:** ustanın hakedişi 980 × %40 = **392** olmalı (ürün primi 0 ise ürün 0). Salon toplamında ciro 1.200 görünmeli.
-5. **Avans ver:** 100 TL. Ödenecek 292 olmalı.
-6. **Usta olarak giriş:** Kasa > **Kazancım**'da 392 görünmeli. **Onaylıyorum**'a bas. Sonra "İtirazım var" için not yazıp bas.
-7. **Yönetici:** Usta hesapları'nda ustanın "İtiraz var" ve notunu görmeli.
-8. **Sekreter olarak giriş:** Kasa'da günlük kasayı görür, ödeme alır; **Usta hesapları yok**, yüzdeleri görmez.
-9. **Yönetici: ödemeyi iptal et** (Günlük kasa > ödemeye dokun > İptal). Randevu yeniden "ödeme bekliyor" olmalı, hesap düşmeli.
-10. **Hesabı kapat:** bir ustaya hakedişinden çok avans ver (eksi bakiye), **Hesabı kapat**. Yeni dönemde o usta "Önceki dönemden borç" göstermeli, sayaçlar sıfırlanmalı, "Kapanmış dönemler"de dönem görünmeli.
+## C. Test listesi (yeni test verisiyle)
+1. **Takvim:** yeni bir randevu al (müşteri adı + **telefon**), bir ustaya. Müşteriler sekmesinde müşteri görünmeli.
+2. **Aynı telefonla ikinci randevu** (yalnız telefonu yaz, adı kendisi gelmeli), başka bir ustaya. Müşteri sayısı artmamalı.
+3. **Usta olarak giriş (1. usta):** Takvim'de kendi randevusunu tam, diğer ustanınkini "Dolu" olarak görmeli; **ad yazmamalı**. Müşteriler'de yalnız kendi müşterisi olmalı.
+4. **Müşteriler > + Müşteri:** ustayla yeni müşteri ekle; kendi listesinde çıkmalı, yönetici de görmeli.
+5. **Yönetici:** Müşteriler'de arama (ad ve telefon), ayrıntıda **not** yaz, kaydet; randevu geçmişi görünmeli.
+6. **İki ustalı ödeme:** bir randevuda **Ödeme al**, **+ Ürün satışı ekle** ile ikinci ustaya satış yaz. Sonra **1. usta olarak** Kasa > Kazancım: yalnız kendi tutarını (ve payını) görmeli, ürün satışını/toplamı **görmemeli**.
+7. **Ödemeyi iptal et** (yönetici): ustanın Kazancım'ından düşmeli.
+8. **Müşteriler > Liste hazırla:** bir usta seç, listeyi ver; isim ve telefon çıkmalı.
 
 ## D. Dürüst notlar
-- Kuralları gerçek Firebase'de deneyemiyorum; ekran akışını sahte Firebase ile denedim (hepsi geçti). Kırmızı **"yetkiniz yok"** çıkarsa ekran görüntüsünü gönder.
-- Usta, aynı ödemede adı geçen diğer ustaların satırlarını da görebilir (aynı müşterinin ortak ödemesi). Usta yüzdelerini görmez.
-- Sekreter yüzdeleri göremediği için hakediş hesabı sekreter ekranında yoktur; hesap, yüzdeleri görebilenlerde (yönetici, kıdemli, ortak) ve ustanın kendisinde yapılır. Yüzdeyi **sonradan değiştirirsen**, açık dönemin tamamı yeni yüzdeyle hesaplanır; dönemi kapattığında rakamlar sabitlenir.
-- Ürün satışı şimdilik stoktan düşmez; stok 6. teslimde bağlanır.
-- Müşteri defteri, borç/veresiye ve mutabakat için bildirim sonraki teslimlerde.
+- Kuralları gerçek Firebase'de deneyemiyorum; ekran akışını sahte Firebase ile denedim (hepsi geçti). "Yetkiniz yok" çıkarsa ekran görüntüsü gönder.
+- Usta, telefon numarasını bildiği bir müşterinin yalnızca **kayıtlı olup olmadığını/adını** doğrudan sorabilir (aynı telefonu ikinci kez açmayı engellemek için gerekli); listeyi göremez.
+- Ustanın müşteriye ait **notları** ustanın kendi müşterilerinde görünür; başka ustanınkini görmez.
+- Müşteri bilgi güncellemesi: telefon bir kez yazıldıktan sonra değiştirilemez (belge adı telefondur); yanlışsa yeni müşteri açılır.
+- Müşteri formülleri (boya) ve stok 6. teslimde.

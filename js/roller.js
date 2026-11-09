@@ -25,6 +25,7 @@ export const SEKMELER = [
   { id: 'ana', ad: 'Ana sayfa', ikon: '🏠', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { id: 'takvim', ad: 'Takvim', ikon: '📅', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { id: 'kasa', ad: 'Kasa', ikon: '💰', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
+  { id: 'musteri', ad: 'Müşteriler', ikon: '📒', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] },
   { id: 'ekip', ad: 'Ekip', ikon: '👥', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'salon', ad: 'Salon', ikon: '💈', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'ayarlar', ad: 'Ayarlar', ikon: '⚙️', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }

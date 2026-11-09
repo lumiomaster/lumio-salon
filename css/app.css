@@ -110,3 +110,9 @@ label.onay input[type=checkbox] { flex: none; width: 20px; height: 20px; }
 .odendi-rozet { background: #123a2a; color: #8ef0c0; } .salt-yazi { padding: 12px 0; color: var(--yazi); }
 .mut-gun { font-size: .75rem; } .mut-gun input { padding: 6px 8px; }
 h3.ilk { margin-top: 0; }
+
+/* 5. teslim: müşteri defteri */
+.kart.musteri { display: grid; gap: 4px; width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.kart.randevu.dolu { border-left-color: var(--cizgi); opacity: .8; cursor: default; }
+textarea.liste-metin { width: 100%; background: var(--kart2); color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px; font: inherit; font-size: .9rem; }
+.sayfa > input[type=text] { margin: 6px 0 12px; }

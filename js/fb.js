@@ -6,7 +6,7 @@ import {
   signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp
+  getFirestore, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, arrayUnion
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 export const app = initializeApp(FIREBASE_CONFIG);
@@ -21,5 +21,5 @@ export const auth2 = getAuth(app2);
 export {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential,
-  doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp
+  doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, arrayUnion
 };
