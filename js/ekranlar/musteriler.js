@@ -1,9 +1,9 @@
 import { t } from '../i18n.js';
-import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, lisansDurumu, telNormalize, telGoster } from '../util.js';
+import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisansDurumu, telNormalize, telGoster } from '../util.js';
 import { S } from '../durum.js';
 import { randevuYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
-import { musterileriYukle, musteriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
+import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
 import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle } from '../mesaj.js';
 import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYazarMi, elleIslemFormu } from './islem.js';
@@ -92,7 +92,12 @@ function yeniMusteri(yenile, uyeler) {
         try {
           const benUsta = S.profil.rol === 'usta' ? [auth.currentUser.uid] : [];
           const b = writeBatch(db);
-          const var_ = d ? await musteriGetir(d) : null;
+          let var_ = d ? await musteriGetir(d) : null;
+          if (var_ && var_.silindi) {
+            // Daha önce listeden kaldırılmış: geri getir (eski kayıtları da döner)
+            await musteriGeriGetir(var_.id);
+            p.kapat(); bildir(t('Bu müşteri daha önce silinmişti; geri getirildi.')); yenile(); return;
+          }
           let mid;
           if (var_) {
             if (!benUsta.length || var_.ustalar.includes(benUsta[0])) { hata.textContent = t('Bu telefon zaten kayıtlı: {ad}', { ad: var_.ad }); return; }
@@ -190,7 +195,17 @@ async function ayrinti(m, ctxAl, ad, yenile) {
           x && x.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), x.formul) : null,
           x && x.not ? h('div', { class: 'kucuk' }, t('Not: ') + x.not) : null,
           formulYazabilir(k) && lisansDurumu(S.salon).aktif ? h('button', { class: 'baglanti kucuk', type: 'button', onclick: () => { p.kapat(); formulFormu(r, i, x || null, () => { bildir(t('Müşteri ayrıntısını yeniden açın.')); }); } }, x ? t('Formül / notu düzenle') : t('Formül / not ekle')) : null);
-      }))));
+      }))),
+    yetkiliMi(rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'tehlike-kutu' },
+      h('button', { class: 'dugme tehlike', type: 'button', onclick: async () => {
+        if (!(await onayIste(t('"{ad}" müşteri listesinden kaldırılsın mı? Geçmiş kayıtları sistemde saklanır, yalnız uygulamada görünmez.', { ad: m.ad }), t('Evet, sil')))) return;
+        try {
+          const b = writeBatch(db);
+          b.update(doc(db, 'salons', S.salon.id, 'musteriler', m.id), { silindi: true, guncelleme: serverTimestamp() });
+          kayit(b, 'musteri_sil', m.id, m.ad);
+          await b.commit(); p.kapat(); bildir(t('Müşteri silindi')); yenile();
+        } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
+      } }, t('Müşteriyi sil'))) : null);
 }
 
 function dogumBugunMu(m) {

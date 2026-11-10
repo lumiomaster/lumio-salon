@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek)
+// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 2)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -517,6 +517,20 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sonZiyaret', 'sonraki', 'guncelleme'])
               && request.resource.data.sonZiyaret.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
               && request.resource.data.sonraki.matches('^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            )
+            ||
+            // 4) müşteriyi listeden kaldırma (silinmez; "silindi" işareti konur, kayıtlar saklanır) — yalnız yönetici/kıdemli
+            (
+              yetkiliMi(salonId)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['silindi', 'guncelleme'])
+              && request.resource.data.silindi == true
+            )
+            ||
+            // 5) kaldırılmış müşteri yeniden randevu/kayıt alınca geri gelir
+            (
+              resource.data.get('silindi', false) == true
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['silindi', 'guncelleme'])
+              && request.resource.data.silindi == false
             )
           );
         allow delete: if false;

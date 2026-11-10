@@ -123,3 +123,8 @@ textarea.liste-metin { width: 100%; background: var(--kart2); color: var(--yazi)
 .gecmis-satir { padding: 8px 0; border-top: 1px solid var(--cizgi); } .gecmis-kalem { padding: 2px 0 2px 8px; font-size: .9rem; }
 .hatirlatma .ust-baslik { margin-top: 10px; font-weight: 600; color: var(--yazi); } .urun-ozet { color: var(--soluk); }
 textarea.liste-metin { resize: vertical; }
+
+/* Teslim 5 ek-3 */
+.tehlike-kutu { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
+.dugme.tehlike { background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; }
+.dolu-bos { font-size: 12px; opacity: .8; }

@@ -7,7 +7,7 @@ import { formulFormu, formulYazabilir, formulOkur } from './islem.js';
 import { ilaveHizmetFormu } from './ilave.js';
 import { mesajYap, waAc, waLink, hitap, tarihTR } from '../mesaj.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, islemleriYukle } from '../veri.js';
+import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, musteriGeriGetir, islemleriYukle } from '../veri.js';
 import {
   DILIM, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
   ustaDurumu, randevuKilitleri, izinCakisanKalemler
@@ -96,25 +96,30 @@ function ciz(kutu, ctx, gun, yaklasan, kilit, yenile) {
       h('span', null, t('İptal edilenleri de göster ({n})', { n: iptalSayisi }))) : null);
 }
 
-// Kilitlerden (kendi randevularım hariç) ustalara göre ardışık dolu aralıklar
+// Kilitlerden (kendi randevularım hariç): her randevu için tek kart. Bekleme aralarında usta boştur;
+// o aralıklar "müsait" diye altında yazılır (başka randevu alınabilir).
 function doluBloklar(kilit, benim, filtre) {
   const benimIdler = new Set(benim.map(r => r.id));
   const grup = {};
   Object.keys(kilit).forEach(id => {
     if (benimIdler.has(kilit[id])) return;
     const i = id.lastIndexOf('_'), uid = id.split('_')[0], dilim = Number(id.slice(i + 1));
-    (grup[uid] = grup[uid] || []).push(dilim);
+    const g = uid + '|' + kilit[id];
+    (grup[g] = grup[g] || { uid, dl: [] }).dl.push(dilim);
   });
   const sonuc = [];
-  Object.entries(grup).forEach(([uid, dl]) => {
+  Object.values(grup).forEach(({ uid, dl }) => {
     if (filtre && filtre !== uid) return;
     dl.sort((a, b) => a - b);
-    let bas = dl[0], son = dl[0];
+    const parcalar = []; let bas = dl[0], son = dl[0];
     for (const d of dl.slice(1).concat([null])) {
       if (d !== null && d === son + 1) { son = d; continue; }
-      sonuc.push({ uid, bas: bas * DILIM, bit: (son + 1) * DILIM });
+      parcalar.push([bas * DILIM, (son + 1) * DILIM]);
       bas = son = d;
     }
+    const bosluklar = [];
+    for (let i = 1; i < parcalar.length; i++) bosluklar.push([parcalar[i - 1][1], parcalar[i][0]]);
+    sonuc.push({ uid, bas: parcalar[0][0], bit: parcalar[parcalar.length - 1][1], bosluklar });
   });
   return sonuc;
 }
@@ -122,7 +127,8 @@ function doluBloklar(kilit, benim, filtre) {
 function doluKarti(b, ctx) {
   return h('div', { class: 'kart randevu dolu' },
     h('div', { class: 'uye-ust' }, h('strong', null, dkMetin(b.bas) + '–' + dkMetin(b.bit)), h('span', { class: 'rozet' }, t('Dolu'))),
-    h('div', { class: 'kucuk' }, ctx.ad(b.uid)));
+    h('div', { class: 'kucuk' }, ctx.ad(b.uid)),
+    b.bosluklar.length ? h('div', { class: 'dolu-bos' }, t('Bekleme arası müsait: ') + b.bosluklar.map(x => dkMetin(x[0]) + '–' + dkMetin(x[1])).join(', ')) : null);
 }
 
 function aramaKarti(aranacak, ctx, duzenleyebilir, yenile) {
@@ -410,6 +416,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
         const ustalarListe = [...new Set(kalemler.map(k => k.ustaUid))];
         let mid = musteriId;
         if (!mid && telD) { const var_ = await musteriGetir(telD); if (var_) mid = var_.id; }
+        if (mid) { const mm = await musteriGetir(mid); if (mm && mm.silindi) await musteriGeriGetir(mid); }
         if (mid) b.update(doc(db, 'salons', S.salon.id, 'musteriler', mid), { ustalar: arrayUnion(...ustalarListe), guncelleme: serverTimestamp() });
         else {
           const mref = telD ? doc(db, 'salons', S.salon.id, 'musteriler', telD) : doc(collection(db, 'salons', S.salon.id, 'musteriler'));

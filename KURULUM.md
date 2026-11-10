@@ -19,3 +19,11 @@
 - **Geri tuşu:** Önce açık pencereyi kapatır, sonra Ana sayfaya döner, Ana sayfada "tekrar basın" uyarısı verir.
 - **Doğum günleri:** Ana sayfada ve Müşteriler'de bugün + önümüzdeki 7 gün.
 - **WhatsApp:** LUMIO'daki gibi api.whatsapp.com bağlantısı (emojiler bozulmasın diye). Metinler LUMIO ile aynı.
+
+---
+## 5. teslim EK-3 paketi
+- **firestore.rules DEĞİŞTİ** (müşteri silme/geri getirme): Firebase > Firestore > Rules'a yapıştırıp **Publish** edin. Bu sefer Publish düğmesi çıkmalı.
+- Uygulamayı kapatıp açın; Ayarlar'ın altındaki sürüm **0.5.3** olmalı. Değilse geri tuşu düzeltmesi henüz gelmemiştir.
+- **Müşteriyi sil:** Müşteri > müşteriyi aç > en altta "Müşteriyi sil" (yalnız yönetici/kıdemli, onay sorar). Uygulamadan kalkar, Firebase'de kayıtlar durur. Aynı telefon tekrar girilirse müşteri geri gelir.
+- **Takvimde bekleme aşamalı iş:** diğer ustalar artık tek kart görür (örn. 11:00–13:00 Dolu, "Bekleme arası müsait: 11:40–12:20").
+- **Salon > Genel > Bakım > "Takvim kilitlerini kontrol et":** eksik kilit varsa tamamlar.

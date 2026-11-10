@@ -1,7 +1,7 @@
 // Salon verilerinin yüklenmesi ve önbelleği. Ekranlar buradan okur, değişiklikten sonra zorla yeniler.
 import { S } from './durum.js';
 import { gorenMi } from './roller.js';
-import { db, doc, getDoc, getDocs, collection, query, where } from './fb.js';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp } from './fb.js';
 
 const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null };
 
@@ -141,7 +141,14 @@ export async function musterileriYukle() {
   kontrol();
   const q = S.profil.rol === 'usta' ? query(yol('musteriler'), where('ustalar', 'array-contains', S.profil.id)) : yol('musteriler');
   const sn = await getDocs(q);
-  return sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  return sn.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => !m.silindi).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+}
+// Listeden kaldırılmış müşteriyi geri getirir (aynı telefonla yeniden randevu alınınca)
+export async function musteriGeriGetir(id) {
+  kontrol();
+  const b = writeBatch(db);
+  b.update(doc(db, 'salons', S.salon.id, 'musteriler', id), { silindi: false, guncelleme: serverTimestamp() });
+  await b.commit();
 }
 // Telefonla tek müşteri (belge adı telefon); yoksa null
 export async function musteriGetir(id) {

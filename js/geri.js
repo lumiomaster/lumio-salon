@@ -1,10 +1,14 @@
 // Telefonun geri tuşu: önce açık pencereyi kapatır, sonra Ana sayfaya döner;
 // Ana sayfadayken ilk basışta "çıkmak için tekrar basın" der, 2,5 sn içinde tekrar basılırsa uygulamadan çıkar.
+//
+// Not: Chrome/Android, kullanıcı dokunmadan eklenen geçmiş kayıtlarını geri tuşunda atlar. Bu yüzden
+// geçmişe "tuzak" kaydı sayfa açılırken değil, ilk gerçek dokunuşta (click/pointerup/touchend) eklenir;
+// geri tuşundan sonra da yeniden eklenir (dokunuş olmuşsa tarayıcı bunu kabul eder).
 import { t } from './i18n.js';
 import { bildir, ustPencereyiKapat } from './util.js';
 import { S } from './durum.js';
 
-let tuzak = false;       // geçmişte bizim eklediğimiz fazladan kayıt var mı
+let tuzak = false;
 let cikisZamani = 0;
 
 function tuzakKur() {
@@ -14,11 +18,7 @@ function tuzakKur() {
 
 export function geriTusunuBaslat(anaSayfayaDon) {
   try { history.replaceState({ lumio: 0 }, '', location.href); } catch (e) { return; }
-  tuzakKur();
-  // Bazı tarayıcılar, kullanıcı dokunmadan eklenen kayıtları atlar: ilk dokunuşta da emin ol.
-  const dokunus = () => tuzakKur();
-  document.addEventListener('pointerdown', dokunus, true);
-  document.addEventListener('keydown', dokunus, true);
+  ['click', 'pointerup', 'touchend', 'keydown'].forEach(o => document.addEventListener(o, tuzakKur, true));
 
   window.addEventListener('popstate', () => {
     tuzak = false;

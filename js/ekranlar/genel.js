@@ -3,7 +3,8 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, lisansDurumu } from '../ut
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { ayariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle } from '../veri.js';
+import { ayariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
+import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
 
@@ -90,7 +91,29 @@ function bakimKarti() {
       durum2.textContent = eksik.length ? t('{n} eski ödeme ustalara yansıtıldı.', { n: eksik.length }) : t('Güncellenecek eski ödeme yok.');
     } catch (err) { console.error(err); durum2.textContent = hataMetni(err); }
   }) }, t('Eski ödemeleri ustalara yansıt'));
+  // Takvim kilitleri: bekleyen randevuların kilitlerinden eksik olan varsa tamamlar (ustalar birbirinin dolu saatini doğru görsün)
+  const durum3 = h('p', { class: 'kucuk' });
+  const dugme3 = h('button', { class: 'dugme ikincil', type: 'button', onclick: () => kilitli(dugme3, async () => {
+    try {
+      const bugun = tarihMetin(new Date());
+      const rs = (await randevulariYukle(tarihEkle(bugun, -1), tarihEkle(bugun, 90))).filter(r => r.durum === 'bekliyor' && Array.isArray(r.kilitler));
+      let eklenen = 0;
+      for (const g of [...new Set(rs.map(r => r.tarih))]) {
+        const m = await kilitleriYukle(g);
+        for (const r of rs.filter(x => x.tarih === g)) {
+          const eksik = r.kilitler.filter(k => !m[k]);
+          for (let i = 0; i < eksik.length; i += 10) {
+            const b = writeBatch(db);
+            eksik.slice(i, i + 10).forEach(k => b.set(doc(db, 'salons', S.salon.id, 'slotlar', k), { rid: r.id, ustaUid: k.split('_')[0], tarih: g }));
+            await b.commit(); eklenen += Math.min(10, eksik.length - i);
+          }
+        }
+      }
+      durum3.textContent = eklenen ? t('{n} eksik takvim kilidi tamamlandı.', { n: eklenen }) : t('Eksik kilit yok, takvim sağlam.');
+    } catch (err) { console.error(err); durum3.textContent = hataMetni(err); }
+  }) }, t('Takvim kilitlerini kontrol et'));
   return h('div', { class: 'kart bilgi' }, h('strong', null, t('Bakım')),
     h('p', null, t('Yeni sürüme geçmeden önce alınmış randevuları ustalar göremiyorsa bir kez basın.')), dugme, durum,
-    h('p', null, t('Eski bir günün ödemesi için usta "Kazancım"da mutabakat düğmesini göremiyorsa (günün tutarı boş görünüyorsa) bir kez basın.')), dugme2, durum2);
+    h('p', null, t('Eski bir günün ödemesi için usta "Kazancım"da mutabakat düğmesini göremiyorsa (günün tutarı boş görünüyorsa) bir kez basın.')), dugme2, durum2,
+    h('p', null, t('Başka ustalar bir randevunun dolu saatini eksik görüyorsa bir kez basın.')), dugme3, durum3);
 }
