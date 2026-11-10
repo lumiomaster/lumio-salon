@@ -171,6 +171,15 @@ export async function ustaSatirlariniYukle(donem, uid) {
     kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur }]
   })).sort((a, b) => a.tarih.localeCompare(b.tarih));
 }
+// Ustanın bir günkü satırları (dönemden bağımsız: kapanmış dönemdeki günler için de mutabakat yapılabilsin)
+export async function ustaGunSatirlariniYukle(tarih, uid) {
+  kontrol();
+  const sn = await getDocs(query(yol('ustaSatirlari'), where('tarih', '==', tarih), where('ustaUid', '==', uid)));
+  return liste(sn).map(x => ({
+    id: x.id, durum: x.durum, tarih: x.tarih, donem: x.donem, yontem: x.yontem, komisyonOrani: x.komisyonOrani, musteriAd: x.musteriAd,
+    kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur }]
+  }));
+}
 // Bir ödemenin satır belgeleri (iptal için; yönetici/kıdemli)
 export async function odemeSatirlariniYukle(odemeId) {
   kontrol();
@@ -184,6 +193,11 @@ export async function islemleriYukle(alan, deger) {
   const ek = S.profil.rol === 'usta' ? [where('ustaUid', '==', S.profil.id)] : [];
   const sn = await getDocs(query(yol('islemler'), where(alan, '==', deger), ...ek));
   return liste(sn);
+}
+// Bakım: bir dönemin tüm usta satırı belgeleri (yalnız yönetici/kıdemli/ortak)
+export async function donemUstaSatirBelgeleriniYukle(donem) {
+  kontrol();
+  return liste(await getDocs(query(yol('ustaSatirlari'), where('donem', '==', donem))));
 }
 // Bakım: usta alanı olmayan eski randevular
 export async function eskiRandevulariYukle() {

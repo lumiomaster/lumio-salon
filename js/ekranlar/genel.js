@@ -3,7 +3,7 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, lisansDurumu } from '../ut
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { ayariYukle, eskiRandevulariYukle } from '../veri.js';
+import { ayariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle } from '../veri.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
 
@@ -70,6 +70,27 @@ function bakimKarti() {
       durum.textContent = t('{n} eski randevu güncellendi.', { n: eski.length });
     } catch (err) { console.error(err); durum.textContent = hataMetni(err); }
   }) }, t('Eski randevuları yeni düzene çevir'));
+  // Eski ödemelerde ustaya ait satır belgesi yoksa usta kazancını ve mutabakat düğmesini göremez; bu düğme onları üretir.
+  const durum2 = h('p', { class: 'kucuk' });
+  const dugme2 = h('button', { class: 'dugme ikincil', type: 'button', onclick: () => kilitli(dugme2, async () => {
+    try {
+      const donem = await donemiYukle();
+      const [odemeler, satirlar] = await Promise.all([donemOdemeleriniYukle(donem), donemUstaSatirBelgeleriniYukle(donem)]);
+      const var_ = new Set(satirlar.map(x => x.odemeId));
+      const eksik = odemeler.filter(o => o.durum === 'gecerli' && !var_.has(o.id));
+      let sayac = 0;
+      for (const o of eksik) {
+        const b = writeBatch(db);
+        (o.kalemler || []).filter(k => k.ustaUid).forEach(k => {
+          b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: k.ustaUid, odemeId: o.id, tarih: o.tarih, donem, musteriAd: o.musteriAd || '', ad: k.ad, tutar: k.tutar, alis: k.alis || 0, tur: k.tur === 'urun' ? 'urun' : 'hizmet', yontem: o.yontem, komisyonOrani: o.komisyonOrani || 0, durum: 'gecerli' });
+          sayac++;
+        });
+        await b.commit();
+      }
+      durum2.textContent = eksik.length ? t('{n} eski ödeme ustalara yansıtıldı.', { n: eksik.length }) : t('Güncellenecek eski ödeme yok.');
+    } catch (err) { console.error(err); durum2.textContent = hataMetni(err); }
+  }) }, t('Eski ödemeleri ustalara yansıt'));
   return h('div', { class: 'kart bilgi' }, h('strong', null, t('Bakım')),
-    h('p', null, t('Yeni sürüme geçmeden önce alınmış randevuları ustalar göremiyorsa bir kez basın.')), dugme, durum);
+    h('p', null, t('Yeni sürüme geçmeden önce alınmış randevuları ustalar göremiyorsa bir kez basın.')), dugme, durum,
+    h('p', null, t('Eski bir günün ödemesi için usta "Kazancım"da mutabakat düğmesini göremiyorsa (günün tutarı boş görünüyorsa) bir kez basın.')), dugme2, durum2);
 }

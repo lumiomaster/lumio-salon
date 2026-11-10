@@ -5,6 +5,8 @@ import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle } from '../veri.js';
 import { goster } from '../main.js';
+import { musterileriYukle } from '../veri.js';
+import { hatirlatmaKarti } from './musteriler.js';
 
 const YAKINDA = [
   { ad: 'Stok ve sipariş', ikon: '📦', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter'] },
@@ -29,6 +31,7 @@ export function anaEkrani() {
     h('h1', null, t('Merhaba {ad}', { ad: p.ad.split(' ')[0] })),
     h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol)),
     lisansKart,
+    hatirlatmaKutusu(),
     yetkiliMi(p.rol) ? kurulumKarti() : null,
     h('h2', null, t('Yakında eklenecek')),
     h('div', { class: 'yakinda' }, YAKINDA.filter(y => y.roller.includes(p.rol)).map(y =>
@@ -54,5 +57,15 @@ function kurulumKarti() {
         h('span', null, a.ok ? '✓' : '○'), h('span', null, a.ad),
         a.ok ? null : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: a.git }, t('Aç')))))));
   }).catch(() => {});
+  return kutu;
+}
+
+// Ana sayfada: doğum günleri, sonraki ziyareti yaklaşanlar, uzun süredir gelmeyenler (WhatsApp tek tık)
+function hatirlatmaKutusu() {
+  const kutu = h('div', null);
+  const doldurKutu = () => Promise.all([musterileriYukle(), ayariYukle()]).then(([liste, ayar]) => {
+    doldur(kutu, hatirlatmaKarti(liste, ayar, null, doldurKutu));
+  }).catch(() => {});
+  doldurKutu();
   return kutu;
 }

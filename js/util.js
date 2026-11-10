@@ -80,13 +80,23 @@ export function bildir(mesaj, tur) {
   setTimeout(() => n.remove(), tur === 'hata' ? 6000 : 3000);
 }
 
+// Açık pencereler (telefonun geri tuşu en üsttekini kapatır)
+const ACIK = [];
+export function ustPencereyiKapat() {
+  const son = ACIK[ACIK.length - 1];
+  if (!son) return false;
+  const x = son.querySelector('.pencere-baslik .ikon-dugme');
+  if (x) x.click(); else { ACIK.pop(); son.remove(); }
+  return true;
+}
 export function pencereAc(baslik, icerik) {
-  const kapat = () => arka.remove();
+  const kapat = () => { const i = ACIK.indexOf(arka); if (i >= 0) ACIK.splice(i, 1); arka.remove(); };
   const arka = h('div', { class: 'pencere-arka', onclick: (e) => { if (e.target === arka) kapat(); } },
     h('div', { class: 'pencere', role: 'dialog', 'aria-modal': 'true' },
       h('div', { class: 'pencere-baslik' }, h('h2', null, baslik), h('button', { class: 'ikon-dugme', type: 'button', onclick: kapat, 'aria-label': t('Kapat') }, '✕')),
       icerik));
   document.body.append(arka);
+  ACIK.push(arka);
   return { kapat };
 }
 

@@ -5,8 +5,8 @@ import { randevuYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { musterileriYukle, musteriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
-import { hitap, mesajYap, waAc, tarihTR, dogumDuzenle } from '../mesaj.js';
-import { formulFormu, formulYazabilir, formulOkur } from './islem.js';
+import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle } from '../mesaj.js';
+import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYazarMi, elleIslemFormu } from './islem.js';
 import { randevuFormu, takvimCtx } from './takvim.js';
 
 const M = { ara: '' };
@@ -51,7 +51,7 @@ function ciz(kutu, liste, uyeler, ayar, yenile) {
   ara.addEventListener('input', () => { M.ara = ara.value; goster(); });
   doldur(kutu,
     h('div', { class: 'baslik-satir' }, h('h1', null, t('Müşteriler')),
-      yazar ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => yeniMusteri(yenile) }, t('+ Müşteri')) : null),
+      yazar ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => yeniMusteri(yenile, uyeler) }, t('+ Müşteri')) : null),
     h('p', { class: 'kucuk' }, rol === 'usta' ? t('Hizmet verdiğiniz müşteriler. Yeni randevu aldığınızda müşteri size eklenir.') : t('{n} müşteri. Salonun ortak defteri.', { n: liste.length })),
     hatirlatmaKarti(liste, ayar, ctxAl, yenile),
     ara, kutuListe,
@@ -67,7 +67,8 @@ function kayit(b, islem, hedef, ayrinti) {
   b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem, hedef, ayrinti, zaman: serverTimestamp() });
 }
 
-function yeniMusteri(yenile) {
+function yeniMusteri(yenile, uyeler) {
+  const islemA = islemYazarMi() ? islemAlanlari(uyeler) : null;
   const ad = h('input', { type: 'text', maxlength: 60, placeholder: t('Adı soyadı') });
   const tel = h('input', { type: 'tel', inputmode: 'tel', maxlength: 20, placeholder: t('Telefon (isteğe bağlı)') });
   const dogum = h('input', { type: 'text', maxlength: 10, placeholder: t('Doğum günü (GG.AA, isteğe bağlı)') });
@@ -85,24 +86,34 @@ function yeniMusteri(yenile) {
       if (tel.value.trim()) { d = telNormalize(tel.value); if (!d) { hata.textContent = t('Telefon numarası geçersiz.'); return; } }
       const dg = dogumDuzenle(dogum.value);
       if (dg === null) { hata.textContent = t('Doğum gününü GG.AA yazın (örn. 07.03).'); return; }
+      const iv = islemA ? islemA.oku() : null;
+      if (iv && iv.hata) { hata.textContent = iv.hata; return; }
       kilitli(dugme, async () => {
         try {
           const benUsta = S.profil.rol === 'usta' ? [auth.currentUser.uid] : [];
           const b = writeBatch(db);
           const var_ = d ? await musteriGetir(d) : null;
+          let mid;
           if (var_) {
             if (!benUsta.length || var_.ustalar.includes(benUsta[0])) { hata.textContent = t('Bu telefon zaten kayıtlı: {ad}', { ad: var_.ad }); return; }
             b.update(doc(db, 'salons', S.salon.id, 'musteriler', var_.id), { ustalar: arrayUnion(...benUsta), guncelleme: serverTimestamp() });
+            mid = var_.id;
           } else {
             const ref = d ? doc(db, 'salons', S.salon.id, 'musteriler', d) : doc(collection(db, 'salons', S.salon.id, 'musteriler'));
-            b.set(ref, { ad: a, tel: d, not: not.value.trim(), dogum: dg, sonraki: '', sonZiyaret: '', ustalar: benUsta, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
+            mid = ref.id;
+            const ustalar = [...new Set([...benUsta, ...(iv ? [iv.ustaUid] : [])])];
+            b.set(ref, { ad: a, tel: d, not: not.value.trim(), dogum: dg, sonraki: iv ? iv.sonraki : '', sonZiyaret: iv ? iv.tarih : '', ustalar, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
           }
+          // Randevusuz yapılmış işlem varsa aynı anda deftere yazılır
+          if (iv) b.set(doc(collection(db, 'salons', S.salon.id, 'islemler')), islemBelgesi(mid, iv));
           kayit(b, 'musteri_ekle', d || '-', a);
           await b.commit(); p.kapat(); bildir(t('Müşteri kaydedildi')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
     } },
-    h('label', null, t('Müşteri'), ad), h('label', null, t('Telefon'), tel), h('label', null, t('Doğum günü'), dogum), h('label', null, t('Not'), not), hata, dugme));
+    h('label', null, t('Müşteri'), ad), h('label', null, t('Telefon'), tel), h('label', null, t('Doğum günü'), dogum), h('label', null, t('Not'), not),
+    islemA ? h('details', { class: 'islem-ac' }, h('summary', null, t('Bu müşteriye işlem yaptım (isteğe bağlı)')), islemA.el) : null,
+    hata, dugme));
 }
 
 async function ayrinti(m, ctxAl, ad, yenile) {
@@ -128,7 +139,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
   doldur(icerik,
     m.tel ? h('div', { class: 'dugme-satir sol' },
       h('a', { class: 'dugme ikincil kucuk-dugme', href: 'tel:' + telLink(m.tel) }, t('Ara')),
-      h('a', { class: 'dugme ikincil kucuk-dugme', href: 'https://wa.me/' + m.tel, target: '_blank', rel: 'noopener' }, 'WhatsApp'),
+      h('a', { class: 'dugme ikincil kucuk-dugme', href: waLink(m.tel), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
       duzenle ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: async () => {
         const ctx = await ctxAl(); p.kapat();
         randevuFormu(null, ctx, tarihMetin(new Date()), () => { bildir(t('Takvimde görebilirsiniz.')); }, { musteriAd: m.ad, musteriTel: m.tel, musteriId: m.id });
@@ -161,7 +172,13 @@ async function ayrinti(m, ctxAl, ad, yenile) {
       h('div', { class: 'hesap-satir' }, h('span', null, t('Toplam harcama')), h('strong', null, para(harcama)))),
     yetkiliMi(rol) && m.ustalar.length ? h('p', { class: 'kucuk' }, t('Hizmet veren ustalar: ') + m.ustalar.map(ad).join(', ')) : null,
     h('h3', null, t('İşlem geçmişi')),
-    g.randevular.length === 0 ? h('p', { class: 'soluk kucuk' }, t('Kayıtlı randevu yok.')) : null,
+    duzenle && islemYazarMi() ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: async () => { p.kapat(); elleIslemFormu(m, await uyeleriYukle(), () => { bildir(t('Müşteri ayrıntısını yeniden açın.')); yenile(); }); } }, t('+ İşlem kaydı ekle (randevusuz)'))) : null,
+    islemler.filter(x => !x.rid).sort((a, b) => b.tarih.localeCompare(a.tarih)).map(x => h('div', { class: 'gecmis-satir' },
+      h('div', { class: 'hesap-satir' }, h('span', null, tarihTR(x.tarih)), h('span', { class: 'kucuk' }, ad(x.ustaUid))),
+      h('div', { class: 'gecmis-kalem' }, h('div', null, h('b', null, x.hizmet)),
+        x.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), x.formul) : null,
+        x.not ? h('div', { class: 'kucuk' }, t('Not: ') + x.not) : null))),
+    g.randevular.length === 0 && !islemler.some(x => !x.rid) ? h('p', { class: 'soluk kucuk' }, t('Kayıtlı randevu yok.')) : null,
     g.randevular.map(r => h('div', { class: 'gecmis-satir' },
       h('div', { class: 'hesap-satir' },
         h('span', null, tarihTR(r.tarih) + ' ' + dkMetin(r.bas)),
@@ -192,14 +209,20 @@ export function hatirlatmaHesapla(liste, ayar, bugunTarih) {
   const b = metinTarih(bugun);
   const gunAy = String(b.getDate()).padStart(2, '0') + '.' + String(b.getMonth() + 1).padStart(2, '0');
   const gun = (iso) => Math.round((metinTarih(iso) - b) / 864e5);
-  const doganlar = liste.filter(m => (m.dogum || '') === gunAy);
+  // Doğum günü: bugün ve önümüzdeki 7 gün (yıl dönümünü de hesaba katar)
+  const doganlar = liste.filter(m => /^\d\d\.\d\d$/.test(m.dogum || '')).map(m => {
+    const g = Number(m.dogum.slice(0, 2)), a = Number(m.dogum.slice(3, 5));
+    let hedef = new Date(b.getFullYear(), a - 1, g);
+    if (hedef < b) hedef = new Date(b.getFullYear() + 1, a - 1, g);
+    return { m, kalan: Math.round((hedef - b) / 864e5) };
+  }).filter(x => x.kalan <= 7).sort((x, y) => x.kalan - y.kalan);
   const hatirlat = liste.filter(m => m.sonraki && gun(m.sonraki) >= 0 && gun(m.sonraki) <= 3).map(m => ({ m, kalan: gun(m.sonraki) }));
   const kayip = liste.filter(m => m.sonZiyaret && !(m.sonraki && m.sonraki >= bugun) && -gun(m.sonZiyaret) >= kayipGun)
     .map(m => ({ m, gecen: -gun(m.sonZiyaret) })).sort((x, y) => y.gecen - x.gecen);
   return { doganlar, hatirlat, kayip, kayipGun };
 }
 
-function hatirlatmaKarti(liste, ayar, ctxAl, yenile) {
+export function hatirlatmaKarti(liste, ayar, ctxAl, yenile) {
   const H = hatirlatmaHesapla(liste, ayar);
   const gizli = gizliOku();
   const kayip = H.kayip.filter(x => !gizli.includes(x.m.id));
@@ -208,7 +231,8 @@ function hatirlatmaKarti(liste, ayar, ctxAl, yenile) {
   const satir = (m, alt, dugme) => h('div', { class: 'arama-satir' }, h('div', null, h('strong', null, m.ad), h('div', { class: 'kucuk' }, alt)), h('div', { class: 'arama-dugmeler' }, dugme));
   return h('div', { class: 'kart bilgi hatirlatma' },
     h('strong', null, t('Hatırlatmalar')),
-    H.doganlar.length ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎂 ' + t('Bugün doğum günü')), H.doganlar.map(m => satir(m, m.tel ? telGoster(m.tel) : t('Telefon yok'), wa(m, 'dogum')))) : null,
+    H.doganlar.some(x => x.kalan === 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎂 ' + t('Bugün doğum günü')), H.doganlar.filter(x => x.kalan === 0).map(({ m }) => satir(m, m.tel ? telGoster(m.tel) : t('Telefon yok'), wa(m, 'dogum')))) : null,
+    H.doganlar.some(x => x.kalan > 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎈 ' + t('Yaklaşan doğum günleri')), H.doganlar.filter(x => x.kalan > 0).map(({ m, kalan }) => satir(m, m.dogum + ' (' + (kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'dogum')))) : null,
     H.hatirlat.length ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '📅 ' + t('Sonraki ziyareti yaklaşanlar')),
       H.hatirlat.map(({ m, kalan }) => satir(m, tarihTR(m.sonraki) + ' (' + (kalan === 0 ? t('bugün') : kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'takip', { TARIH: tarihTR(m.sonraki) })))) : null,
     kayip.length ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '☕ ' + t('{n} gündür gelmeyenler', { n: H.kayipGun })),

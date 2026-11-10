@@ -14,6 +14,7 @@ import { kasaEkrani } from './ekranlar/kasa.js';
 import { musterilerEkrani } from './ekranlar/musteriler.js';
 import { veriSifirla } from './veri.js';
 import { ekipYenile } from './ekranlar/ekip.js';
+import { geriTusunuBaslat } from './geri.js';
 
 const kok = document.getElementById('uygulama');
 
@@ -61,6 +62,8 @@ function cevrimiciGuncelle() {
 window.addEventListener('online', cevrimiciGuncelle);
 window.addEventListener('offline', cevrimiciGuncelle);
 cevrimiciGuncelle();
+
+geriTusunuBaslat(() => { S.sekme = 'ana'; goster(); });
 
 onAuthStateChanged(auth, () => { if (!S.kayitSuruyor) oturumuYukle(); });
 

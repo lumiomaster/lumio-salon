@@ -4,6 +4,8 @@ import { S } from '../durum.js';
 import { randevuYazarMi, odemeYazarMi } from '../roller.js';
 import { odemeFormu } from './odeme-formu.js';
 import { formulFormu, formulYazabilir, formulOkur } from './islem.js';
+import { ilaveHizmetFormu } from './ilave.js';
+import { mesajYap, waAc, waLink, hitap, tarihTR } from '../mesaj.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, islemleriYukle } from '../veri.js';
 import {
@@ -158,7 +160,8 @@ function ayrinti(r, ctx, yazar, yenile) {
       r.musteriTel ? h('div', { class: 'dugme-satir sol' },
         h('span', { class: 'soluk' }, telGoster(r.musteriTel)),
         h('a', { class: 'dugme ikincil kucuk-dugme', href: 'tel:' + telLink(r.musteriTel) }, t('Ara')),
-        h('a', { class: 'dugme ikincil kucuk-dugme', href: 'https://wa.me/' + r.musteriTel, target: '_blank', rel: 'noopener' }, 'WhatsApp')) : null,
+        h('a', { class: 'dugme ikincil kucuk-dugme', href: waLink(r.musteriTel), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => waAc(r.musteriTel, mesajYap('onay', { MUSTERI_ADI: hitap(r.musteriAd), TARIH: tarihTR(r.tarih), SAAT: dkMetin(r.bas), HIZMET: r.kalemler.map(k => k.ad).join(' + ') })) }, t('Onay mesajı'))) : null,
       h('div', { class: 'kalemler' }, r.kalemler.map((k, i) => h('div', { class: 'kalem' },
         h('div', { class: 'uye-ust' }, h('strong', null, k.ad), h('span', null, k.fiyat > 0 ? para(k.fiyat) : '')),
         h('div', { class: 'kucuk' }, ctx.ad(k.ustaUid) + ' · ' + dkMetin(k.bas) + '–' + dkMetin(k.bit)),
@@ -169,6 +172,8 @@ function ayrinti(r, ctx, yazar, yenile) {
       olusturan ? h('p', { class: 'kucuk' }, t('Randevuyu alan: ') + olusturan.ad) : null),
     aktif && odemeYazarMi(S.profil.rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); odemeFormu(r, yenile); } }, t('Ödeme al'))) : null,
+    aktif && yazar && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
+      h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); ilaveHizmetFormu(r, ctx, yenile); } }, t('+ İlave hizmet / işlem'))) : null,
     aktif && yazar ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null);

@@ -12,19 +12,31 @@ export function hitap(isim) {
   return k.map(bas).join(' ') + ' ' + soyad;
 }
 
+// Metinler ve emojiler LUMIO (bireysel) uygulamasındaki şablonlarla aynıdır.
+// {USTA_SATIR}: usta biliniyorsa "💇 Uzmanımız: Ad" satırı, bilinmiyorsa hiç yazılmaz. {IMZA}: salon adı.
 const SABLON = {
-  takip: '📅 Merhaba Sayın {MUSTERI_ADI},\n\nSon işlemimizin üzerinden geçen süreye istinaden, randevu zamanınızı planlamak adına sizi rahatsız ediyoruz 🌸\n\n⏰ Planlanan Tarih: {TARIH}\n\n📞 Randevunuzu netleştirmek için bu mesaja yanıt vermeniz yeterlidir.\n\nKeyifli günler dileriz! ✨\n{SALON_ADI}',
-  dogum: 'Mutlu Yıllar Sayın {MUSTERI_ADI}! 🎂🎉\n\n{SALON_ADI} olarak yeni yaşınızın sağlık, huzur ve bolca ışıltı getirmesini dileriz. 🌸\n\n🎁 Doğum gününüze özel sürpriz bakım hediyeniz salonumuzda sizi bekliyor! Randevunuzu almayı unutmayın.\n\nSevgilerle,\n{SALON_ADI}',
-  davet: 'Merhaba Sayın {MUSTERI_ADI}, ☕🌸\n\n{SALON_ADI} olarak bir süredir yokluğunuzu hissediyor, sizi çok özlüyoruz!\n\nHem kendinize hak ettiğiniz ışıltıyı yeniden kazandırmak hem de sıcak bir kahvemiz eşliğinde keyifli bir mola vermek için sizi salonumuza bekliyoruz. ✨\n\nSize en uygun gün ve saati birlikte planlamak için bu mesaja yanıt vermeniz yeterli.\n\nSevgiyle ve güzellikle kalın,\n{SALON_ADI}'
+  takip: '📅 Merhaba Sayın {MUSTERI_ADI},\n\nSon işlemimizin üzerinden geçen süreye istinaden, randevu zamanınızı planlamak adına sizi rahatsız ediyoruz 🌸\n\n⏰ Planlanan Tarih: {TARIH}\n{USTA_SATIR}\n📞 Randevunuzu netleştirmek için bu mesaja yanıt vermeniz yeterlidir.\n\nKeyifli günler dileriz! ✨\n{IMZA}',
+  dogum: 'Mutlu Yıllar Sayın {MUSTERI_ADI}! 🎂🎉\n\n{SALON_ADI} olarak yeni yaşınızın sağlık, huzur ve bolca ışıltı getirmesini dileriz. 🌸\n\n🎁 Doğum gününüze özel sürpriz bakım hediyeniz salonumuzda sizi bekliyor! Randevunuzu almayı unutmayın.\n\nSevgilerle,\n{IMZA}',
+  davet: 'Merhaba Sayın {MUSTERI_ADI}, ☕🌸\n\n{SALON_ADI} olarak bir süredir yokluğunuzu hissediyor, sizi çok özlüyoruz!\n\nHem kendinize hak ettiğiniz ışıltıyı yeniden kazandırmak hem de sıcak bir kahvemiz eşliğinde keyifli bir mola vermek için sizi salonumuza bekliyoruz. ✨\n\nSize en uygun gün ve saati birlikte planlamak için bu mesaja yanıt vermeniz yeterli.\n\nSevgiyle ve güzellikle kalın,\n{IMZA}',
+  onay: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n\nRandevunuz başarıyla oluşturulmuştur. Planlarınızda bir değişiklik olursa önceden haber vermenizi rica ederiz. 🙏\n\nSizi ağırlamak için sabırsızlanıyoruz!\n{IMZA}'
 };
 
 export function mesajYap(tur, vars) {
-  const v = { SALON_ADI: S.salon ? S.salon.ad : '', ...vars };
+  const salon = S.salon ? S.salon.ad : '';
+  const v = { SALON_ADI: salon, IMZA: salon, ...vars };
+  v.USTA_SATIR = v.USTA_ADI ? '💇 Uzmanımız: ' + v.USTA_ADI + '\n' : '';
   return SABLON[tur].replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
 }
 
+// LUMIO'daki gibi api.whatsapp.com bağlantısı: wa.me yönlendirmesi emojileri bozabiliyordu (� işareti).
+// Telefonda aynı sekmede açılır (WhatsApp uygulaması devralır), bilgisayarda yeni sekmede.
+export function waLink(tel, metin) {
+  return 'https://api.whatsapp.com/send/?phone=' + String(tel).replace(/\D/g, '') + (metin ? '&text=' + encodeURIComponent(metin) : '');
+}
 export function waAc(tel, metin) {
-  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(metin), '_blank', 'noopener');
+  const u = waLink(tel, metin);
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) window.location.href = u;
+  else window.open(u, '_blank', 'noopener');
 }
 
 // "2026-11-18" -> "18.11.2026"
