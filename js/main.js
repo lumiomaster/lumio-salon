@@ -14,7 +14,7 @@ import { kasaEkrani } from './ekranlar/kasa.js';
 import { musterilerEkrani } from './ekranlar/musteriler.js';
 import { veriSifirla } from './veri.js';
 import { ekipYenile } from './ekranlar/ekip.js';
-import { geriTusunuBaslat } from './geri.js';
+import { geriTusunuBaslat, sekmeDegisti } from './geri.js';
 
 const kok = document.getElementById('uygulama');
 
@@ -49,7 +49,7 @@ export function goster() {
       h('div', null, h('strong', null, S.salon ? S.salon.ad : UYGULAMA.ad), h('small', null, UYGULAMA.ad))),
     h('main', { class: 'icerik' }, ekran()),
     h('nav', { class: 'alt-menu' }, sekmeler.map(s =>
-      h('button', { class: 'sekme' + (s.id === S.sekme ? ' secili' : ''), type: 'button', onclick: () => { S.sekme = s.id; goster(); } },
+      h('button', { class: 'sekme' + (s.id === S.sekme ? ' secili' : ''), type: 'button', onclick: () => { S.sekme = s.id; sekmeDegisti(s.id); goster(); } },
         h('span', { class: 'sekme-ikon' }, s.ikon), h('span', null, t(s.ad))))));
 }
 

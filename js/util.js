@@ -80,6 +80,8 @@ export function bildir(mesaj, tur) {
   setTimeout(() => n.remove(), tur === 'hata' ? 6000 : 3000);
 }
 
+import { girdiEkle, pencereGirdisiniBirak } from './gecmis.js';
+
 // Açık pencereler (telefonun geri tuşu en üsttekini kapatır)
 const ACIK = [];
 export function ustPencereyiKapat() {
@@ -90,13 +92,19 @@ export function ustPencereyiKapat() {
   return true;
 }
 export function pencereAc(baslik, icerik) {
-  const kapat = () => { const i = ACIK.indexOf(arka); if (i >= 0) ACIK.splice(i, 1); arka.remove(); };
+  let girdi = false, kapali = false;
+  const kapat = () => {
+    if (kapali) return; kapali = true;
+    const i = ACIK.indexOf(arka); if (i >= 0) ACIK.splice(i, 1);
+    arka.remove(); pencereGirdisiniBirak(girdi);
+  };
   const arka = h('div', { class: 'pencere-arka', onclick: (e) => { if (e.target === arka) kapat(); } },
     h('div', { class: 'pencere', role: 'dialog', 'aria-modal': 'true' },
       h('div', { class: 'pencere-baslik' }, h('h2', null, baslik), h('button', { class: 'ikon-dugme', type: 'button', onclick: kapat, 'aria-label': t('Kapat') }, '✕')),
       icerik));
   document.body.append(arka);
   ACIK.push(arka);
+  girdi = girdiEkle();
   return { kapat };
 }
 

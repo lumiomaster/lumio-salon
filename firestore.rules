@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 2)
+// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 4)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -442,6 +442,17 @@ service cloud.firestore {
           && request.resource.data.durum in ['onay', 'itiraz']
           && request.resource.data.not is string && request.resource.data.not.size() <= 200
           && request.resource.data.tutar is number
+          && request.resource.data.guncelleme == request.time;
+        // Usta telefona bakmıyorsa yönetici/kıdemli "sözlü onayladı" diye işaretleyebilir (yalnız ilk kayıt; kim işaretlediği saklanır)
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['ustaUid', 'tarih', 'durum', 'not', 'tutar', 'onaylayan', 'guncelleme'])
+          && request.resource.data.ustaUid is string && uyeSalonda(salonId, request.resource.data.ustaUid)
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && mid == request.resource.data.ustaUid + '_' + request.resource.data.tarih
+          && request.resource.data.durum == 'onay'
+          && request.resource.data.not == ''
+          && request.resource.data.tutar is number
+          && request.resource.data.onaylayan == request.auth.uid
           && request.resource.data.guncelleme == request.time;
         allow delete: if false;
       }

@@ -69,7 +69,7 @@ function ciz(kutu, uid, D, yenile) {
       h('div', { class: 'kucuk' }, t('Kartla alınanlardan önce komisyon düşülür, kalan tutar yüzdenize göre hesaplanır.'))) : null,
     satirlar.length || D.mut ? h('div', { class: 'kart bilgi' },
       h('strong', null, t('Akşam mutabakatı')),
-      D.mut ? h('p', null, D.mut.durum === 'onay' ? t('Bu günü onayladınız.') : t('İtirazınız var: ') + '“' + D.mut.not + '”') : h('p', null, t('Hesap doğruysa onaylayın; yanlışlık varsa itiraz edip nedenini yazın.')),
+      D.mut ? h('p', null, D.mut.durum === 'onay' ? (D.mut.onaylayan ? t('Yönetici bu günü sizin adınıza sözlü onayladı.') : t('Bu günü onayladınız.')) : t('İtirazınız var: ') + '“' + D.mut.not + '”') : h('p', null, t('Hesap doğruysa onaylayın; yanlışlık varsa itiraz edip nedenini yazın.')),
       lisansOk ? h('div', null,
         h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, () => yaz('onay')) }, t('Onaylıyorum'))),
         not, h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil', type: 'button', onclick: (e) => kilitli(e.currentTarget, () => yaz('itiraz')) }, t('İtirazım var'))),

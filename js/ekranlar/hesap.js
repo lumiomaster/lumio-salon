@@ -1,5 +1,5 @@
 import { t } from '../i18n.js';
-import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc, lisansDurumu } from '../util.js';
+import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
@@ -8,7 +8,8 @@ import {
   gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle
 } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
-import { ustaOzetleri, gunOzeti, odenecek, yuvarla } from '../kasa-mantik.js';
+import { ustaOzetleri, gunOzeti, odenecek, yuvarla, ustaGunSatirlari } from '../kasa-mantik.js';
+import { waAc, tarihTR } from '../mesaj.js';
 
 const H = { tarih: tarihMetin(new Date()) };
 
@@ -88,8 +89,43 @@ function ustaKart(s, m, yetkili, D, yenile) {
     s.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(s.devir))) : null,
     h('div', { class: 'hesap-satir mut' }, h('span', null, t('Mutabakat') + ' (' + tarihYazi(H.tarih).split(' ').slice(0, 2).join(' ') + ')'),
       m ? h('span', { class: 'rozet ' + (m.durum === 'onay' ? 'odendi-rozet' : 'uyari-rozet') }, m.durum === 'onay' ? t('Onayladı') : t('İtiraz var')) : h('span', { class: 'soluk kucuk' }, t('Bekliyor'))),
+    m && m.durum === 'onay' && m.onaylayan ? h('div', { class: 'kucuk' }, t('Sözlü onay: {ad} işaretledi.', { ad: (D.uyeler.find(x => x.id === m.onaylayan) || { ad: '?' }).ad })) : null,
     m && m.durum === 'itiraz' && m.not ? h('div', { class: 'kucuk uyari-yazi' }, '“' + m.not + '”') : null,
+    !m && yetkili ? h('div', { class: 'dugme-satir sol' },
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mutabakatMesaji(s, D) }, t('WhatsApp ile hatırlat')),
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => yoneticiOnayi(s, D, yenile) }, t('Sözlü onayladı'))) : null,
     yetkili ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => avansFormu(s, D, yenile) }, t('Avans ver')) : null);
+}
+
+// O günün usta payı (mutabakat günü)
+function gunPayi(s, D) {
+  const mali = D.u.mali[s.uid];
+  const satirlar = ustaGunSatirlari(D.odemeler, s.uid, H.tarih, mali, D.taban);
+  return { satirlar, pay: yuvarla(satirlar.reduce((a, x) => a + x.pay, 0)) };
+}
+
+// Ustaya "Kazancım'dan onaylayın" mesajı (WhatsApp tek tık)
+function mutabakatMesaji(s, D) {
+  const u = D.uyeler.find(x => x.id === s.uid);
+  const g = gunPayi(s, D);
+  if (!u || !u.telefon) { bildir(t('Bu ustanın telefonu kayıtlı değil.'), 'hata'); return; }
+  if (!g.satirlar.length) { bildir(t('Bu gün için ustanın işlemi yok.'), 'hata'); return; }
+  const ad = (u.ad || '').split(' ')[0];
+  const metin = 'Merhaba ' + ad + ' 👋\n\n📅 ' + tarihTR(H.tarih) + ' günü hesabınız hazır:\n💰 Payınız: ' + para(g.pay) + '\n\n✅ Lütfen LUMIO SALON uygulamasında "Kazancım" ekranından kontrol edip onaylayın. Bir yanlışlık varsa "İtirazım var" diyerek yazabilirsiniz.\n\n' + (S.salon ? S.salon.ad : '');
+  waAc(u.telefon, metin);
+}
+
+// Usta telefona bakmıyorsa yönetici sözlü onayı işaretler (kim işaretlediği kayda geçer)
+async function yoneticiOnayi(s, D, yenile) {
+  const g = gunPayi(s, D);
+  if (!g.satirlar.length) { bildir(t('Bu gün için ustanın işlemi yok.'), 'hata'); return; }
+  if (!(await onayIste(t('{ad} için {gun} günü hesabı ({tutar}) sözlü olarak onaylanmış sayılsın mı? Kayıtta sizin işaretlediğiniz görünür.', { ad: s.ad, gun: tarihTR(H.tarih), tutar: para(g.pay) }), t('Evet, onaylandı')))) return;
+  try {
+    const b = writeBatch(db);
+    b.set(doc(db, 'salons', S.salon.id, 'mutabakat', s.uid + '_' + H.tarih), { ustaUid: s.uid, tarih: H.tarih, durum: 'onay', not: '', tutar: g.pay, onaylayan: auth.currentUser.uid, guncelleme: serverTimestamp() });
+    b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'mutabakat_sozlu', hedef: s.uid, ayrinti: s.ad + ' ' + H.tarih + ': ' + g.pay + ' ₺', zaman: serverTimestamp() });
+    await b.commit(); bildir(t('Onay kaydedildi')); yenile();
+  } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
 }
 
 function avansFormu(s, D, yenile) {
