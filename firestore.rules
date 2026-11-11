@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (6. teslim, 2. parça)
+// LUMIO SALON - Firestore güvenlik kuralları (7. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -559,6 +559,26 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.zaman == request.time;
         allow update, delete: if false;
+      }
+
+      // ---- Salon giderleri (7. teslim): kira, fatura, malzeme... Aylık tekrarlayanlar her ay sayılır. Yalnız yönetici/kıdemli/ortak. ----
+      match /giderler/{gid} {
+        allow read: if gorenMi(salonId);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['tarih', 'kategori', 'tutar', 'not', 'aylik', 'uid', 'zaman'])
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.kategori is string && request.resource.data.kategori.size() >= 1 && request.resource.data.kategori.size() <= 30
+          && request.resource.data.tutar is number && request.resource.data.tutar > 0 && request.resource.data.tutar <= 100000000
+          && request.resource.data.not is string && request.resource.data.not.size() <= 100
+          && request.resource.data.aylik is bool
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        // Yalnız kapatma: yanlış girilen gider iptal edilir ya da aylık gider "şu aya kadar" diye bitirilir (silinmez)
+        allow update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['iptal', 'bitis'])
+          && (!('iptal' in request.resource.data) || request.resource.data.iptal is bool)
+          && (!('bitis' in request.resource.data) || (request.resource.data.bitis is string && request.resource.data.bitis.size() == 7));
+        allow delete: if false;
       }
 
       // ---- Ekip sohbeti: salondaki herkes okur ve yazar; kendi mesajını (yönetici/kıdemli/ortak hepsini) siler ----

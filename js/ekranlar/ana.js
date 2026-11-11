@@ -13,7 +13,7 @@ import { gonderimleriYukle } from '../mesaj-kayit.js';
 import { mutabakatKarti } from './mutabakat-kart.js';
 
 const YAKINDA = [
-  { ad: 'Maliyet ve kâr', ikon: '📈', roller: ['yonetici', 'kidemli', 'ortak'] }
+  { ad: 'Bildirim, WhatsApp hatırlatma ve yapay zekâ', ikon: '🔔', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
 ];
 
 export function anaEkrani() {

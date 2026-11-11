@@ -176,3 +176,9 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .urun-kart { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
 .onay-satir { display: flex; align-items: center; gap: 8px; }
 .onay-satir input { width: auto; }
+
+/* 7. teslim: kâr */
+.ay-sec { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }
+.ay-sec .ikon-dugme { font-size: 1.4rem; padding: 6px 14px; }
+.kar-satir { font-size: 1.1rem; }
+.kar-artı { color: #3ddc97; }

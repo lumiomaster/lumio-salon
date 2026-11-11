@@ -14,6 +14,7 @@ import { hizmetDuzeltmesi } from './duzeltme.js';
 import { iptalFormu } from './takvim.js';
 import { hesapEkrani } from './hesap.js';
 import { kazancimEkrani } from './kazancim.js';
+import { karEkrani } from './kar.js';
 
 const K = { tarih: tarihMetin(new Date()) };
 
@@ -21,13 +22,13 @@ export function kasaEkrani() {
   const rol = S.profil.rol;
   if (rol === 'usta') return kazancimEkrani();
   const hesapVar = gorenMi(rol);
-  const alt = hesapVar && S.kasaAlt === 'hesap' ? 'hesap' : 'gun';
+  const alt = hesapVar && (S.kasaAlt === 'hesap' || S.kasaAlt === 'kar') ? S.kasaAlt : 'gun';
   return h('div', { class: 'sayfa' },
     h('h1', null, t('Kasa')),
-    hesapVar ? h('div', { class: 'sekme-cubugu' },
-      [['gun', 'Günlük kasa'], ['hesap', 'Usta hesapları']].map(([id, ad]) =>
+    hesapVar ? h('div', { class: 'sekme-cubugu uc' },
+      [['gun', 'Günlük kasa'], ['hesap', 'Usta hesapları'], ['kar', 'Kâr']].map(([id, ad]) =>
         h('button', { type: 'button', class: id === alt ? 'secili' : '', onclick: () => { S.kasaAlt = id; goster(); } }, t(ad)))) : null,
-    alt === 'hesap' ? hesapEkrani() : gunEkrani());
+    alt === 'hesap' ? hesapEkrani() : alt === 'kar' ? karEkrani() : gunEkrani());
 }
 
 function gunEkrani() {

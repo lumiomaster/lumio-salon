@@ -239,3 +239,14 @@ export async function stokAyariYukle() {
   const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'stok'));
   return d.exists() ? d.data() : { sonSayim: '', tedarikciTel: '' };
 }
+
+// ---- Maliyet ve kâr (7. teslim): tarih aralığına göre okumalar (yalnız yönetici/kıdemli/ortak) ----
+const aralik = (ad, alan, bas, bit) => async () => { kontrol(); return liste(await getDocs(query(yol(ad), where(alan, '>=', bas), where(alan, '<=', bit)))); };
+export const aralikOdemeleriniYukle = (bas, bit) => aralik('odemeler', 'tarih', bas, bit)();
+export const aralikIslemleriniYukle = (bas, bit) => aralik('islemler', 'tarih', bas, bit)();
+export const aralikHareketleriniYukle = (bas, bit) => aralik('stokHareket', 'gun', bas, bit)();
+export const aralikAlislariniYukle = (bas, bit) => aralik('alislar', 'tarih', bas, bit)();
+export async function giderleriYukle() {
+  kontrol();
+  return liste(await getDocs(yol('giderler')));
+}
