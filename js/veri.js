@@ -3,11 +3,11 @@ import { S } from './durum.js';
 import { gorenMi } from './roller.js';
 import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp } from './fb.js';
 
-const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null };
+const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null };
 
 function kontrol() {
   const id = S.salon ? S.salon.id : null;
-  if (V.salonId !== id) Object.assign(V, { salonId: id, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null });
+  if (V.salonId !== id) Object.assign(V, { salonId: id, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null });
 }
 const yol = (...p) => collection(db, 'salons', S.salon.id, ...p);
 
@@ -27,6 +27,18 @@ export async function ayariYukle(zorla) {
   V.ayar = d.exists() ? d.data() : null;
   return V.ayar;
 }
+
+// Oran grupları, çapraz satış oranı ve aylık hedefler (ayarlar/oranlar). Belge yoksa hazır değerler.
+export const ORAN_HAZIR = { gruplar: [{ id: 'malzemeli', ad: 'Malzemeli işlem' }], caprazYuzde: 5, hedefler: [] };
+export async function oranAyariYukle(zorla) {
+  kontrol();
+  if (V.oran && !zorla) return V.oran;
+  const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'oranlar'));
+  const v = d.exists() ? d.data() : {};
+  V.oran = { gruplar: Array.isArray(v.gruplar) ? v.gruplar : ORAN_HAZIR.gruplar, caprazYuzde: typeof v.caprazYuzde === 'number' ? v.caprazYuzde : ORAN_HAZIR.caprazYuzde, hedefler: Array.isArray(v.hedefler) ? v.hedefler : [] };
+  return V.oran;
+}
+export function oranOnbellekSil() { V.oran = null; }
 
 export async function uyeleriYukle(zorla) {
   kontrol();
@@ -52,7 +64,7 @@ export async function ustalariYukle(zorla) {
 // Ekipte kişi eklenince ya da değişince çağrılır
 export function uyelerGecersiz() { V.uyeler = null; }
 
-export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null }); }
+export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null }); }
 
 // ---- Takvim verisi: her seferinde taze okunur (önbellek yok; başkası randevu almış olabilir) ----
 // Tarih aralığındaki randevular (bas ve bit dahil), saate göre sıralı
@@ -175,12 +187,16 @@ export async function musteriGecmisi(id) {
 
 
 // Ustanın kendi kazanç satırları (başkasının tutarı içermez). Hesap fonksiyonlarının beklediği "ödeme" biçimine çevrilir.
+// ustaSatirlari belgesi -> ödeme benzeri nesne. "capraz" belgesi ustanın çapraz satış primidir: tutar = satılan hizmet, prim = komisyon sonrası tutarın yuzde'si.
+const satirKalemi = (x) => x.tur === 'capraz'
+  ? { kalemler: [], caprazlar: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, prim: Math.round(x.tutar * (1 - (x.komisyonOrani || 0) / 100) * (x.yuzde || 0)) / 100 }] }
+  : { kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur, ...(x.grup ? { grup: x.grup } : {}) }] };
 export async function ustaSatirlariniYukle(donem, uid) {
   kontrol();
   const sn = await getDocs(query(yol('ustaSatirlari'), where('donem', '==', donem), where('ustaUid', '==', uid)));
   return liste(sn).map(x => ({
     id: x.id, durum: x.durum, tarih: x.tarih, donem: x.donem, yontem: x.yontem, komisyonOrani: x.komisyonOrani, musteriAd: x.musteriAd,
-    kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur }]
+    ...satirKalemi(x)
   })).sort((a, b) => a.tarih.localeCompare(b.tarih));
 }
 // Ustanın bir günkü satırları (dönemden bağımsız: kapanmış dönemdeki günler için de mutabakat yapılabilsin)
@@ -189,7 +205,7 @@ export async function ustaGunSatirlariniYukle(tarih, uid) {
   const sn = await getDocs(query(yol('ustaSatirlari'), where('tarih', '==', tarih), where('ustaUid', '==', uid)));
   return liste(sn).map(x => ({
     id: x.id, durum: x.durum, tarih: x.tarih, donem: x.donem, yontem: x.yontem, komisyonOrani: x.komisyonOrani, musteriAd: x.musteriAd,
-    kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur }]
+    ...satirKalemi(x)
   }));
 }
 // Bir ödemenin satır belgeleri (iptal için; yönetici/kıdemli)
@@ -249,4 +265,14 @@ export const aralikAlislariniYukle = (bas, bit) => aralik('alislar', 'tarih', ba
 export async function giderleriYukle() {
   kontrol();
   return liste(await getDocs(yol('giderler')));
+}
+
+// ---- Aylık hedef ikramiyeleri (9. teslim) ----
+// ikramiyeler/{ustaUid}_{YYYY-MM}: "hesaba eklendi" işareti. Usta yalnız kendi belgesini okuyabilsin diye uid verilirse ona göre sorgulanır.
+export async function ikramiyeleriYukle(ay, uid) {
+  kontrol();
+  const q = uid
+    ? query(yol('ikramiyeler'), where('ay', '==', ay), where('ustaUid', '==', uid))
+    : query(yol('ikramiyeler'), where('ay', '==', ay));
+  return liste(await getDocs(q));
 }

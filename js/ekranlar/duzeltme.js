@@ -42,13 +42,13 @@ export async function hizmetDuzeltmesi(o, bitti) {
           const ayarT = await ayariYukle(true);
           const oran = yontem === 'kart' && ayarT ? ayarT.posOrani : 0;
           const top = yuvarla(v), kom = yuvarla(top * oran / 100);
-          const kalem = { ustaUid: ustaSec.value, ad: hz.ad, tutar: top, alis: 0, tur: 'hizmet', ek: true };
+          const kalem = { ustaUid: ustaSec.value, ad: hz.ad, tutar: top, alis: 0, tur: 'hizmet', ek: true, ...(hz.oranGrup ? { grup: hz.oranGrup } : {}) };
           const tarih = o.tarih;
           const b = writeBatch(db);
           const ref = doc(collection(db, 'salons', S.salon.id, 'odemeler'));
           b.set(ref, { rid: o.rid || '', musteriId: o.musteriId || '', tarih, donem, yontem, musteriAd: o.musteriAd || '', kalemler: [kalem], ustalar: [kalem.ustaUid],
             toplam: top, komisyonOrani: oran, komisyon: kom, durum: 'gecerli', alan: auth.currentUser.uid, zaman: serverTimestamp(), duzeltmeOf: o.id });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: kalem.ustaUid, odemeId: ref.id, tarih, donem, musteriAd: o.musteriAd || '', ad: kalem.ad, tutar: top, alis: 0, tur: 'hizmet', yontem, komisyonOrani: oran, durum: 'gecerli' });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: kalem.ustaUid, odemeId: ref.id, tarih, donem, musteriAd: o.musteriAd || '', ad: kalem.ad, tutar: top, alis: 0, tur: 'hizmet', ...(kalem.grup ? { grup: kalem.grup } : {}), yontem, komisyonOrani: oran, durum: 'gecerli' });
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_duzeltme', hedef: ref.id, ayrinti: (o.musteriAd || '') + ' ' + tarih + ': +' + hz.ad + ' ' + top + ' ₺', zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Hizmet eklendi')); bitti();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }

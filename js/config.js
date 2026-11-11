@@ -1,7 +1,7 @@
 // LUMIO SALON - ayarlar (ad, logo ve bağlantılar tek yerden değişir)
 export const UYGULAMA = {
   ad: 'LUMIO SALON',
-  surum: '0.8.0 (8. teslim)',
+  surum: '0.9.1 (9. teslim ek)',
   logo: 'icons/logo.png'
 };
 
@@ -30,6 +30,6 @@ export const ROLLER = {
 
 // Cloudflare Worker (bildirim + yapay zekâ danışman). Worker kurulunca url ve vapid doldurulur; boşsa bu özellikler kapalı görünür.
 export const SUNUCU = {
-  url: '',     // örn. 'https://lumio-salon-ai.KULLANICI.workers.dev'
-  vapid: ''    // VAPID_PUBLIC değeri (herkese açık anahtar)
+  url: 'https://lumio-salon-ai.lumiomaster.workers.dev',
+  vapid: 'BHLpdL3eM-bWAA0Uy3JAKmPxJy-V2sOgBLc2sYzpZTH2WzGI7iLXtWnqg-uYtaS77J_-Ao6PtkE-PsCv5awR31w'   // VAPID_PUBLIC (herkese açık anahtar)
 };

@@ -5,6 +5,8 @@ import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { ayariYukle, musterileriYukle, tumRandevulariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
+import { tesvikAyari } from '../tesvik.js';
+import { baglantiAyarla } from '../mesaj.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
 
@@ -21,6 +23,11 @@ function ciz(kutu, ayar) {
   const adim = h('select', { disabled: kapali }, ADIMLAR.map(a => h('option', { value: String(a), selected: a === (ayar ? ayar.randevuAdimi : 15) }, a + ' ' + t('dakika'))));
   const kayip = h('input', { type: 'text', inputmode: 'numeric', value: String(ayar && ayar.kayipGun ? ayar.kayipGun : 60), disabled: kapali });
   const tel = h('input', { type: 'tel', inputmode: 'tel', value: ayar ? ayar.salonTel : '', placeholder: t('Salonun telefonu (isteğe bağlı)'), maxlength: 30, disabled: kapali });
+  const ig = h('input', { type: 'text', value: ayar && ayar.instagram || '', placeholder: 'instagram.com/hesabiniz', maxlength: 200, disabled: kapali });
+  const gl = h('input', { type: 'text', value: ayar && ayar.googleLink || '', placeholder: 'https://g.page/r/...', maxlength: 300, disabled: kapali });
+  const banka = h('input', { type: 'text', value: ayar && ayar.bankaAdi || '', placeholder: t('Banka adı'), maxlength: 80, disabled: kapali });
+  const hsahip = h('input', { type: 'text', value: ayar && ayar.hesapSahibi || '', placeholder: t('Hesap sahibi'), maxlength: 80, disabled: kapali });
+  const iban = h('input', { type: 'text', value: ayar && ayar.iban || '', placeholder: 'TR00 0000 0000 0000 0000 0000 00', maxlength: 60, disabled: kapali });
   const hata = h('div', { class: 'hata', role: 'alert' });
   const dugme = h('button', { class: 'dugme', type: 'submit', disabled: kapali }, t('Kaydet'));
   doldur(kutu, h('form', { class: 'kart form', novalidate: true,
@@ -32,7 +39,7 @@ function ciz(kutu, ayar) {
       if (!Number.isFinite(p) || p < 0 || p > 20) { hata.textContent = t('Kart komisyon oranı 0 ile 20 arasında bir sayı olmalı. Yoksa 0 yazın.'); return; }
       kilitli(dugme, async () => {
         try {
-          const veri = { posOrani: p, randevuAdimi: Number(adim.value), salonTel: tel.value.trim(), kayipGun: parseInt(kayip.value, 10), guncelleme: serverTimestamp() };
+          const veri = { posOrani: p, randevuAdimi: Number(adim.value), salonTel: tel.value.trim(), kayipGun: parseInt(kayip.value, 10), instagram: ig.value.trim(), googleLink: gl.value.trim(), bankaAdi: banka.value.trim(), hesapSahibi: hsahip.value.trim(), iban: iban.value.trim(), guncelleme: serverTimestamp() };
           const b = writeBatch(db);
           b.set(doc(db, 'salons', S.salon.id, 'ayarlar', 'genel'), veri);
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
@@ -40,6 +47,7 @@ function ciz(kutu, ayar) {
           });
           await b.commit();
           await ayariYukle(true);
+          baglantiAyarla(veri);
           bildir(t('Kaydedildi'));
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
@@ -51,9 +59,25 @@ function ciz(kutu, ayar) {
     h('label', null, t('Kayıp müşteri alarmı (kaç gündür gelmeyen), gün'), kayip),
     h('p', { class: 'kucuk' }, t('Müşteriler sekmesinde, bu kadar gündür gelmeyen müşteriler "geri çağır" listesine düşer.')),
     h('label', null, t('Salon telefonu'), tel),
+    h('h3', null, t('Mesajlarda kullanılan bağlantılar')),
+    h('label', null, t('Instagram adresi'), ig),
+    h('label', null, t('Google puanlama linki'), gl),
+    h('p', { class: 'kucuk' }, t('Google Haritalar > işletmeniz > "Yorum isteyin" bölümündeki bağlantıdır. Müşteriye puanlama ve Instagram mesajlarında kullanılır.')),
+    h('label', null, t('Banka adı'), banka),
+    h('label', null, t('Hesap sahibi'), hsahip),
+    h('label', null, t('IBAN / hesap no'), iban),
+    h('p', { class: 'kucuk' }, t('Müşteriye ödeme bilgisi gönderirken kullanılır.')),
     hata, kapali ? null : dugme,
     yetkili ? null : h('p', { class: 'kucuk' }, t('Bu ayarları yönetici ya da kıdemli yetkili değiştirir.'))),
+    yetkili && !kapali ? tesvikKarti() : null,
     yetkili && !kapali ? bakimKarti() : null);
+}
+
+// Çapraz satış primi ve aylık hedefler (ayar penceresini açar)
+function tesvikKarti() {
+  return h('div', { class: 'kart' }, h('h2', { class: 'ilk' }, t('Çapraz satış ve hedefler')),
+    h('p', { class: 'kucuk' }, t('Müşteri yönlendiren ya da ürün satan ustaları teşvik edin: çapraz satış primi ve aylık hedef ödülleri.')),
+    h('button', { class: 'dugme ikincil', type: 'button', onclick: () => tesvikAyari() }, t('Ayarla')));
 }
 
 // Eski (usta alanı eklenmeden önce alınmış) randevuları yeni düzene çevirir: ustalar kendi randevularını görebilsin.

@@ -21,6 +21,10 @@ const SABLON = {
   davet: 'Merhaba Sayın {MUSTERI_ADI}, ☕🌸\n\n{SALON_ADI} olarak bir süredir yokluğunuzu hissediyor, sizi çok özlüyoruz!\n\nHem kendinize hak ettiğiniz ışıltıyı yeniden kazandırmak hem de sıcak bir kahvemiz eşliğinde keyifli bir mola vermek için sizi salonumuza bekliyoruz. ✨\n\nSize en uygun gün ve saati birlikte planlamak için bu mesaja yanıt vermeniz yeterli.\n\nSevgiyle ve güzellikle kalın,\n{IMZA}',
   onay: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n\nRandevunuz başarıyla oluşturulmuştur. Planlarınızda bir değişiklik olursa önceden haber vermenizi rica ederiz. 🙏\n\nSizi ağırlamak için sabırsızlanıyoruz!\n{IMZA}',
   hatirlatma: 'Merhaba Sayın {MUSTERI_ADI}, ⏰\n\nYarın için randevunuzu hatırlatmak isteriz:\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n{USTA_SATIR}\nGelemeyecekseniz lütfen önceden haber veriniz 🙏\n\nGörüşmek üzere!\n{IMZA}',
+  puan: 'Merhaba Sayın {MUSTERI_ADI}, 💛\n\nSalonumuzu tercih ettiğiniz için çok teşekkür ederiz. Umarım yeni görünümünüzden keyif almışsınızdır!\n\n⭐ Sadece 30 saniyenizi ayırarak aşağıdaki bağlantıdan Google\'da bizi puanlayıp değerli yorumunuzu paylaşırsanız çok mutlu oluruz:\n{GOOGLE_LINK}\n\n{IMZA}',
+  memnuniyet: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\nSon işlemimizden memnun kaldığınızı umuyoruz. Herhangi bir sorunuz ya da bir isteğiniz olursa bu mesaja yazabilirsiniz; görüşleriniz bizim için çok değerli.\n\n📸 Instagram sayfamızı takip etmeyi unutmayın:\n{INSTAGRAM_LINK}\n\n{IMZA}',
+  instagram: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🎁 Salonumuzun yeni trendlerinden haberdar olmak, sürpriz çekilişlerimize ve hediyelerimize hak kazanmak için Instagram sayfamızdaki paylaşımlarımızı beğenmeyi, yorum yapmayı ve takip etmeyi unutmayın!\n\n📸 Instagram Profilimiz:\n{INSTAGRAM_LINK}\n\n{IMZA}',
+  iban: 'Merhaba Sayın {MUSTERI_ADI}, 🌸\n\nÖdemenizi aşağıdaki banka / transfer hesabımıza güvenle gerçekleştirebilirsiniz:\n\n🏦 Banka: {BANKA_ADI}\n👤 Hesap Sahibi: {HESAP_SAHIBI}\n💳 IBAN / Hesap / Kart No: {IBAN_NO}\n\nÖdeme sonrası bilgi vermenizi rica eder, güzel günler dileriz! ✨\n{IMZA}',
   mutabakatUst: 'Merhaba {USTA_ADI} 👋\n\n📅 {TARIH} günü hesabınız:',
   tesvik: 'Bugün ürün satışınız yok. Her müşteriye bakım sonrası evde kullanacağı bir ürün önermeyi deneyin; küçük bir öneri bile hem müşterinin saçına/cildine hem sizin kazancınıza katkı sağlar 💪',
   tebrik: '🎉 Tebrikler, bugün ürün sattınız!',
@@ -35,13 +39,21 @@ export const SABLON_BILGI = [
   { tur: 'davet', ad: 'Uzun süredir gelmeyen müşteri', ack: 'Bir süredir gelmeyen müşteriyi geri çağırır.', degisken: ['MUSTERI_ADI', 'SALON_ADI', 'IMZA'] },
   { tur: 'onay', ad: 'Randevu onayı', ack: 'Randevu alınınca müşteriye gider.', degisken: ['MUSTERI_ADI', 'TARIH', 'SAAT', 'HIZMET', 'USTA_SATIR', 'IMZA'] },
   { tur: 'hatirlatma', ad: 'Yarınki randevu hatırlatma', ack: 'Ertesi gün randevusu olan müşteriye gider.', degisken: ['MUSTERI_ADI', 'TARIH', 'SAAT', 'HIZMET', 'USTA_SATIR', 'IMZA'] },
+  { tur: 'puan', ad: 'Google puanlama isteği', ack: 'Müşteriden Google\'da 5 yıldızla puanlamasını ister (müşteri kartından).', degisken: ['MUSTERI_ADI', 'GOOGLE_LINK', 'IMZA'] },
+  { tur: 'memnuniyet', ad: 'Memnuniyet mesajı', ack: 'İşlemden sonra memnuniyet sorar, Instagram\'a davet eder.', degisken: ['MUSTERI_ADI', 'INSTAGRAM_LINK', 'IMZA'] },
+  { tur: 'instagram', ad: 'Instagram daveti', ack: 'Takip, beğeni ve yorum için Instagram\'a davet eder.', degisken: ['MUSTERI_ADI', 'INSTAGRAM_LINK', 'IMZA'] },
+  { tur: 'iban', ad: 'IBAN / transfer bilgisi', ack: 'Ödeme için banka bilgilerini gönderir.', degisken: ['MUSTERI_ADI', 'BANKA_ADI', 'HESAP_SAHIBI', 'IBAN_NO', 'IMZA'] },
   { tur: 'mutabakatUst', ad: 'Usta günlük hesap: başlık', ack: 'Ustaya giden günlük hesap mesajının ilk satırları.', degisken: ['USTA_ADI', 'TARIH'] },
   { tur: 'tesvik', ad: 'Usta: ürün satışı yok (teşvik)', ack: 'Ustanın o gün ürün satışı yoksa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
   { tur: 'tebrik', ad: 'Usta: ürün sattı (tebrik)', ack: 'Ustanın ürün satışı varsa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
   { tur: 'mutabakatAlt', ad: 'Usta günlük hesap: alt yazı', ack: 'Hesap mesajının son satırları.', degisken: ['USTA_ADI', 'IMZA'] },
   { tur: 'siparis', ad: 'Tedarikçiye sipariş', ack: 'Stok sayfasındaki sipariş listesi mesajı.', degisken: ['SALON_ADI', 'LISTE'] }
 ];
-export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', SAAT: '14:30', HIZMET: 'Dip boya + fön', USTA_ADI: 'Mehmet', LISTE: '• Wella 6.0 boya — 3 tüp\n• Şampuan — 4 adet' };
+export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', SAAT: '14:30', HIZMET: 'Dip boya + fön', USTA_ADI: 'Mehmet', LISTE: '• Wella 6.0 boya — 3 tüp\n• Şampuan — 4 adet', GOOGLE_LINK: 'https://g.page/r/ornek', INSTAGRAM_LINK: 'instagram.com/salonunuz', BANKA_ADI: 'Örnek Banka', HESAP_SAHIBI: 'Ayşe Yılmaz', IBAN_NO: 'TR00 0000 0000 0000 0000 0000 00' };
+// Salonun bağlantı ve banka bilgileri (Salon > Genel): {GOOGLE_LINK}, {INSTAGRAM_LINK}, {BANKA_ADI}, {HESAP_SAHIBI}, {IBAN_NO}
+let BAG = {};
+export const baglantiAyarla = (a) => { BAG = a || {}; };
+export const baglantilar = () => ({ ...BAG });
 export const sablonVarsayilan = (tur) => SABLON[tur];
 
 // Salonun kendi şablonları (ayarlar/mesajlar); yoksa hazır metin kullanılır
@@ -55,11 +67,15 @@ export async function sablonlariYukle() {
     const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'mesajlar'));
     if (d.exists()) sablonOzelAyarla(d.data());
   } catch (e) { /* okunamazsa hazır metinler */ }
+  try {
+    const g = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'genel'));
+    baglantiAyarla(g.exists() ? g.data() : {});
+  } catch (e) { /* bağlantılar boş kalır */ }
 }
 
 export function mesajYap(tur, vars) {
   const salon = S.salon ? S.salon.ad : '';
-  const v = { SALON_ADI: salon, IMZA: salon, ...vars };
+  const v = { SALON_ADI: salon, IMZA: salon, GOOGLE_LINK: BAG.googleLink || '', INSTAGRAM_LINK: BAG.instagram || '', BANKA_ADI: BAG.bankaAdi || '', HESAP_SAHIBI: BAG.hesapSahibi || '', IBAN_NO: BAG.iban || '', ...vars };
   v.USTA_SATIR = v.USTA_ADI ? '💇 Uzmanımız: ' + v.USTA_ADI + '\n' : '';
   return (OZEL[tur] || SABLON[tur]).replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
 }

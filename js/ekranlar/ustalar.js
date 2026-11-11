@@ -4,7 +4,7 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, pencereAc, lisansDurumu } 
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, hizmetleriYukle } from '../veri.js';
+import { uyeleriYukle, ustalariYukle, hizmetleriYukle, oranAyariYukle } from '../veri.js';
 import { izinCakisanlariGoster } from './takvim.js';
 
 export const GUNLER = [
@@ -18,8 +18,8 @@ export function varsayilanMesai() {
 
 export function ustalarEkrani() {
   const kutu = h('div', null, h('p', { class: 'soluk' }, t('Yükleniyor…')));
-  const yenile = (zorla) => Promise.all([uyeleriYukle(zorla), ustalariYukle(zorla), hizmetleriYukle(zorla)])
-    .then(([uyeler, u, hizmetler]) => ciz(kutu, uyeler, u.profil, u.mali, hizmetler, yenile))
+  const yenile = (zorla) => Promise.all([uyeleriYukle(zorla), ustalariYukle(zorla), hizmetleriYukle(zorla), oranAyariYukle(zorla)])
+    .then(([uyeler, u, hizmetler, oran]) => ciz(kutu, uyeler, u.profil, u.mali, hizmetler, yenile, oran))
     .catch(e => { console.error(e); kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e))); });
   yenile(false);
   return kutu;
@@ -27,17 +27,17 @@ export function ustalarEkrani() {
 
 function calisiyorMu(u, profil) { return profil ? !!profil.calisir : u.rol === 'usta'; }
 
-function ciz(kutu, uyeler, P, M, hizmetler, yenile) {
+function ciz(kutu, uyeler, P, M, hizmetler, yenile, oran) {
   const yetkili = yetkiliMi(S.profil.rol);
   const adaylar = uyeler.filter(u => u.rol !== 'sekreter');
   doldur(kutu,
     h('h2', { class: 'ilk' }, t('Ustalar')),
     h('p', { class: 'kucuk' }, t('Randevu alacak herkesin hizmetlerini, mesaisini ve payını buradan ayarlarsınız. Salonda çalışan yönetici, kıdemli yetkili ve ortak da "randevu alıyor" olarak işaretlenebilir.')),
     adaylar.length === 0 ? h('p', { class: 'soluk' }, t('Önce Ekip bölümünden usta ekleyin.')) : null,
-    adaylar.map(u => ustaKarti(u, P[u.id], M[u.id], hizmetler, uyeler, yetkili, yenile)));
+    adaylar.map(u => ustaKarti(u, P[u.id], M[u.id], hizmetler, uyeler, yetkili, yenile, oran)));
 }
 
-function ustaKarti(u, profil, mali, hizmetler, uyeler, yetkili, yenile) {
+function ustaKarti(u, profil, mali, hizmetler, uyeler, yetkili, yenile, oran) {
   const calisir = calisiyorMu(u, profil);
   const ayarli = !!profil && profil.hizmetler.length > 0;
   return h('div', { class: 'kart uye' + (u.aktif ? '' : ' pasif') },
@@ -46,10 +46,10 @@ function ustaKarti(u, profil, mali, hizmetler, uyeler, yetkili, yenile) {
       h('span', { class: 'soluk' }, calisir ? (ayarli ? profil.hizmetler.length + ' ' + t('hizmet') : t('Hizmet seçilmedi')) : t('Randevu almıyor')),
       h('span', null, calisir && !ayarli ? h('span', { class: 'rozet uyari-rozet' }, t('Ayarlanmadı')) : null,
         mali ? h('span', { class: 'rozet' }, '%' + mali.yuzde) : null)),
-    h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) }, yetkili ? t('Ayarla') : t('Gör')));
+    h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => ustaFormu(u, profil, mali, hizmetler, yetkili, yenile, oran) }, yetkili ? t('Ayarla') : t('Gör')));
 }
 
-function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
+function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile, oran) {
   const duzenle = yetkili && lisansDurumu(S.salon).aktif;
   const kapali = !duzenle;
   const calisir = h('input', { type: 'checkbox', id: 'usta-calisir', checked: calisiyorMu(u, profil), disabled: kapali });
@@ -58,6 +58,8 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
   GUNLER.forEach(([k]) => { if (!mesai[k]) mesai[k] = { acik: false, bas: '09:00', bit: '19:00' }; });
   let izinler = profil ? profil.izinler.map(i => ({ ...i })) : [];
   const yuzde = h('input', { type: 'text', inputmode: 'decimal', value: mali ? String(mali.yuzde).replace('.', ',') : '', placeholder: 'örn. 40', disabled: kapali });
+  // Oran grupları: her grup için isteğe bağlı yüzde (boşsa Genel yüzde geçerli)
+  const grupKutular = oran.gruplar.map(g => ({ g, el: h('input', { type: 'text', inputmode: 'decimal', value: mali && mali.oranlar && typeof mali.oranlar[g.id] === 'number' ? String(mali.oranlar[g.id]).replace('.', ',') : '', placeholder: t('boşsa Genel'), disabled: kapali }) }));
   const urun = h('input', { type: 'text', inputmode: 'decimal', value: mali ? String(mali.urunPrimi).replace('.', ',') : '0', placeholder: '0', disabled: kapali });
   const urunKasa = h('div', { class: 'kucuk' });
   const urunKasaGuncelle = () => { const v = sayi(urun.value === '' ? '0' : urun.value); urunKasa.textContent = Number.isFinite(v) && v >= 0 && v <= 100 ? t('Kâr paylaşımı: usta %{u}, kasa %{k}', { u: String(v).replace('.', ','), k: String(Math.round((100 - v) * 100) / 100).replace('.', ',') }) : ''; };
@@ -125,6 +127,13 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
       const y = sayi(yuzde.value), p = sayi(urun.value === '' ? '0' : urun.value);
       if (!Number.isFinite(y) || y < 0 || y > 100) { hata.textContent = t('Usta yüzdesi 0 ile 100 arasında olmalı.'); return; }
       if (!Number.isFinite(p) || p < 0 || p > 100) { hata.textContent = t('Ürün primi 0 ile 100 arasında olmalı.'); return; }
+      const oranlar = {};
+      for (const { g, el } of grupKutular) {
+        if (el.value.trim() === '') continue;
+        const v = sayi(el.value);
+        if (!Number.isFinite(v) || v < 0 || v > 100) { hata.textContent = t('{g} yüzdesi 0 ile 100 arasında olmalı.', { g: g.ad }); return; }
+        oranlar[g.id] = v;
+      }
       for (const [k, ad] of GUNLER) {
         const m = mesai[k];
         if (m.acik && (!m.bas || !m.bit || m.bas >= m.bit)) { hata.textContent = t('{gun} için bitiş saati başlangıçtan sonra olmalı.', { gun: t(ad) }); return; }
@@ -134,9 +143,9 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
         try {
           const b = writeBatch(db);
           b.set(doc(db, 'salons', S.salon.id, 'ustalar', u.id), { calisir: calisir.checked, hizmetler: idler, mesai, izinler, guncelleme: serverTimestamp() });
-          b.set(doc(db, 'salons', S.salon.id, 'ustaMali', u.id), { yuzde: y, urunPrimi: p, guncelleme: serverTimestamp() });
+          b.set(doc(db, 'salons', S.salon.id, 'ustaMali', u.id), { yuzde: y, urunPrimi: p, ...(Object.keys(oranlar).length ? { oranlar } : {}), guncelleme: serverTimestamp() });
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
-            uid: auth.currentUser.uid, islem: 'usta_ayar', hedef: u.id, ayrinti: u.ad + ': %' + y + ', ürün primi %' + p + ', ' + idler.length + ' hizmet', zaman: serverTimestamp()
+            uid: auth.currentUser.uid, islem: 'usta_ayar', hedef: u.id, ayrinti: u.ad + ': %' + y + (Object.keys(oranlar).length ? ' (' + grupKutular.filter(x => oranlar[x.g.id] != null).map(x => x.g.ad + ' %' + oranlar[x.g.id]).join(', ') + ')' : '') + ', ürün primi %' + p + ', ' + idler.length + ' hizmet', zaman: serverTimestamp()
           });
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
           // Yeni eklenen izinlerin üstüne düşen randevular varsa müşteriyi aratmak için göster
@@ -158,7 +167,9 @@ function ustaFormu(u, profil, mali, hizmetler, yetkili, yenile) {
     h('h3', null, t('Planlı izinler')),
     izinKutu,
     h('h3', null, t('Pay oranları')),
-    h('label', null, t('Hizmet kazancından usta yüzdesi, %'), yuzde),
+    h('label', null, t('Hizmet kazancından usta yüzdesi (Genel), %'), yuzde),
+    grupKutular.map(({ g, el }) => h('label', null, g.ad + ' ' + t('işlemlerinde yüzde, %'), el)),
+    grupKutular.length ? h('p', { class: 'kucuk' }, t('Yukarıdaki gruplardan birine ayarlanmış hizmetlerde o grubun yüzdesi geçerli olur; boş bırakırsanız Genel yüzde uygulanır. Hangi hizmetin hangi grupta olduğunu Salon > Hizmetler bölümünden belirlersiniz.')) : null,
     h('label', null, t('Ürün satışı primi (kârdan), %'), urun), urunKasa,
     h('p', { class: 'kucuk' }, t('Ürün satışında önce kart komisyonu, sonra alış fiyatı düşülür; kalan kâr bu yüzdeye göre ustaya, geri kalanı kasaya yazılır. Her salon kendi oranını girer, istediğiniz zaman değiştirebilirsiniz.')),
     h('p', { class: 'kucuk' }, t('Bu oranları yalnızca yönetici, kıdemli yetkili, ortak ve ustanın kendisi görür.')),

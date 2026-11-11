@@ -35,7 +35,7 @@ function ciz(kutu, uid, D, yenile) {
   const lisansOk = lisansDurumu(S.salon).aktif;
   const satirlar = ustaGunSatirlari(D.gunOdemeleri, uid, G.tarih, D.mali, D.taban);
   const gunPay = yuvarla(satirlar.reduce((a, s) => a + s.pay, 0));
-  const ozet = ustaOzetleri(D.odemeler, { [uid]: D.mali }, D.taban)[uid] || { hizmet: 0, urun: 0, hakedis: 0 };
+  const ozet = ustaOzetleri(D.odemeler, { [uid]: D.mali }, D.taban)[uid] || { hizmet: 0, urun: 0, hakedis: 0, capraz: 0 };
   const avans = yuvarla(D.avanslar.reduce((a, x) => a + x.tutar, 0));
   const not = h('input', { type: 'text', maxlength: 200, placeholder: t('İtiraz nedeni (örn. Ayşe Hanım\'ın boyası eksik yazılmış)') });
   const hata = h('div', { class: 'hata', role: 'alert' });
@@ -62,8 +62,8 @@ function ciz(kutu, uid, D, yenile) {
     h('div', { class: 'tarih-yazi' }, tarihYazi(G.tarih), G.tarih === bugun ? h('span', { class: 'rozet' }, t('Bugün')) : null),
     satirlar.length === 0 ? h('p', { class: 'soluk' }, t('Bu gün adınıza kayıtlı ödeme yok.')) : null,
     satirlar.map(s => h('div', { class: 'kart' },
-      h('div', { class: 'uye-ust' }, h('strong', null, s.kalem.ad + (s.kalem.tur === 'urun' ? ' (' + t('ürün') + ')' : '')), h('strong', null, para(s.pay))),
-      h('div', { class: 'kucuk' }, (s.odeme.musteriAd || t('Satış')) + ' · ' + t('tutar') + ' ' + para(s.kalem.tutar) + (s.odeme.yontem === 'kart' ? ' · ' + t('kart') : '')))),
+      h('div', { class: 'uye-ust' }, h('strong', null, s.kalem.ad + (s.kalem.tur === 'urun' ? ' (' + t('ürün') + ')' : s.kalem.tur === 'capraz' ? ' (' + t('çapraz satış primi') + ')' : '')), h('strong', null, para(s.pay))),
+      h('div', { class: 'kucuk' }, (s.odeme.musteriAd || t('Satış')) + ' · ' + t('tutar') + ' ' + para(s.kalem.tur === 'capraz' ? s.kalem.satilan : s.kalem.tutar) + (s.odeme.yontem === 'kart' ? ' · ' + t('kart') : '')))),
     satirlar.length ? h('div', { class: 'kart kasa-ozet' },
       h('div', { class: 'uye-ust' }, h('span', null, t('Bugünkü payınız')), h('strong', { class: 'gun-pay' }, para(gunPay))),
       h('div', { class: 'kucuk' }, t('Kartla alınanlardan önce komisyon düşülür, kalan tutar yüzdenize göre hesaplanır.'))) : null,
@@ -78,8 +78,9 @@ function ciz(kutu, uid, D, yenile) {
     h('div', { class: 'kart kasa-ozet' },
       h('div', { class: 'hesap-satir' }, h('span', null, t('Hizmet cirosu')), h('span', null, para(ozet.hizmet))),
       ozet.urun > 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Ürün satışı')), h('span', null, para(ozet.urun))) : null,
+      ozet.capraz > 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Çapraz satış primi')), h('span', null, para(ozet.capraz))) : null,
       h('div', { class: 'hesap-satir' }, h('span', null, t('Hakediş')), h('span', null, para(ozet.hakedis))),
-      avans !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Aldığınız avans')), h('span', null, '− ' + para(avans))) : null,
+      avans !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, avans > 0 ? t('Aldığınız avans') : t('Ek ödeme (ikramiye / düzeltme)')), h('span', null, avans > 0 ? '− ' + para(avans) : '+ ' + para(-avans))) : null,
       D.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(D.devir))) : null,
       h('div', { class: 'hesap-satir ust-cizgi' }, h('strong', null, t('Ödenecek')), h('strong', { class: 'odenecek' }, para(odenecek(ozet.hakedis, avans, D.devir))))),
     D.avanslar.length ? h('div', null, h('h3', null, t('Avanslarım')), D.avanslar.map(a => h('div', { class: 'hesap-satir' }, h('span', null, a.tarih + (a.not ? ' · ' + a.not : '')), h('span', null, para(a.tutar))))) : null);

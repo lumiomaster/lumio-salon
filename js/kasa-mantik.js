@@ -16,15 +16,33 @@ export function urunKari(odeme, k) { return Math.max(0, yuvarla(satirNet(odeme, 
 //  Hizmet: komisyon düşülmüş tutarın ustanın yüzdesi.
 //  Ürün  : (satış - komisyon - alış fiyatı) = kâr; ustanın ürün primi kâr üzerinden, kalanı kasaya.
 export function satirPayi(odeme, k, mali) {
+  if (k.tur === 'capraz') return yuvarla(k.prim || 0);   // çapraz satış primi mali ayardan bağımsızdır (ödeme anındaki oran kalemde saklıdır)
   if (!k.ustaUid || !mali) return 0;
   if (k.tur === 'urun') return yuvarla(urunKari(odeme, k) * (mali.urunPrimi || 0) / 100);
-  return yuvarla(satirNet(odeme, k) * (mali.yuzde || 0) / 100);
+  return yuvarla(satirNet(odeme, k) * hizmetYuzdesi(mali, k.grup) / 100);
+}
+
+// Çapraz satış: ek hizmeti başka ustaya sattıran ustaya, ek hizmet tutarının (komisyon sonrası) kalemde saklı yüzdesi kadar prim.
+// Ustanın kendi yaptığı işte prim yoktur. Usta ekranlarında hazır liste ("caprazlar") yüklenir; yoksa kalemlerden türetilir.
+// Her giriş: { ustaUid: primi alan, ad: hizmet, tutar: satılan hizmet tutarı, prim }
+export function caprazListesi(o) {
+  if (Array.isArray(o.caprazlar)) return o.caprazlar;
+  return (o.kalemler || []).filter(k => k.tur !== 'urun' && k.satanUid && k.satanUid !== k.ustaUid && k.caprazYuzde > 0)
+    .map(k => ({ ustaUid: k.satanUid, ad: k.ad, tutar: k.tutar, prim: yuvarla(satirNet(o, k) * k.caprazYuzde / 100) }));
+}
+
+// Ustanın hizmet yüzdesi: hizmetin oran grubuna özel yüzde varsa o, yoksa "Genel" yüzdesi.
+// (grup boş ya da ustada o grup için yüzde yazılmamışsa Genel kullanılır; eski kayıtlarda grup yoktur = Genel)
+export function hizmetYuzdesi(mali, grup) {
+  const g = grup && mali && mali.oranlar ? mali.oranlar[grup] : undefined;
+  const v = typeof g === 'number' && g >= 0 && g <= 100 ? g : (mali && mali.yuzde) || 0;
+  return v;
 }
 
 // Ödeme listesinden usta usta özet. maliHarita: { uid: {yuzde, urunPrimi} }
 export function ustaOzetleri(odemeler, maliHarita, taban) {
   const sonuc = {};
-  const al = (uid) => (sonuc[uid] = sonuc[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0 });
+  const al = (uid) => (sonuc[uid] = sonuc[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0, capraz: 0 });
   for (const o of odemeler.filter(gecerli)) {
     for (const k of o.kalemler) {
       if (!k.ustaUid) continue;
@@ -33,8 +51,9 @@ export function ustaOzetleri(odemeler, maliHarita, taban) {
       s.komisyon += k.tutar * (o.komisyonOrani || 0) / 100;
       s.hakedis += satirPayi(o, k, maliHarita[k.ustaUid], taban);
     }
+    for (const c of caprazListesi(o)) { const s = al(c.ustaUid); s.capraz += c.prim; s.hakedis += c.prim; }
   }
-  Object.values(sonuc).forEach(s => { s.hizmet = yuvarla(s.hizmet); s.urun = yuvarla(s.urun); s.komisyon = yuvarla(s.komisyon); s.hakedis = yuvarla(s.hakedis); });
+  Object.values(sonuc).forEach(s => { s.capraz = yuvarla(s.capraz); s.hizmet = yuvarla(s.hizmet); s.urun = yuvarla(s.urun); s.komisyon = yuvarla(s.komisyon); s.hakedis = yuvarla(s.hakedis); });
   return sonuc;
 }
 
@@ -58,7 +77,10 @@ export const odenecek = (hakedis, avans, devir) => yuvarla(hakedis - avans + (de
 export function ustaGunSatirlari(odemeler, uid, tarih, mali, taban) {
   const s = [];
   for (const o of odemeler.filter(x => gecerli(x) && x.tarih === tarih))
-    for (const k of o.kalemler) if (k.ustaUid === uid) s.push({ odeme: o, kalem: k, pay: satirPayi(o, k, mali, taban) });
+    {
+      for (const k of o.kalemler) if (k.ustaUid === uid) s.push({ odeme: o, kalem: k, pay: satirPayi(o, k, mali, taban) });
+      for (const c of caprazListesi(o)) if (c.ustaUid === uid) s.push({ odeme: o, kalem: { ustaUid: uid, ad: c.ad, tutar: 0, alis: 0, tur: 'capraz', prim: c.prim, satilan: c.tutar }, pay: c.prim });
+    }
   return s;
 }
 

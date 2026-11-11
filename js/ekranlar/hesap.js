@@ -8,8 +8,10 @@ import { kalemDetay } from './kalem-detay.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
   uyeleriYukle, ustalariYukle, donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle,
-  gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle
+  gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle, oranAyariYukle, aralikOdemeleriniYukle, ikramiyeleriYukle
 } from '../veri.js';
+import { ayAralik, ayEkle, ayYazi } from '../kar-mantik.js';
+import { ayOlculeri, ustaAyi } from '../hedef-mantik.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaOzetleri, gunOzeti, odenecek, yuvarla, ustaGunSatirlari, satirDokumu } from '../kasa-mantik.js';
 import { waAc, tarihTR } from '../mesaj.js';
@@ -38,7 +40,16 @@ async function yukle(kutu, yenile) {
       uyeleriYukle(), ustalariYukle(), donemOdemeleriniYukle(donem), avanslariYukle(donem), devirleriYukle(),
       gunMutabakatiniYukle(H.tarih), donemleriYukle(), randevulariYukle(tarihEkle(bugun, -30), bugun), ayariYukle()
     ]);
-    ciz(kutu, { taban: (ayar && ayar.urunTaban) || 'kar', donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
+    const oran = await oranAyariYukle();
+    let ikr = null;
+    if (oran.hedefler.length && yetkiliMi(S.profil.rol)) {
+      try {
+        const onceki = ayEkle(bugun.slice(0, 7), -1);
+        const [od, iA] = await Promise.all([aralikOdemeleriniYukle(ayAralik(onceki).bas, ayAralik(onceki).bit), ikramiyeleriYukle(onceki)]);
+        ikr = { ay: onceki, olc: ayOlculeri(od, onceki), verilen: iA };
+      } catch (e) { console.error(e); }
+    }
+    ciz(kutu, { oran, ikr, taban: (ayar && ayar.urunTaban) || 'kar', donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -52,7 +63,7 @@ function hesapla(D) {
   const idler = new Set([...Object.keys(ozet), ...Object.keys(avans), ...Object.keys(D.devirler),
     ...D.uyeler.filter(x => x.aktif && D.u.profil[x.id] && D.u.profil[x.id].calisir).map(x => x.id)]);
   const satirlar = [...idler].map(uid => {
-    const o = ozet[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0 };
+    const o = ozet[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0, capraz: 0 };
     const av = yuvarla(avans[uid] || 0), dv = D.devirler[uid] || 0;
     return { uid, ad: (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad, ...o, avans: av, devir: dv, odenecek: odenecek(o.hakedis, av, dv), maliYok: !D.u.mali[uid] };
   }).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
@@ -82,6 +93,7 @@ function ciz(kutu, D, yenile) {
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { F = null; yenile(); } }, t('Hepsini göster'))) : null,
     satirlar.length === 0 ? h('p', { class: 'soluk' }, t('Henüz usta yok.')) : null,
     gorunen.map(s => ustaKart(s, mut[s.uid], yetkili, D, yenile)),
+    yetkili ? ikramiyeKarti(D, yenile) : null,
     yetkili ? h('div', { class: 'kart bilgi' },
       h('strong', null, t('Hesabı kapat (sıfırla)')),
       h('p', null, t('Ustalarla hesaplaştıktan sonra dönemi kapatın. Ödenecek tutarlar kayda geçer, sayaçlar sıfırlanır. Ustanın hakedişinden fazla avansı varsa fark borç olarak bir sonraki döneme devreder.')),
@@ -92,12 +104,40 @@ function ciz(kutu, D, yenile) {
         h('div', { class: 'kucuk' }, t('Ciro {c}, salonda kalan {s}', { c: para(d.toplam.brut), s: para(d.toplam.salon) }))))) : null);
 }
 
+// Geçen ayın hedef ikramiyeleri: yönetici "Hesaba ekle" der; ustanın bu dönem hesabına ek ödeme (eksi avans) yazılır, aynı ay için bir kez
+function ikramiyeKarti(D, yenile) {
+  if (!D.ikr) return null;
+  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const verildi = new Set(D.ikr.verilen.map(x => x.ustaUid));
+  const l = Object.entries(D.ikr.olc).map(([uid, o]) => ({ uid, a: ustaAyi(o, D.oran.hedefler) })).filter(x => x.a.ikramiye > 0 && D.uyeler.some(u => u.id === x.uid));
+  if (!l.length) return null;
+  return h('div', { class: 'kart bilgi' }, h('strong', null, '🎯 ' + ayYazi(D.ikr.ay) + ' ' + t('hedef ikramiyeleri')),
+    l.map(({ uid, a }) => {
+      const dugme = h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button' }, t('Hesaba ekle'));
+      dugme.addEventListener('click', () => kilitli(dugme, async () => {
+        if (!(await onayIste(t('{ad} için {ay} ikramiyesi ({tutar}) bu dönem hesabına eklensin mi? Aynı ay için bir kez eklenebilir.', { ad: ad(uid), ay: ayYazi(D.ikr.ay), tutar: para(a.ikramiye) }), t('Evet, ekle')))) return;
+        try {
+          const b = writeBatch(db);
+          b.set(doc(db, 'salons', S.salon.id, 'ikramiyeler', uid + '_' + D.ikr.ay), { ustaUid: uid, ay: D.ikr.ay, tutar: a.ikramiye, veren: auth.currentUser.uid, zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'avanslar')), { ustaUid: uid, tutar: -a.ikramiye, tarih: tarihMetin(new Date()), donem: D.donem, not: ('İkramiye ' + D.ikr.ay).slice(0, 100), veren: auth.currentUser.uid, zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'ikramiye', hedef: uid, ayrinti: ad(uid) + ' ' + D.ikr.ay + ': ' + a.ikramiye + ' ₺', zaman: serverTimestamp() });
+          await b.commit(); bildir(t('İkramiye hesaba eklendi')); yenile();
+        } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
+      }));
+      const parca = [a.urun.ulasilan ? t('Ürün satışı') + ' ' + para(a.urun.deger) : null, a.capraz.ulasilan ? t('Çapraz satış') + ' ' + para(a.capraz.deger) : null].filter(Boolean).join(' · ');
+      return h('div', { class: 'hesap-satir' },
+        h('span', null, ad(uid) + ' · ' + para(a.ikramiye), h('div', { class: 'kucuk' }, parca)),
+        verildi.has(uid) ? h('span', { class: 'rozet odendi-rozet' }, t('Eklendi')) : dugme);
+    }));
+}
+
 function ustaKart(s, m, yetkili, D, yenile) {
   return h('div', { class: 'kart usta-hesap' },
     h('div', { class: 'uye-ust' }, h('strong', null, s.ad), h('strong', { class: s.odenecek < 0 ? 'eksi' : '' }, para(s.odenecek))),
     s.maliYok ? h('div', { class: 'hata' }, t('Yüzdesi girilmemiş (Salon > Ustalar).')) : null,
     h('button', { class: 'hesap-satir tikla', type: 'button', onclick: () => kalemListesi(s, D, 'hizmet') }, h('span', null, t('Hizmet cirosu') + ' ›'), h('span', null, para(s.hizmet))),
     s.urun > 0 ? h('button', { class: 'hesap-satir tikla', type: 'button', onclick: () => kalemListesi(s, D, 'urun') }, h('span', null, t('Ürün satışı') + ' ›'), h('span', null, para(s.urun))) : null,
+    s.capraz > 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Çapraz satış primi')), h('span', null, para(s.capraz))) : null,
     h('div', { class: 'hesap-satir' }, h('span', null, t('Hakediş (komisyon düşülmüş)')), h('span', null, para(s.hakedis))),
     s.avans !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Verilen avans')), h('span', null, '− ' + para(s.avans))) : null,
     s.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(s.devir))) : null,
@@ -145,8 +185,9 @@ const tl = (n) => para(n);
 // Ustaya gönderilecek günlük hesap metni: müşteri müşteri döküm + ürün satışı + özet
 export function mutabakatMetni(u, g, tarih, salonAd, mali) {
   const ad = (u.ad || '').split(' ')[0];
-  const hizmet = new Map(), urunler = [];
+  const hizmet = new Map(), urunler = [], caprazlar = [];
   g.forEach(({ odeme: o, kalem: k }) => {
+    if (k.tur === 'capraz') { caprazlar.push({ o, k }); return; }
     const d = satirDokumu(o, k, mali);
     if (k.tur === 'urun') { urunler.push({ o, k, d }); return; }
     const anahtar = o.duzeltmeOf || o.id;
@@ -172,7 +213,12 @@ export function mutabakatMetni(u, g, tarih, salonAd, mali) {
     urunler.forEach(({ o, k, d }, i) => r.push((i + 1) + ') ' + k.ad + (o.musteriAd ? ' (' + o.musteriAd + ')' : '') + ' — Alınan: ' + tl(d.tutar) + ' (' + yontemAd(o) + ')' + (o.yontem === 'kart' ? ' · Komisyon: ' + tl(d.komisyon) : '') + ' · Ustaya kalan: ' + tl(d.pay)));
     r.push('', '📦 ' + urunler.length + ' ürün · Alınan ' + tl(uTop) + ' · Ustaya kalan ' + tl(uPay));
   }
-  r.push('', '━━━━━━━━━━', 'Hizmetlerden: ' + tl(hPay), 'Ürün satışından: ' + tl(uPay), '💰 GENEL TOPLAM KAZANCINIZ: ' + tl(yuvarla(hPay + uPay)), '',
+  const cPay = yuvarla(caprazlar.reduce((a, x) => a + x.k.prim, 0));
+  if (caprazlar.length) {
+    r.push('', '🤝 ÇAPRAZ SATIŞ PRİMİ');
+    caprazlar.forEach(({ o, k }, i) => r.push((i + 1) + ') ' + k.ad + ' (' + tl(k.satilan) + ')' + (o.musteriAd ? ' — ' + o.musteriAd : '') + ' · Prim: ' + tl(k.prim)));
+  }
+  r.push('', '━━━━━━━━━━', 'Hizmetlerden: ' + tl(hPay), 'Ürün satışından: ' + tl(uPay), ...(caprazlar.length ? ['Çapraz satış priminden: ' + tl(cPay)] : []), '💰 GENEL TOPLAM KAZANCINIZ: ' + tl(yuvarla(hPay + uPay + cPay)), '',
     mesajYap('mutabakatAlt', { USTA_ADI: ad, IMZA: salonAd || '' }));
   return r.join('\n');
 }

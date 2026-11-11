@@ -202,3 +202,10 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .dan-yaz:focus, textarea.mesaj-kutu:focus { outline: 2px solid var(--vurgu); }
 .satir.yarin-satir { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 .yarin-satir > div { flex: 1; min-width: 0; }
+
+/* Randevu detayı alt düğmeleri (9. teslim) */
+.alt-dugmeler { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.alt-dugmeler .dugme.tam { width: 100%; }
+.alt-dugmeler .iki-dugme { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.alt-dugmeler .iki-dugme .dugme { width: 100%; }
+.alt-dugmeler:empty { display: none; }

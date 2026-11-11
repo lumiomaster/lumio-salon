@@ -3,7 +3,8 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, para, pencereAc, lisansDur
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { hizmetleriYukle } from '../veri.js';
+import { hizmetleriYukle, oranAyariYukle } from '../veri.js';
+import { oranKaydet, grupAdi, yeniGrupId } from '../oran-ayar.js';
 
 // Hazır hizmet paketleri: fiyatlar 0 gelir, salon kendi fiyatını yazar.
 const B = (ad, tur, sure) => ({ ad, tur, sure });
@@ -39,7 +40,7 @@ const TUR = { mesgul: 'Usta çalışıyor', bekleme: 'Bekleme (usta başka işe 
 
 export function hizmetlerEkrani() {
   const kutu = h('div', null, h('p', { class: 'soluk' }, t('Yükleniyor…')));
-  const yenile = (zorla) => hizmetleriYukle(zorla).then(l => ciz(kutu, l, yenile)).catch(e => kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e))));
+  const yenile = (zorla) => Promise.all([hizmetleriYukle(zorla), oranAyariYukle(zorla)]).then(([l, o]) => ciz(kutu, l, yenile, o)).catch(e => kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e))));
   yenile(false);
   return kutu;
 }
@@ -50,7 +51,7 @@ function kayit(b, ayrinti) {
   });
 }
 
-function ciz(kutu, liste, yenile) {
+function ciz(kutu, liste, yenile, oran) {
   const yetkili = yetkiliMi(S.profil.rol);
   const lisansOk = lisansDurumu(S.salon).aktif;
   const duzenle = yetkili && lisansOk;
@@ -59,21 +60,22 @@ function ciz(kutu, liste, yenile) {
   doldur(kutu,
     h('div', { class: 'baslik-satir' },
       h('h2', { class: 'ilk' }, t('Hizmetler')),
-      duzenle ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => hizmetFormu(null, yenile) }, t('+ Hizmet')) : null),
+      duzenle ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => hizmetFormu(null, yenile, oran) }, t('+ Hizmet')) : null),
+    duzenle ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'baglanti', type: 'button', onclick: () => grupYonetimi(oran, yenile) }, t('Oran grupları') + ' (' + (1 + oran.gruplar.length) + ')')) : null,
     liste.length === 0 ? paketKarti(duzenle, yenile) : null,
     Object.keys(gruplar).map(k => h('div', { class: 'grup' },
       h('div', { class: 'grup-baslik' }, k),
-      gruplar[k].map(x => hizmetKarti(x, duzenle, yenile)))));
+      gruplar[k].map(x => hizmetKarti(x, duzenle, yenile, oran)))));
 }
 
-function hizmetKarti(x, duzenle, yenile) {
+function hizmetKarti(x, duzenle, yenile, oran) {
   const bekleme = (x.asamalar || []).some(a => a.tur === 'bekleme');
   return h('div', { class: 'kart hizmet' + (x.aktif ? '' : ' pasif') },
     h('div', { class: 'uye-ust' }, h('strong', null, x.ad), h('span', null, x.fiyat > 0 ? para(x.fiyat) : h('span', { class: 'rozet uyari-rozet' }, t('Fiyat girin')))),
     h('div', { class: 'uye-alt' },
       h('span', { class: 'soluk' }, x.sure + ' ' + t('dk')),
-      h('span', null, bekleme ? h('span', { class: 'rozet' }, t('Bekleme aşamalı')) : null, x.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')))),
-    duzenle ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hizmetFormu(x, yenile) }, t('Düzenle')) : null);
+      h('span', null, bekleme ? h('span', { class: 'rozet' }, t('Bekleme aşamalı')) : null, x.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')), x.oranGrup ? h('span', { class: 'rozet' }, grupAdi(oran.gruplar, x.oranGrup)) : null)),
+    duzenle ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hizmetFormu(x, yenile, oran) }, t('Düzenle')) : null);
 }
 
 function paketKarti(duzenle, yenile) {
@@ -86,7 +88,7 @@ function paketKarti(duzenle, yenile) {
         try {
           const b = writeBatch(db);
           p.hizmetler.forEach(x => b.set(doc(collection(db, 'salons', S.salon.id, 'hizmetler')), {
-            ad: x.ad, kategori: x.kategori, fiyat: 0, sure: x.sure, asamalar: x.asamalar || [], aktif: true, guncelleme: serverTimestamp()
+            ad: x.ad, kategori: x.kategori, fiyat: 0, sure: x.sure, asamalar: x.asamalar || [], aktif: true, ...(x.kategori === 'Boya' ? { oranGrup: 'malzemeli' } : {}), guncelleme: serverTimestamp()
           }));
           kayit(b, 'Hazır paket: ' + p.ad);
           await b.commit(); bildir(t('Hizmetler eklendi. Fiyatları girmeyi unutmayın.')); yenile(true);
@@ -94,13 +96,14 @@ function paketKarti(duzenle, yenile) {
       }) }, p.ad + ' (' + p.hizmetler.length + ')'))));
 }
 
-function hizmetFormu(x, yenile) {
+function hizmetFormu(x, yenile, oran) {
   const yeni = !x;
   const ad = h('input', { type: 'text', value: x ? x.ad : '', maxlength: 60, placeholder: t('örn. Dip boya'), required: true });
   const kat = h('input', { type: 'text', value: x ? x.kategori : '', maxlength: 40, placeholder: t('örn. Boya'), list: 'kategori-listesi' });
   const katListe = h('datalist', { id: 'kategori-listesi' }, ['Kesim', 'Şekillendirme', 'Boya', 'Bakım', 'Tırnak', 'Güzellik'].map(k => h('option', { value: k })));
   const fiyat = h('input', { type: 'text', inputmode: 'decimal', value: x ? String(x.fiyat).replace('.', ',') : '', placeholder: '0', required: true });
   const sure = h('input', { type: 'text', inputmode: 'numeric', value: x ? String(x.sure) : '30', required: true });
+  const grupSec = h('select', { 'aria-label': t('Oran grubu') }, h('option', { value: '' }, t('Genel')), oran.gruplar.map(g => h('option', { value: g.id, selected: x && x.oranGrup === g.id }, g.ad)));
   const aktif = h('input', { type: 'checkbox', id: 'hizmet-aktif', checked: x ? !!x.aktif : true });
   const asamaVar = h('input', { type: 'checkbox', id: 'asama-var', checked: !!(x && x.asamalar && x.asamalar.length) });
   let asamalar = x && x.asamalar ? x.asamalar.map(a => ({ ...a })) : [];
@@ -151,7 +154,7 @@ function hizmetFormu(x, yenile) {
         try {
           const ref = x ? doc(db, 'salons', S.salon.id, 'hizmetler', x.id) : doc(collection(db, 'salons', S.salon.id, 'hizmetler'));
           const b = writeBatch(db);
-          b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, guncelleme: serverTimestamp() });
+          b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), guncelleme: serverTimestamp() });
           kayit(b, (yeni ? 'Eklendi: ' : 'Değişti: ') + adT + ' ' + f + ' ₺, ' + s + ' dk');
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
@@ -160,10 +163,36 @@ function hizmetFormu(x, yenile) {
     h('label', null, t('Hizmetin adı'), ad),
     h('label', null, t('Grup'), kat), katListe,
     h('label', null, t('Fiyat (₺)'), fiyat),
+    h('label', null, t('Usta oran grubu'), grupSec), h('p', { class: 'kucuk' }, t('Ustanın bu hizmetten alacağı yüzde, seçilen gruba göre belirlenir (Ustalar bölümünde her usta için yüzdeleri yazarsınız).')),
     h('label', null, t('Toplam süre (dakika)'), sure),
     h('label', { class: 'onay', for: 'asama-var' }, asamaVar, h('span', null, t('Bu hizmet aşamalı (örn. boya: sür, bekle, durula)'))),
     asamaKutu,
     h('label', { class: 'onay', for: 'hizmet-aktif' }, aktif, h('span', null, t('Aktif (pasif hizmet takvimde seçilemez)'))),
     hata, dugme));
   asamaCiz();
+}
+
+// Oran grupları: "Genel" her zaman vardır; yenileri eklenir, adı değiştirilir (kayıtların bozulmaması için silinmez)
+function grupYonetimi(oran, yenile) {
+  let gruplar = oran.gruplar.map(g => ({ ...g }));
+  const kutu = h('div', { class: 'form' });
+  const hata = h('div', { class: 'hata', role: 'alert' });
+  const ciz = () => doldur(kutu,
+    h('p', { class: 'kucuk' }, t('Hizmetleri gruplara ayırarak ustaya farklı yüzdeler verebilirsiniz (örn. boya işlemlerinde %40, diğerlerinde %50). "Genel" her zaman vardır; ustanın bir grup için yüzdesi boşsa Genel yüzdesi geçerli olur.')),
+    h('div', { class: 'satir' }, h('strong', null, t('Genel')), h('span', { class: 'kucuk' }, t('(silinemez, her hizmet varsayılan olarak buradadır)'))),
+    gruplar.map(g => h('div', { class: 'satir' }, h('input', { type: 'text', value: g.ad, maxlength: 30, 'aria-label': t('Grup adı'), oninput: (e) => { g.ad = e.target.value; } }))),
+    gruplar.length < 8 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { gruplar.push({ id: yeniGrupId(), ad: '' }); ciz(); } }, t('+ Oran grubu ekle')) : null,
+    hata);
+  ciz();
+  const k = h('button', { class: 'dugme', type: 'button' }, t('Kaydet'));
+  let pen = null;
+  k.onclick = () => kilitli(k, async () => {
+    hata.textContent = '';
+    const adlar = gruplar.map(g => g.ad.trim());
+    if (adlar.some(a => a.length < 2)) { hata.textContent = t('Her grubun adını yazın (en az 2 harf).'); return; }
+    if (new Set(adlar.map(a => a.toLocaleLowerCase('tr-TR'))).size !== adlar.length || adlar.some(a => a.toLocaleLowerCase('tr-TR') === 'genel')) { hata.textContent = t('Grup adları birbirinden farklı olmalı.'); return; }
+    try { await oranKaydet({ gruplar: gruplar.map((g, i) => ({ id: g.id, ad: adlar[i] })) }, 'Oran grupları: ' + adlar.join(', ')); pen.kapat(); bildir(t('Kaydedildi')); yenile(true); }
+    catch (err) { console.error(err); hata.textContent = hataMetni(err); }
+  });
+  pen = pencereAc(t('Oran grupları'), h('div', null, kutu, h('div', { class: 'dugme-satir' }, k)));
 }

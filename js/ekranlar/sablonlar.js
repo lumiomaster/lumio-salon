@@ -7,7 +7,8 @@ import { SABLON_BILGI, SABLON_ORNEK, sablonVarsayilan, sablonOzel, sablonOzelAya
 
 const DEGISKEN_AD = {
   MUSTERI_ADI: 'Müşteri adı', SALON_ADI: 'Salon adı', IMZA: 'İmza (salon adı)', TARIH: 'Tarih', SAAT: 'Saat',
-  HIZMET: 'Hizmet', USTA_SATIR: 'Usta satırı', USTA_ADI: 'Usta adı', LISTE: 'Ürün listesi'
+  HIZMET: 'Hizmet', USTA_SATIR: 'Usta satırı', USTA_ADI: 'Usta adı', LISTE: 'Ürün listesi',
+  GOOGLE_LINK: 'Google puanlama linki', INSTAGRAM_LINK: 'Instagram adresi', BANKA_ADI: 'Banka adı', HESAP_SAHIBI: 'Hesap sahibi', IBAN_NO: 'IBAN / hesap no'
 };
 
 export function sablonKarti() {

@@ -6,7 +6,7 @@ import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } fr
 import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
 import { mesajGonder, gonderilmisYazi, mesajAnahtar, gonderimleriYukle } from '../mesaj-kayit.js';
-import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle } from '../mesaj.js';
+import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle, baglantilar } from '../mesaj.js';
 import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYaz, urunYazisi, islemYazarMi, elleIslemFormu } from './islem.js';
 import { randevuFormu, takvimCtx } from './takvim.js';
 
@@ -146,6 +146,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
     m.tel ? h('div', { class: 'dugme-satir sol' },
       h('a', { class: 'dugme ikincil kucuk-dugme', href: 'tel:' + telLink(m.tel) }, t('Ara')),
       h('a', { class: 'dugme ikincil kucuk-dugme', href: waLink(m.tel), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mesajMenusu(m) }, t('Mesaj gönder')),
       duzenle ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: async () => {
         const ctx = await ctxAl(); p.kapat();
         randevuFormu(null, ctx, tarihMetin(new Date()), () => { bildir(t('Takvimde görebilirsiniz.')); }, { musteriAd: m.ad, musteriTel: m.tel, musteriId: m.id });
@@ -209,6 +210,38 @@ async function ayrinti(m, ctxAl, ad, yenile) {
           await b.commit(); p.kapat(); bildir(t('Müşteri silindi')); yenile();
         } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
       } }, t('Müşteriyi sil'))) : null);
+}
+
+// Müşteriye tek tıkla WhatsApp mesajı: puanlama isteği, memnuniyet, Instagram daveti, IBAN bilgisi, geri çağırma
+const MESAJ_MENU = [
+  { tur: 'puan', ikon: '⭐', ad: 'Google puanlama isteği', gerek: ['googleLink'], anahtar: 'ay' },
+  { tur: 'memnuniyet', ikon: '💬', ad: 'Memnuniyet mesajı', gerek: ['instagram'], anahtar: 'ay' },
+  { tur: 'instagram', ikon: '📸', ad: 'Instagram daveti', gerek: ['instagram'], anahtar: 'ay' },
+  { tur: 'davet', ikon: '☕', ad: 'Sizi özledik (geri çağırma)', gerek: [], anahtar: 'ay' },
+  { tur: 'iban', ikon: '🏦', ad: 'IBAN / transfer bilgisi', gerek: ['iban'], anahtar: 'gun' }
+];
+const GEREK_AD = { googleLink: 'Google puanlama linkini', instagram: 'Instagram adresini', iban: 'IBAN bilgisini' };
+async function mesajMenusu(m) {
+  const kutu = h('div', { class: 'form' }, h('p', { class: 'soluk' }, t('Yükleniyor…')));
+  const pen = pencereAc(t('Mesaj gönder') + ' · ' + m.ad, kutu);
+  let G = {};
+  try { G = await gonderimleriYukle(); } catch (e) { console.error(e); }
+  const bag = baglantilar(), bugun = tarihMetin(new Date());
+  const ciz = async () => {
+    try { G = await gonderimleriYukle(); } catch (e) { /* eski liste */ }
+    doldur(kutu,
+      !m.tel ? h('p', { class: 'uyari' }, t('Bu müşterinin telefonu kayıtlı değil.')) : null,
+      MESAJ_MENU.map(x => {
+        const eksik = x.gerek.filter(k => !bag[k]);
+        const anahtar = x.anahtar === 'ay' ? bugun.slice(0, 7) : bugun;
+        const g = G[mesajAnahtar(m.id, x.tur, anahtar)] || null;
+        return h('button', { class: 'satir tikla', type: 'button', disabled: !m.tel || eksik.length > 0, onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur: x.tur, anahtar, metin: mesajYap(x.tur, { MUSTERI_ADI: hitap(m.ad) }), onceki: g, yenile: ciz }) },
+          h('strong', null, x.ikon + ' ' + t(x.ad)),
+          eksik.length ? h('div', { class: 'kucuk uyari-yazi' }, t('Önce Salon > Genel bölümünde {x} yazın.', { x: t(GEREK_AD[eksik[0]]) })) : null,
+          g ? h('div', { class: 'kucuk' }, '✓ ' + gonderilmisYazi(g)) : null);
+      }));
+  };
+  ciz();
 }
 
 function dogumBugunMu(m) {

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (8. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (9. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -61,7 +61,8 @@ service cloud.firestore {
 
     function hizmetGecerli() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['ad', 'kategori', 'fiyat', 'sure', 'asamalar', 'aktif', 'guncelleme'])
+      return d.keys().hasOnly(['ad', 'kategori', 'fiyat', 'sure', 'asamalar', 'aktif', 'oranGrup', 'guncelleme'])
+        && (!('oranGrup' in d) || (d.oranGrup is string && d.oranGrup.size() >= 1 && d.oranGrup.size() <= 20))
         && d.ad is string && d.ad.size() >= 2 && d.ad.size() <= 60
         && d.kategori is string && d.kategori.size() <= 40
         && d.fiyat is number && d.fiyat >= 0 && d.fiyat <= 1000000
@@ -239,12 +240,17 @@ service cloud.firestore {
           && (
             (
               ayarId == 'genel'
-              && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'kayipGun', 'guncelleme'])
+              && request.resource.data.keys().hasOnly(['posOrani', 'randevuAdimi', 'salonTel', 'kayipGun', 'instagram', 'googleLink', 'bankaAdi', 'hesapSahibi', 'iban', 'guncelleme'])
               && request.resource.data.posOrani is number
               && request.resource.data.posOrani >= 0 && request.resource.data.posOrani <= 20
               && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
               && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
               && request.resource.data.kayipGun is int && request.resource.data.kayipGun >= 7 && request.resource.data.kayipGun <= 730
+              && (!('instagram' in request.resource.data) || (request.resource.data.instagram is string && request.resource.data.instagram.size() <= 200))
+              && (!('googleLink' in request.resource.data) || (request.resource.data.googleLink is string && request.resource.data.googleLink.size() <= 300))
+              && (!('bankaAdi' in request.resource.data) || (request.resource.data.bankaAdi is string && request.resource.data.bankaAdi.size() <= 80))
+              && (!('hesapSahibi' in request.resource.data) || (request.resource.data.hesapSahibi is string && request.resource.data.hesapSahibi.size() <= 80))
+              && (!('iban' in request.resource.data) || (request.resource.data.iban is string && request.resource.data.iban.size() <= 60))
               && request.resource.data.guncelleme == request.time
             )
             ||
@@ -258,8 +264,17 @@ service cloud.firestore {
             ||
             (
               ayarId == 'mesajlar'
-              && request.resource.data.keys().hasOnly(['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'mutabakatUst', 'tesvik', 'tebrik', 'mutabakatAlt', 'siparis', 'guncelleme'])
-              && (!('dogum' in request.resource.data) || (request.resource.data.dogum is string && request.resource.data.dogum.size() <= 1000)) && (!('takip' in request.resource.data) || (request.resource.data.takip is string && request.resource.data.takip.size() <= 1000)) && (!('davet' in request.resource.data) || (request.resource.data.davet is string && request.resource.data.davet.size() <= 1000)) && (!('onay' in request.resource.data) || (request.resource.data.onay is string && request.resource.data.onay.size() <= 1000)) && (!('hatirlatma' in request.resource.data) || (request.resource.data.hatirlatma is string && request.resource.data.hatirlatma.size() <= 1000)) && (!('mutabakatUst' in request.resource.data) || (request.resource.data.mutabakatUst is string && request.resource.data.mutabakatUst.size() <= 1000)) && (!('tesvik' in request.resource.data) || (request.resource.data.tesvik is string && request.resource.data.tesvik.size() <= 1000)) && (!('tebrik' in request.resource.data) || (request.resource.data.tebrik is string && request.resource.data.tebrik.size() <= 1000)) && (!('mutabakatAlt' in request.resource.data) || (request.resource.data.mutabakatAlt is string && request.resource.data.mutabakatAlt.size() <= 1000)) && (!('siparis' in request.resource.data) || (request.resource.data.siparis is string && request.resource.data.siparis.size() <= 1000))
+              && request.resource.data.keys().hasOnly(['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'mutabakatUst', 'tesvik', 'tebrik', 'mutabakatAlt', 'siparis', 'puan', 'memnuniyet', 'instagram', 'iban', 'guncelleme'])
+              && (!('dogum' in request.resource.data) || (request.resource.data.dogum is string && request.resource.data.dogum.size() <= 1000)) && (!('takip' in request.resource.data) || (request.resource.data.takip is string && request.resource.data.takip.size() <= 1000)) && (!('davet' in request.resource.data) || (request.resource.data.davet is string && request.resource.data.davet.size() <= 1000)) && (!('onay' in request.resource.data) || (request.resource.data.onay is string && request.resource.data.onay.size() <= 1000)) && (!('hatirlatma' in request.resource.data) || (request.resource.data.hatirlatma is string && request.resource.data.hatirlatma.size() <= 1000)) && (!('mutabakatUst' in request.resource.data) || (request.resource.data.mutabakatUst is string && request.resource.data.mutabakatUst.size() <= 1000)) && (!('tesvik' in request.resource.data) || (request.resource.data.tesvik is string && request.resource.data.tesvik.size() <= 1000)) && (!('tebrik' in request.resource.data) || (request.resource.data.tebrik is string && request.resource.data.tebrik.size() <= 1000)) && (!('mutabakatAlt' in request.resource.data) || (request.resource.data.mutabakatAlt is string && request.resource.data.mutabakatAlt.size() <= 1000)) && (!('siparis' in request.resource.data) || (request.resource.data.siparis is string && request.resource.data.siparis.size() <= 1000)) && (!('puan' in request.resource.data) || (request.resource.data.puan is string && request.resource.data.puan.size() <= 1000)) && (!('memnuniyet' in request.resource.data) || (request.resource.data.memnuniyet is string && request.resource.data.memnuniyet.size() <= 1000)) && (!('instagram' in request.resource.data) || (request.resource.data.instagram is string && request.resource.data.instagram.size() <= 1000)) && (!('iban' in request.resource.data) || (request.resource.data.iban is string && request.resource.data.iban.size() <= 1000))
+              && request.resource.data.guncelleme == request.time
+            )
+            ||
+            (
+              ayarId == 'oranlar'
+              && request.resource.data.keys().hasOnly(['gruplar', 'caprazYuzde', 'hedefler', 'guncelleme'])
+              && request.resource.data.gruplar is list && request.resource.data.gruplar.size() <= 8
+              && request.resource.data.caprazYuzde is number && request.resource.data.caprazYuzde >= 0 && request.resource.data.caprazYuzde <= 100
+              && request.resource.data.hedefler is list && request.resource.data.hedefler.size() <= 12
               && request.resource.data.guncelleme == request.time
             )
             ||
@@ -294,7 +309,8 @@ service cloud.firestore {
         allow read: if gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid);
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && uyeSalonda(salonId, ustaUid)
-          && request.resource.data.keys().hasOnly(['yuzde', 'urunPrimi', 'guncelleme'])
+          && request.resource.data.keys().hasOnly(['yuzde', 'urunPrimi', 'oranlar', 'guncelleme'])
+          && (!('oranlar' in request.resource.data) || (request.resource.data.oranlar is map && request.resource.data.oranlar.size() <= 9))
           && request.resource.data.yuzde is number
           && request.resource.data.yuzde >= 0 && request.resource.data.yuzde <= 100
           && request.resource.data.urunPrimi is number
@@ -404,13 +420,15 @@ service cloud.firestore {
       match /ustaSatirlari/{sid} {
         allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
         allow create: if odemeYazar(salonId) && lisansAktif(salonId)
-          && request.resource.data.keys().hasOnly(['ustaUid', 'odemeId', 'tarih', 'donem', 'musteriAd', 'ad', 'tutar', 'alis', 'tur', 'yontem', 'komisyonOrani', 'durum'])
+          && request.resource.data.keys().hasOnly(['ustaUid', 'odemeId', 'tarih', 'donem', 'musteriAd', 'ad', 'tutar', 'alis', 'tur', 'grup', 'yuzde', 'yontem', 'komisyonOrani', 'durum'])
+          && (!('grup' in request.resource.data) || (request.resource.data.grup is string && request.resource.data.grup.size() <= 20))
           && request.resource.data.durum == 'gecerli'
           && request.resource.data.donem == suankiDonem(salonId)
           && request.resource.data.ustaUid is string
           && request.resource.data.tutar is number && request.resource.data.tutar >= 0
           && request.resource.data.alis is number && request.resource.data.alis >= 0
-          && request.resource.data.tur in ['hizmet', 'urun']
+          && request.resource.data.tur in ['hizmet', 'urun', 'capraz']
+          && (!('yuzde' in request.resource.data) || (request.resource.data.yuzde is number && request.resource.data.yuzde >= 0 && request.resource.data.yuzde <= 100))
           && request.resource.data.yontem in ['nakit', 'kart']
           && request.resource.data.odemeId is string
           && existsAfter(odemeYolu(salonId, request.resource.data.odemeId))
@@ -454,6 +472,20 @@ service cloud.firestore {
           && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
           && request.resource.data.donem == suankiDonem(salonId)
           && request.resource.data.not is string && request.resource.data.not.size() <= 100
+          && request.resource.data.veren == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+
+      // ---- Aylık hedef ikramiyesi: "hesaba eklendi" işareti. Belge numarası {ustaUid}_{YYYY-MM}; bir kez yazılır, değiştirilmez, silinmez ----
+      match /ikramiyeler/{iid} {
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['ustaUid', 'ay', 'tutar', 'veren', 'zaman'])
+          && uyeSalonda(salonId, request.resource.data.ustaUid)
+          && request.resource.data.ay is string && request.resource.data.ay.size() == 7
+          && iid == request.resource.data.ustaUid + '_' + request.resource.data.ay
+          && request.resource.data.tutar is number && request.resource.data.tutar > 0 && request.resource.data.tutar <= 1000000
           && request.resource.data.veren == request.auth.uid
           && request.resource.data.zaman == request.time;
         allow update, delete: if false;
@@ -503,7 +535,7 @@ service cloud.firestore {
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'anahtar', 'gonderen', 'gun', 'zaman'])
           && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0
-          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay', 'hatirlatma']
+          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'puan', 'memnuniyet', 'instagram', 'iban']
           && request.resource.data.anahtar is string && request.resource.data.anahtar.size() <= 40
           && kid == request.resource.data.musteriId + '_' + request.resource.data.tur + '_' + request.resource.data.anahtar
           && request.resource.data.gonderen == request.auth.uid

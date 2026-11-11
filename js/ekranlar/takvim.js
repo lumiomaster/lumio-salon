@@ -186,13 +186,15 @@ function ayrinti(r, ctx, yazar, yenile) {
       r.not ? h('p', { class: 'kucuk' }, t('Not: ') + r.not) : null,
       r.iptalNedeni ? h('p', { class: 'kucuk' }, t('İptal nedeni: ') + r.iptalNedeni) : null,
       olusturan ? h('p', { class: 'kucuk' }, t('Randevuyu alan: ') + olusturan.ad) : null),
-    aktif && odemeYazarMi(S.profil.rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
-      h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); odemeFormu(r, yenile); } }, t('Ödeme al'))) : null,
-    aktif && yazar && kendiRandevum && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
-      h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); ilaveHizmetFormu(r, ctx, yenile); } }, t('+ İlave hizmet / işlem'))) : null,
-    aktif && yazar && kendiRandevum ? h('div', { class: 'dugme-satir' },
-      h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
-      h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null);
+    // Alt düğmeler: Ödeme al tam genişlik; altında ilave hizmet; en altta iki eşit düğme (İptal et · Düzenle / ertele)
+    h('div', { class: 'alt-dugmeler' },
+      aktif && odemeYazarMi(S.profil.rol) && lisansDurumu(S.salon).aktif
+        ? h('button', { class: 'dugme tam', type: 'button', onclick: () => { p.kapat(); odemeFormu(r, yenile); } }, t('Ödeme al')) : null,
+      aktif && yazar && kendiRandevum && lisansDurumu(S.salon).aktif
+        ? h('button', { class: 'dugme ikincil tam', type: 'button', onclick: () => { p.kapat(); ilaveHizmetFormu(r, ctx, yenile); } }, t('+ İlave hizmet / işlem')) : null,
+      aktif && yazar && kendiRandevum ? h('div', { class: 'iki-dugme' },
+        h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
+        h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null));
 
   // Formül ve not: usta kendi kalemini yazar; yönetici/kıdemli hepsini; ortak okur; sekreter göremez
   const formulleriDoldur = () => {

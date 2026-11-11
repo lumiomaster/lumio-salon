@@ -4,7 +4,7 @@ import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
-  ustalariYukle, ayariYukle, urunleriYukle, giderleriYukle, aralikOdemeleriniYukle, aralikIslemleriniYukle, aralikHareketleriniYukle, aralikAlislariniYukle
+  ustalariYukle, ayariYukle, urunleriYukle, giderleriYukle, aralikOdemeleriniYukle, aralikIslemleriniYukle, aralikHareketleriniYukle, aralikAlislariniYukle, ikramiyeleriYukle
 } from '../veri.js';
 import { tarihMetin, tarihYazi } from '../takvim-mantik.js';
 import { tarihTR } from '../mesaj.js';
@@ -27,11 +27,11 @@ export function karEkrani() {
 async function yukle(kutu, yenile) {
   try {
     const { bas, bit } = ayAralik(K.ay);
-    const [odemeler, u, ayar, hareketler, urunler, giderler, islemler, alislar] = await Promise.all([
+    const [odemeler, u, ayar, hareketler, urunler, giderler, islemler, alislar, ikramiyeler] = await Promise.all([
       aralikOdemeleriniYukle(bas, bit), ustalariYukle(), ayariYukle(), aralikHareketleriniYukle(bas, bit), urunleriYukle(), giderleriYukle(),
-      aralikIslemleriniYukle(bas, bit), aralikAlislariniYukle(bas, bit)
+      aralikIslemleriniYukle(bas, bit), aralikAlislariniYukle(bas, bit), ikramiyeleriYukle(K.ay).catch(() => [])
     ]);
-    ciz(kutu, { odemeler, mali: u.mali, taban: (ayar && ayar.urunTaban) || 'kar', hareketler, urunler, giderler, islemler, alislar }, yenile);
+    ciz(kutu, { odemeler, mali: u.mali, taban: (ayar && ayar.urunTaban) || 'kar', hareketler, urunler, giderler, islemler, alislar, ikramiyeler }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -68,6 +68,7 @@ function ozet(D) {
       sat(t('Satılan ürünlerin alış maliyeti'), '− ' + para(r.urunMaliyet)),
       sat(t('Formülde kullanılan ürün maliyeti'), '− ' + para(r.formul.toplam)),
       sat(t('Giderler'), '− ' + para(r.gider)),
+      r.ikramiye > 0 ? sat(t('Hedef ikramiyeleri'), '− ' + para(r.ikramiye)) : null,
       h('div', { class: 'hesap-satir ust-cizgi kar-satir' }, h('strong', null, t('Kâr')), h('strong', { class: r.kar < 0 ? 'eksi' : 'kar-artı' }, para(r.kar))),
       marj != null ? h('div', { class: 'kucuk soluk' }, t('Ciroya oranı: %{m}', { m: marj })) : null),
     fiyatsiz ? h('div', { class: 'kart uyari' }, h('p', { class: 'kucuk' }, t('{n} ürünün alış fiyatı girilmemiş; formül maliyeti eksik hesaplanır. Salon > Stok bölümünden girin.', { n: fiyatsiz }))) : null,

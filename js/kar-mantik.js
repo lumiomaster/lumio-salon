@@ -32,7 +32,7 @@ export function formulMaliyeti(hareketler, urunler) {
   return { toplam: yuvarla(kalemler.reduce((a, k) => a + k.maliyet, 0)), kalemler: kalemler.sort((a, b) => b.maliyet - a.maliyet) };
 }
 
-export function karHesapla({ odemeler, mali, taban, hareketler, urunler, giderler, ay }) {
+export function karHesapla({ odemeler, mali, taban, hareketler, urunler, giderler, ay, ikramiyeler }) {
   const gec = odemeler.filter(gecerli);
   const z = gunOzeti(gec);
   const oz = ustaOzetleri(gec, mali, taban);
@@ -42,12 +42,13 @@ export function karHesapla({ odemeler, mali, taban, hareketler, urunler, giderle
   const f = formulMaliyeti(hareketler, urunler);
   const gl = ayGiderleri(giderler, ay);
   const gider = yuvarla(gl.reduce((a, g) => a + g.tutar, 0));
+  const ikramiye = yuvarla((ikramiyeler || []).reduce((a, x) => a + (x.tutar || 0), 0));
   const salonPayi = yuvarla(z.net - hakedis);
   return {
     adet: z.adet, ciro: yuvarla(z.nakit + z.kart), nakit: z.nakit, kart: z.kart, komisyon: z.komisyon, net: z.net,
     hizmetCiro: yuvarla(hizmetCiro), urunCiro: yuvarla(urunCiro), hakedis, salonPayi,
-    urunMaliyet: yuvarla(urunMaliyet), formul: f, gider, giderler: gl,
-    kar: yuvarla(salonPayi - urunMaliyet - f.toplam - gider)
+    urunMaliyet: yuvarla(urunMaliyet), formul: f, gider, giderler: gl, ikramiye,
+    kar: yuvarla(salonPayi - urunMaliyet - f.toplam - gider - ikramiye)
   };
 }
 

@@ -61,7 +61,8 @@ function ciz(kutu, D, yenile) {
 }
 
 // ---------- Ürün kartı formu ----------
-function urunFormu(u, D, yenile) {
+// sonra verilirse (mal kabulden açıldığında) kayıttan sonra yenile yerine yeni ürünle birlikte çağrılır; elde stok sorulmaz (fatura ekler)
+function urunFormu(u, D, yenile, sonra) {
   const yeni = !u;
   const st = { birim: u ? u.birim : 'gram' };
   const ad = h('input', { type: 'text', maxlength: 60, value: u ? u.ad : '', placeholder: t('örn. Wella 6.0 boya') });
@@ -86,7 +87,7 @@ function urunFormu(u, D, yenile) {
         h('label', null, t('Alış fiyatı (₺, 1 {b})', { b }), alis),
         h('label', null, t('Satış fiyatı (₺, 1 {b})', { b }), satis)),
       h('label', null, t('En az stok ({b}) — altına inince uyarı çıkar', { b }), enAz),
-      yeni ? h('div', null, h('strong', null, t('Şu an elinizdeki')),
+      yeni && !sonra ? h('div', null, h('strong', null, t('Şu an elinizdeki')),
         h('div', { class: 'iki-sutun' }, h('label', null, b === t('tüp') ? t('Tüp') : t('Adet'), bTup), gr ? h('label', null, t('+ Gram'), bGr) : null)) : null);
   };
   cizAlan();
@@ -114,7 +115,8 @@ function urunFormu(u, D, yenile) {
           if (yeni) b.set(ref, { ...kart, stok, aktif: true }); else b.update(ref, kart);
           b.set(doc(db, 'salons', S.salon.id, 'urunFiyat', ref.id), { alis: yv(a), satis: yv(s), guncelleme: serverTimestamp() });
           if (yeni && stok > 0) hareket(b, ref.id, stok, 'giris', '', 'Başlangıç stoku');
-          await b.commit(); p.kapat(); bildir(t('Ürün kaydedildi')); yenile();
+          await b.commit(); p.kapat(); bildir(t('Ürün kaydedildi'));
+          if (sonra) sonra({ id: ref.id, ad: adV, birim: st.birim, paketGram: pg, enAz: kart.enAz, stok, aktif: true, alis: yv(a), satis: yv(s) }); else yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
     } }, kutu, hata, dugme));
@@ -173,8 +175,14 @@ function malKabulFormu(D, yenile) {
       const u = uOf(s.urunId);
       return h('div', { class: 'satir' },
         h('div', { class: 'satir-ust' },
-          h('select', { 'aria-label': t('Ürün'), onchange: (e) => { s.urunId = e.target.value; const x = uOf(s.urunId); s.fiyat = x && x.alis ? String(x.alis).replace('.', ',') : ''; ciz(); } },
-            h('option', { value: '' }, t('Ürün seçin…')), aktifler.map(x => h('option', { value: x.id, selected: x.id === s.urunId }, x.ad))),
+          h('select', { 'aria-label': t('Ürün'), onchange: (e) => {
+            if (e.target.value === '__yeni') {
+              e.target.value = s.urunId;
+              urunFormu(null, D, null, (yeniUrun) => { aktifler.push(yeniUrun); D.urunler.push(yeniUrun); s.urunId = yeniUrun.id; s.fiyat = yeniUrun.alis ? String(yeniUrun.alis).replace('.', ',') : ''; ciz(); yenile(); });
+              return;
+            }
+            s.urunId = e.target.value; const x = uOf(s.urunId); s.fiyat = x && x.alis ? String(x.alis).replace('.', ',') : ''; ciz(); } },
+            h('option', { value: '' }, t('Ürün seçin…')), h('option', { value: '__yeni' }, '＋ ' + t('Yeni ürün ekle')), aktifler.map(x => h('option', { value: x.id, selected: x.id === s.urunId }, x.ad))),
           satirlar.length > 1 ? h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Satırı sil'), onclick: () => { satirlar.splice(i, 1); ciz(); } }, '🗑') : null),
         h('div', { class: 'iki-sutun' },
           h('label', null, u ? t('Gelen ({b})', { b: birimAdi(u) }) : t('Gelen miktar'), h('input', { type: 'text', inputmode: 'decimal', value: s.miktar, placeholder: '0', oninput: (e) => { s.miktar = e.target.value; cizOzet(); } })),

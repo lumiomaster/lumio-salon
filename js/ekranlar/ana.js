@@ -12,6 +12,7 @@ import { hatirlatmaKarti } from './musteriler.js';
 import { gonderimleriYukle } from '../mesaj-kayit.js';
 import { mutabakatKarti } from './mutabakat-kart.js';
 import { yarinKarti } from './yarin-kart.js';
+import { hedefKarti } from './hedef-kart.js';
 import { danismanKarti, danismanVar } from './danisman.js';
 
 const YAKINDA = [
@@ -37,6 +38,7 @@ export function anaEkrani() {
     h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol)),
     lisansKart,
     mutabakatKarti(),
+    p.rol !== 'sekreter' ? hedefKarti() : null,
     danismanKarti(),
     p.rol !== 'usta' ? yarinKarti() : null,
     hatirlatmaKutusu(),
