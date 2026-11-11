@@ -1,6 +1,6 @@
 import { t } from '../i18n.js';
 import { UYGULAMA, ROLLER } from '../config.js';
-import { h, telGoster, hataMetni, bildir, kilitli, lisansDurumu, onayIste } from '../util.js';
+import { h, doldur, telGoster, hataMetni, bildir, kilitli, lisansDurumu, onayIste } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import {
@@ -8,6 +8,9 @@ import {
   doc, collection, writeBatch, serverTimestamp
 } from '../fb.js';
 import { goster } from '../main.js';
+import { sablonKarti } from './sablonlar.js';
+import { bildirimDurumu, bildirimAc, bildirimKapat } from '../sunucu.js';
+import { hukukGoster } from '../hukuk.js';
 
 export function ayarlarEkrani() {
   const p = S.profil;
@@ -17,7 +20,14 @@ export function ayarlarEkrani() {
       h('strong', null, p.ad),
       h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol) + ' · ' + telGoster(p.telefon))),
     yetkiliMi(p.rol) ? salonAdiKarti() : null,
+    yetkiliMi(p.rol) ? sablonKarti() : null,
+    bildirimKarti(),
     sifreKarti(),
+    h('div', { class: 'kart' }, h('strong', null, t('Yasal metinler')),
+      h('div', { class: 'dugme-satir sol' },
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hukukGoster('sartlar') }, t('Kullanım şartları')),
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hukukGoster('gizlilik') }, t('Gizlilik / KVKK')),
+        yetkiliMi(p.rol) ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hukukGoster('musteri') }, t('Müşteri aydınlatma şablonu')) : null)),
     h('div', { class: 'kart' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: async () => {
         if (await onayIste(t('Çıkış yapılsın mı?'), t('Çıkış yap'))) { S.sekme = 'ana'; await signOut(auth); }
@@ -74,4 +84,28 @@ function sifreKarti() {
       });
     } },
     h('h2', null, t('Şifre değiştir')), eski, y1, y2, hata, dugme);
+}
+
+// ---- Bildirimler (telefona anlık bildirim) ----
+export function bildirimKarti() {
+  const kutu = h('div', { class: 'kart' });
+  const ciz = async () => {
+    const d = await bildirimDurumu();
+    const yazi = {
+      acik: t('Bu cihazda bildirimler açık.'),
+      kapali: t('Yeni randevu, ekip sohbeti ve hesap itirazları telefonunuza bildirim olarak gelsin.'),
+      izinsiz: t('Bildirimler tarayıcıdan engellenmiş. Telefonun ayarlarından bu uygulamaya bildirim iznini açın.'),
+      ekle: t('iPhone\'da bildirim için önce uygulamayı ana ekrana ekleyin (Safari › Paylaş › Ana Ekrana Ekle), sonra buradan açın.'),
+      desteklenmiyor: t('Bu tarayıcı bildirimleri desteklemiyor.'),
+      'sunucu-yok': t('Bildirim sunucusu henüz kurulmadı.')
+    }[d];
+    const dugme = d === 'acik'
+      ? h('button', { class: 'dugme ikincil', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimKapat(); bildir(t('Bildirimler kapatıldı')); } catch (err) { bildir(hataMetni(err), 'hata'); } ciz(); }) }, t('Bildirimleri kapat'))
+      : d === 'kapali'
+        ? h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimAc(); bildir(t('Bildirimler açıldı')); } catch (err) { bildir(err.message === 'İzin verilmedi' ? t('İzin verilmedi') : hataMetni(err), 'hata'); } ciz(); }) }, t('Bildirimleri aç'))
+        : null;
+    doldur(kutu, h('strong', null, t('Bildirimler')), h('p', { class: 'soluk' }, yazi), dugme);
+  };
+  ciz();
+  return kutu;
 }

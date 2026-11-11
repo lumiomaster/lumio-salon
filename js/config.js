@@ -1,7 +1,7 @@
 // LUMIO SALON - ayarlar (ad, logo ve bağlantılar tek yerden değişir)
 export const UYGULAMA = {
   ad: 'LUMIO SALON',
-  surum: '0.7.0 (7. teslim)',
+  surum: '0.8.0 (8. teslim)',
   logo: 'icons/logo.png'
 };
 
@@ -18,7 +18,7 @@ export const FIREBASE_CONFIG = {
 export const ALIAS_ALAN = 'uye.lumiosalon.app';
 
 export const DENEME_GUN = 14;          // firestore.rules içindeki 14 ile aynı olmalı
-export const YASAL_SURUM = 'taslak-1';  // hukuk metinleri eklenince değişecek
+export const YASAL_SURUM = 'taslak-2';  // avukat onaylı metinler eklenince değişecek
 
 export const ROLLER = {
   yonetici: 'Yönetici',
@@ -26,4 +26,10 @@ export const ROLLER = {
   ortak: 'Ortak',
   sekreter: 'Sekreter',
   usta: 'Usta'
+};
+
+// Cloudflare Worker (bildirim + yapay zekâ danışman). Worker kurulunca url ve vapid doldurulur; boşsa bu özellikler kapalı görünür.
+export const SUNUCU = {
+  url: '',     // örn. 'https://lumio-salon-ai.KULLANICI.workers.dev'
+  vapid: ''    // VAPID_PUBLIC değeri (herkese açık anahtar)
 };

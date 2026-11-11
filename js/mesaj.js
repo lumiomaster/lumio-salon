@@ -1,6 +1,7 @@
 // Müşteri mesajları (WhatsApp tek tık). LUMIO'daki şablonların Pro uyarlaması.
-// Şablonları salonun kendisinin düzenlemesi 8. teslimde gelecek; şimdilik hazır metinler.
+// Hazır metinler LUMIO'dakiyle aynı; salon Ayarlar > Mesaj şablonları'ndan değiştirebilir (ayarlar/mesajlar).
 import { S } from './durum.js';
+import { db, doc, getDoc } from './fb.js';
 
 // "AYŞE yılmaz" -> "Ayşe YILMAZ"
 export function hitap(isim) {
@@ -18,14 +19,49 @@ const SABLON = {
   takip: '📅 Merhaba Sayın {MUSTERI_ADI},\n\nSon işlemimizin üzerinden geçen süreye istinaden, randevu zamanınızı planlamak adına sizi rahatsız ediyoruz 🌸\n\n⏰ Planlanan Tarih: {TARIH}\n{USTA_SATIR}\n📞 Randevunuzu netleştirmek için bu mesaja yanıt vermeniz yeterlidir.\n\nKeyifli günler dileriz! ✨\n{IMZA}',
   dogum: 'Mutlu Yıllar Sayın {MUSTERI_ADI}! 🎂🎉\n\n{SALON_ADI} olarak yeni yaşınızın sağlık, huzur ve bolca ışıltı getirmesini dileriz. 🌸\n\n🎁 Doğum gününüze özel sürpriz bakım hediyeniz salonumuzda sizi bekliyor! Randevunuzu almayı unutmayın.\n\nSevgilerle,\n{IMZA}',
   davet: 'Merhaba Sayın {MUSTERI_ADI}, ☕🌸\n\n{SALON_ADI} olarak bir süredir yokluğunuzu hissediyor, sizi çok özlüyoruz!\n\nHem kendinize hak ettiğiniz ışıltıyı yeniden kazandırmak hem de sıcak bir kahvemiz eşliğinde keyifli bir mola vermek için sizi salonumuza bekliyoruz. ✨\n\nSize en uygun gün ve saati birlikte planlamak için bu mesaja yanıt vermeniz yeterli.\n\nSevgiyle ve güzellikle kalın,\n{IMZA}',
-  onay: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n\nRandevunuz başarıyla oluşturulmuştur. Planlarınızda bir değişiklik olursa önceden haber vermenizi rica ederiz. 🙏\n\nSizi ağırlamak için sabırsızlanıyoruz!\n{IMZA}'
+  onay: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n\nRandevunuz başarıyla oluşturulmuştur. Planlarınızda bir değişiklik olursa önceden haber vermenizi rica ederiz. 🙏\n\nSizi ağırlamak için sabırsızlanıyoruz!\n{IMZA}',
+  hatirlatma: 'Merhaba Sayın {MUSTERI_ADI}, ⏰\n\nYarın için randevunuzu hatırlatmak isteriz:\n\n🗓️ Tarih: {TARIH}\n⏰ Saat: {SAAT}\n💇 İşlem: {HIZMET}\n{USTA_SATIR}\nGelemeyecekseniz lütfen önceden haber veriniz 🙏\n\nGörüşmek üzere!\n{IMZA}',
+  mutabakatUst: 'Merhaba {USTA_ADI} 👋\n\n📅 {TARIH} günü hesabınız:',
+  tesvik: 'Bugün ürün satışınız yok. Her müşteriye bakım sonrası evde kullanacağı bir ürün önermeyi deneyin; küçük bir öneri bile hem müşterinin saçına/cildine hem sizin kazancınıza katkı sağlar 💪',
+  tebrik: '🎉 Tebrikler, bugün ürün sattınız!',
+  mutabakatAlt: '✅ Doğruysa uygulamada Ana sayfadaki "Onaylıyorum" düğmesine basın; yanlışlık varsa "İtirazım var" deyin.\n\n{IMZA}',
+  siparis: 'Merhaba, {SALON_ADI} için sipariş vermek istiyoruz:\n\n{LISTE}\n\nTeşekkürler.'
 };
+
+// Şablon ekranı bilgisi: ad, açıklama, kullanılabilir değişkenler
+export const SABLON_BILGI = [
+  { tur: 'dogum', ad: 'Doğum günü', ack: 'Doğum günü olan müşteriye gider.', degisken: ['MUSTERI_ADI', 'SALON_ADI', 'IMZA'] },
+  { tur: 'takip', ad: 'Sonraki ziyaret hatırlatma', ack: 'Önerilen ziyaret tarihi yaklaşan müşteriye gider.', degisken: ['MUSTERI_ADI', 'TARIH', 'USTA_SATIR', 'IMZA'] },
+  { tur: 'davet', ad: 'Uzun süredir gelmeyen müşteri', ack: 'Bir süredir gelmeyen müşteriyi geri çağırır.', degisken: ['MUSTERI_ADI', 'SALON_ADI', 'IMZA'] },
+  { tur: 'onay', ad: 'Randevu onayı', ack: 'Randevu alınınca müşteriye gider.', degisken: ['MUSTERI_ADI', 'TARIH', 'SAAT', 'HIZMET', 'USTA_SATIR', 'IMZA'] },
+  { tur: 'hatirlatma', ad: 'Yarınki randevu hatırlatma', ack: 'Ertesi gün randevusu olan müşteriye gider.', degisken: ['MUSTERI_ADI', 'TARIH', 'SAAT', 'HIZMET', 'USTA_SATIR', 'IMZA'] },
+  { tur: 'mutabakatUst', ad: 'Usta günlük hesap: başlık', ack: 'Ustaya giden günlük hesap mesajının ilk satırları.', degisken: ['USTA_ADI', 'TARIH'] },
+  { tur: 'tesvik', ad: 'Usta: ürün satışı yok (teşvik)', ack: 'Ustanın o gün ürün satışı yoksa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
+  { tur: 'tebrik', ad: 'Usta: ürün sattı (tebrik)', ack: 'Ustanın ürün satışı varsa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
+  { tur: 'mutabakatAlt', ad: 'Usta günlük hesap: alt yazı', ack: 'Hesap mesajının son satırları.', degisken: ['USTA_ADI', 'IMZA'] },
+  { tur: 'siparis', ad: 'Tedarikçiye sipariş', ack: 'Stok sayfasındaki sipariş listesi mesajı.', degisken: ['SALON_ADI', 'LISTE'] }
+];
+export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', SAAT: '14:30', HIZMET: 'Dip boya + fön', USTA_ADI: 'Mehmet', LISTE: '• Wella 6.0 boya — 3 tüp\n• Şampuan — 4 adet' };
+export const sablonVarsayilan = (tur) => SABLON[tur];
+
+// Salonun kendi şablonları (ayarlar/mesajlar); yoksa hazır metin kullanılır
+let OZEL = {};
+export const sablonOzel = () => ({ ...OZEL });
+export function sablonOzelAyarla(yeni) { OZEL = {}; Object.keys(SABLON).forEach(k => { if (yeni && typeof yeni[k] === 'string' && yeni[k].trim()) OZEL[k] = yeni[k]; }); }
+export async function sablonlariYukle() {
+  OZEL = {};
+  if (!S.salon) return;
+  try {
+    const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'mesajlar'));
+    if (d.exists()) sablonOzelAyarla(d.data());
+  } catch (e) { /* okunamazsa hazır metinler */ }
+}
 
 export function mesajYap(tur, vars) {
   const salon = S.salon ? S.salon.ad : '';
   const v = { SALON_ADI: salon, IMZA: salon, ...vars };
   v.USTA_SATIR = v.USTA_ADI ? '💇 Uzmanımız: ' + v.USTA_ADI + '\n' : '';
-  return SABLON[tur].replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+  return (OZEL[tur] || SABLON[tur]).replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
 }
 
 // LUMIO'daki gibi api.whatsapp.com bağlantısı: wa.me yönlendirmesi emojileri bozabiliyordu (� işareti).

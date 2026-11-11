@@ -182,3 +182,23 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .ay-sec .ikon-dugme { font-size: 1.4rem; padding: 6px 14px; }
 .kar-satir { font-size: 1.1rem; }
 .kar-artı { color: #3ddc97; }
+
+/* ---- 8. teslim: şablonlar, yarın kartı, hukuk ---- */
+.etiket-satir { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--cizgi); background: var(--kart2); color: var(--yazi); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.etiket { display: inline-block; margin-top: 4px; font-size: 12px; color: var(--vurgu); }
+.mesaj-onizle { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 14px; background: rgba(127,127,127,.12); border-radius: 10px; padding: 10px; margin: 0; }
+.satir.tikla { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(127,127,127,.2); color: inherit; font: inherit; padding: 10px 0; cursor: pointer; }
+.hukuk p { margin: 2px 0 12px; font-size: 14px; line-height: 1.5; }
+.gonderildi { color: var(--vurgu); }
+.dan { display: flex; flex-direction: column; gap: 10px; }
+.dan-liste { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+.dan-balon { max-width: 88%; padding: 9px 12px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; line-height: 1.4; font-size: .95rem; }
+.dan-o { background: var(--kart2); align-self: flex-start; border: 1px solid var(--cizgi); }
+.dan-ben { background: var(--vurgu); color: #fff; align-self: flex-end; }
+.dan-yaziyor { opacity: .7; font-style: italic; }
+.dan-yaz { width: 100%; resize: none; font: inherit; }
+.dan-yaz, textarea.mesaj-kutu { background: var(--kart2); color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px; box-sizing: border-box; }
+.dan-yaz:focus, textarea.mesaj-kutu:focus { outline: 2px solid var(--vurgu); }
+.satir.yarin-satir { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.yarin-satir > div { flex: 1; min-width: 0; }

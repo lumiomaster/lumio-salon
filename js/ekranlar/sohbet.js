@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { bildirimYolla } from '../sunucu.js';
 import { h, doldur, hataMetni, bildir, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
@@ -100,7 +101,7 @@ export async function sohbetAc() {
           const gun = tarihMetin(new Date());
           b.set(doc(collection(db, 'salons', S.salon.id, 'sohbet')), { uid: ben, metin, gun, zaman: serverTimestamp() });
           b.set(doc(db, 'salons', S.salon.id, 'sohbetDurum', 'son'), { uid: ben, gun, zaman: serverTimestamp() });
-          await b.commit(); yaz.value = ''; sonSayi = -1; await yenile();
+          await b.commit(); bildirimYolla({ salon: true }, S.profil.ad.split(' ')[0] + ' · ' + t('Ekip sohbeti'), metin.slice(0, 120), { etiket: 'sohbet' }); yaz.value = ''; sonSayi = -1; await yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
         gonder.disabled = false; yaz.focus();
       } }, yaz, hata, gonder) : h('p', { class: 'kucuk' }, t('Deneme/lisans süresi bittiği için yeni mesaj yazılamaz.')),

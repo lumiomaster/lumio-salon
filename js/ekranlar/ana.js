@@ -11,9 +11,11 @@ import { musterileriYukle } from '../veri.js';
 import { hatirlatmaKarti } from './musteriler.js';
 import { gonderimleriYukle } from '../mesaj-kayit.js';
 import { mutabakatKarti } from './mutabakat-kart.js';
+import { yarinKarti } from './yarin-kart.js';
+import { danismanKarti, danismanVar } from './danisman.js';
 
 const YAKINDA = [
-  { ad: 'Bildirim, WhatsApp hatırlatma ve yapay zekâ', ikon: '🔔', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
+  { ad: 'Yapay zekâ danışman', ikon: '🔔', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
 ];
 
 export function anaEkrani() {
@@ -35,11 +37,13 @@ export function anaEkrani() {
     h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol)),
     lisansKart,
     mutabakatKarti(),
+    danismanKarti(),
+    p.rol !== 'usta' ? yarinKarti() : null,
     hatirlatmaKutusu(),
     yetkiliMi(p.rol) ? stokKarti() : null,
     yetkiliMi(p.rol) ? kurulumKarti() : null,
-    h('h2', null, t('Yakında eklenecek')),
-    h('div', { class: 'yakinda' }, YAKINDA.filter(y => y.roller.includes(p.rol)).map(y =>
+    danismanVar() ? null : h('h2', null, t('Yakında eklenecek')),
+    danismanVar() ? null : h('div', { class: 'yakinda' }, YAKINDA.filter(y => y.roller.includes(p.rol)).map(y =>
       h('div', { class: 'kart yakinda-oge' }, h('span', { class: 'ikon' }, y.ikon), h('span', null, t(y.ad)), h('small', null, t('Yakında'))))));
 }
 

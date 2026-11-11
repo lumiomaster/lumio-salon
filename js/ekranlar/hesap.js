@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { mesajYap } from '../mesaj.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi, gorenMi } from '../roller.js';
@@ -156,7 +157,7 @@ export function mutabakatMetni(u, g, tarih, salonAd, mali) {
   const hTop = yuvarla(hl.reduce((a, m) => a + m.tutar, 0)), hPay = yuvarla(hl.reduce((a, m) => a + m.pay, 0));
   const uTop = yuvarla(urunler.reduce((a, x) => a + x.d.tutar, 0)), uPay = yuvarla(urunler.reduce((a, x) => a + x.d.pay, 0));
   const r = [];
-  r.push('Merhaba ' + ad + ' 👋', '', '📅 ' + tarihTR(tarih) + ' günü hesabınız:', '');
+  r.push(mesajYap('mutabakatUst', { USTA_ADI: ad, TARIH: tarihTR(tarih) }), '');
   r.push('✂️ HİZMETLER');
   if (!hl.length) r.push('Bu gün hizmet kaydı yok.');
   hl.forEach((m, i) => {
@@ -165,14 +166,14 @@ export function mutabakatMetni(u, g, tarih, salonAd, mali) {
   });
   if (hl.length) r.push('', '👥 ' + hl.length + ' müşteri · Alınan ' + tl(hTop) + ' · Ustaya kalan ' + tl(hPay));
   r.push('', '🛍️ ÜRÜN SATIŞI');
-  if (!urunler.length) r.push('Bugün ürün satışınız yok. Her müşteriye bakım sonrası evde kullanacağı bir ürün önermeyi deneyin; küçük bir öneri bile hem müşterinin saçına/cildine hem sizin kazancınıza katkı sağlar 💪');
+  if (!urunler.length) r.push(mesajYap('tesvik', { USTA_ADI: ad }));
   else {
-    r.push('🎉 Tebrikler, bugün ürün sattınız!');
+    r.push(mesajYap('tebrik', { USTA_ADI: ad }));
     urunler.forEach(({ o, k, d }, i) => r.push((i + 1) + ') ' + k.ad + (o.musteriAd ? ' (' + o.musteriAd + ')' : '') + ' — Alınan: ' + tl(d.tutar) + ' (' + yontemAd(o) + ')' + (o.yontem === 'kart' ? ' · Komisyon: ' + tl(d.komisyon) : '') + ' · Ustaya kalan: ' + tl(d.pay)));
     r.push('', '📦 ' + urunler.length + ' ürün · Alınan ' + tl(uTop) + ' · Ustaya kalan ' + tl(uPay));
   }
   r.push('', '━━━━━━━━━━', 'Hizmetlerden: ' + tl(hPay), 'Ürün satışından: ' + tl(uPay), '💰 GENEL TOPLAM KAZANCINIZ: ' + tl(yuvarla(hPay + uPay)), '',
-    '✅ Doğruysa uygulamada Ana sayfadaki "Onaylıyorum" düğmesine basın; yanlışlık varsa "İtirazım var" deyin.', '', salonAd || '');
+    mesajYap('mutabakatAlt', { USTA_ADI: ad, IMZA: salonAd || '' }));
   return r.join('\n');
 }
 

@@ -1,5 +1,6 @@
 import { t } from '../i18n.js';
 import { UYGULAMA, YASAL_SURUM } from '../config.js';
+import { hukukGoster } from '../hukuk.js';
 import { h, telNormalize, eposta, hataMetni, bildir, kilitli } from '../util.js';
 import { S } from '../durum.js';
 import {
@@ -81,7 +82,10 @@ function kurFormu() {
     h('label', null, t('Şifre'), s1),
     h('label', null, t('Şifre tekrar'), s2),
     h('label', { class: 'onay', for: 'yasal-onay' }, onay,
-      h('span', null, t('Kullanım koşullarını ve kişisel verilerin korunması metnini okudum, kabul ediyorum. (Metinler yayından önce eklenecek; şimdilik deneme sürümüdür.)'))),
+      h('span', null, t('Kullanım şartlarını ve gizlilik/KVKK metnini okudum, kabul ediyorum.'))),
+    h('div', { class: 'kucuk' },
+      h('button', { class: 'baglanti', type: 'button', onclick: () => hukukGoster('sartlar') }, t('Kullanım şartları')), ' · ',
+      h('button', { class: 'baglanti', type: 'button', onclick: () => hukukGoster('gizlilik') }, t('Gizlilik / KVKK'))),
     hata, dugme);
 }
 

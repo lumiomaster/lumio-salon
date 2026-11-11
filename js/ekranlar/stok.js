@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { mesajYap } from '../mesaj.js';
 import { h, doldur, hataMetni, bildir, kilitli, sayi, para, pencereAc, onayIste, lisansDurumu, telNormalize } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
@@ -279,7 +280,7 @@ function siparisListesi(D, yenile) {
   ciz();
   const metin = () => {
     const l = satirlar.filter(s => s.sec && sayi(s.miktar) > 0).map(s => '• ' + s.u.ad + ' — ' + sayi(s.miktar) + ' ' + birimAdi(s.u));
-    return l.length ? 'Merhaba, ' + S.salon.ad + ' için sipariş vermek istiyoruz:\n\n' + l.join('\n') + '\n\nTeşekkürler.' : '';
+    return l.length ? mesajYap('siparis', { LISTE: l.join('\n') }) : '';
   };
   const hata = h('div', { class: 'hata', role: 'alert' });
   const gonder = h('button', { class: 'dugme', type: 'button', onclick: async () => {

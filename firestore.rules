@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (7. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (8. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -257,6 +257,13 @@ service cloud.firestore {
             )
             ||
             (
+              ayarId == 'mesajlar'
+              && request.resource.data.keys().hasOnly(['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'mutabakatUst', 'tesvik', 'tebrik', 'mutabakatAlt', 'siparis', 'guncelleme'])
+              && (!('dogum' in request.resource.data) || (request.resource.data.dogum is string && request.resource.data.dogum.size() <= 1000)) && (!('takip' in request.resource.data) || (request.resource.data.takip is string && request.resource.data.takip.size() <= 1000)) && (!('davet' in request.resource.data) || (request.resource.data.davet is string && request.resource.data.davet.size() <= 1000)) && (!('onay' in request.resource.data) || (request.resource.data.onay is string && request.resource.data.onay.size() <= 1000)) && (!('hatirlatma' in request.resource.data) || (request.resource.data.hatirlatma is string && request.resource.data.hatirlatma.size() <= 1000)) && (!('mutabakatUst' in request.resource.data) || (request.resource.data.mutabakatUst is string && request.resource.data.mutabakatUst.size() <= 1000)) && (!('tesvik' in request.resource.data) || (request.resource.data.tesvik is string && request.resource.data.tesvik.size() <= 1000)) && (!('tebrik' in request.resource.data) || (request.resource.data.tebrik is string && request.resource.data.tebrik.size() <= 1000)) && (!('mutabakatAlt' in request.resource.data) || (request.resource.data.mutabakatAlt is string && request.resource.data.mutabakatAlt.size() <= 1000)) && (!('siparis' in request.resource.data) || (request.resource.data.siparis is string && request.resource.data.siparis.size() <= 1000))
+              && request.resource.data.guncelleme == request.time
+            )
+            ||
+            (
               ayarId == 'kapanis'
               && request.resource.data.keys().hasOnly(['donem', 'guncelleme'])
               && request.resource.data.donem is int
@@ -496,7 +503,7 @@ service cloud.firestore {
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'anahtar', 'gonderen', 'gun', 'zaman'])
           && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0
-          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay']
+          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay', 'hatirlatma']
           && request.resource.data.anahtar is string && request.resource.data.anahtar.size() <= 40
           && kid == request.resource.data.musteriId + '_' + request.resource.data.tur + '_' + request.resource.data.anahtar
           && request.resource.data.gonderen == request.auth.uid
@@ -561,7 +568,7 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // ---- Salon giderleri (7. teslim): kira, fatura, malzeme... Aylık tekrarlayanlar her ay sayılır. Yalnız yönetici/kıdemli/ortak. ----
+      // ---- Salon giderleri (8. teslim): kira, fatura, malzeme... Aylık tekrarlayanlar her ay sayılır. Yalnız yönetici/kıdemli/ortak. ----
       match /giderler/{gid} {
         allow read: if gorenMi(salonId);
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)

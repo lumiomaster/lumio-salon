@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { bildirimYolla } from '../sunucu.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { gorenMi } from '../roller.js';
@@ -25,6 +26,7 @@ async function yaz(uid, tarih, durum, not, tutar) {
   const b = writeBatch(db);
   b.set(doc(db, 'salons', S.salon.id, 'mutabakat', uid + '_' + tarih), { ustaUid: uid, tarih, durum, not: durum === 'itiraz' ? not : '', tutar, guncelleme: serverTimestamp() });
   await b.commit();
+  if (durum === 'itiraz') bildirimYolla({ yetkililer: true }, t('Hesaba itiraz'), (S.profil.ad || '').split(' ')[0] + ': ' + (not || '').slice(0, 100), { etiket: 'mutabakat' });
 }
 
 async function ustaKarti(kutu, yenile) {

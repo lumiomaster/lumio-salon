@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { bildirimYolla } from '../sunucu.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisansDurumu, telNormalize, telGoster } from '../util.js';
 import { S } from '../durum.js';
 import { randevuYazarMi, odemeYazarMi } from '../roller.js';
@@ -497,6 +498,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
           }
           throw err;
         }
+        if (yeni) { const ben = auth.currentUser.uid; const hedef = [...new Set(kalemler.map(k => k.ustaUid))].filter(u => u !== ben); if (hedef.length) bildirimYolla({ uidler: hedef }, t('Yeni randevu'), tarihTR(tarih) + ' ' + dkMetin(bas) + ' · ' + ad, { etiket: 'randevu' }); }
         tarihGit(tarih);
         pencere.kapat(); bildir(yeni ? t('Randevu kaydedildi') : t('Randevu güncellendi')); yenile();
       } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
