@@ -9,6 +9,7 @@ import { gunOzeti } from '../kasa-mantik.js';
 import { goster } from '../main.js';
 import { odemeFormu } from './odeme-formu.js';
 import { kalemDetay } from './kalem-detay.js';
+import { hizmetDuzeltmesi } from './duzeltme.js';
 import { iptalFormu } from './takvim.js';
 import { hesapEkrani } from './hesap.js';
 import { kazancimEkrani } from './kazancim.js';
@@ -90,6 +91,7 @@ function odemeAyrinti(o, ad, donem, yenile) {
   const icerik = h('div', null);
   const p = pencereAc(t('Ödeme'), icerik);
   const iptalEdebilir = yetkiliMi(S.profil.rol) && o.durum === 'gecerli' && o.donem === donem && lisansDurumu(S.salon).aktif;
+  const duzeltebilir = odemeYazarMi(S.profil.rol) && o.durum === 'gecerli' && o.donem === donem && lisansDurumu(S.salon).aktif;
   doldur(icerik,h('div', { class: 'ayrinti' },
     h('div', null, h('strong', null, o.musteriAd || t('Satış')), o.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : null),
     h('div', { class: 'soluk' }, tarihYazi(o.tarih) + ' ' + saat(o.zaman) + ' · ' + (o.yontem === 'kart' ? t('Kart') : t('Nakit'))),
@@ -99,8 +101,10 @@ function odemeAyrinti(o, ad, donem, yenile) {
       h('div', { class: 'kucuk' }, (k.ustaUid ? ad(k.ustaUid) : t('Salon')) + ' ›')))),
     o.komisyon > 0 ? h('div', { class: 'uye-ust kucuk' }, h('span', null, t('Kart komisyonu')), h('span', null, '− ' + para(o.komisyon))) : null,
     h('div', { class: 'uye-ust' }, h('span', { class: 'soluk' }, t('Toplam')), h('strong', null, para(o.toplam))),
+    o.duzeltmeOf ? h('p', { class: 'kucuk' }, t('Bu, aynı güne sonradan eklenen bir hizmettir (düzeltme).')) : null,
     o.iptalNedeni ? h('p', { class: 'kucuk' }, t('İptal nedeni: ') + o.iptalNedeni) : null,
     h('p', { class: 'kucuk' }, t('Ödemeyi alan: ') + ad(o.alan))),
+    duzeltebilir ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); hizmetDuzeltmesi(o, yenile); } }, t('Hizmet ekle (düzeltme)'))) : null,
     iptalEdebilir ? h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); odemeIptal(o, yenile); } }, t('Ödemeyi iptal et'))) : null,
     !iptalEdebilir && o.durum === 'gecerli' && o.donem !== donem ? h('p', { class: 'kucuk' }, t('Bu ödeme kapanmış bir döneme ait, iptal edilemez.')) : null);
 }
@@ -120,7 +124,7 @@ function odemeIptal(o, yenile) {
           const b = writeBatch(db);
           b.update(doc(db, 'salons', S.salon.id, 'odemeler', o.id), { durum: 'iptal', iptalNedeni: neden.value.trim() });
           (await odemeSatirlariniYukle(o.id)).forEach(x => b.update(doc(db, 'salons', S.salon.id, 'ustaSatirlari', x.id), { durum: 'iptal' }));
-          if (o.rid) b.update(doc(db, 'salons', S.salon.id, 'randevular', o.rid), { durum: 'bekliyor', odemeId: '', guncelleme: serverTimestamp() });
+          if (o.rid && !o.duzeltmeOf) b.update(doc(db, 'salons', S.salon.id, 'randevular', o.rid), { durum: 'bekliyor', odemeId: '', guncelleme: serverTimestamp() });
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_iptal', hedef: o.id, ayrinti: o.toplam + ' ₺: ' + neden.value.trim(), zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Ödeme iptal edildi.')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }

@@ -85,13 +85,13 @@ async function yoneticiKarti(kutu) {
   if (!satirlar.length) return doldur(kutu);
   doldur(kutu, h('div', { class: 'kart bilgi mut-kart' },
     h('strong', null, t('Usta mutabakatları')),
-    satirlar.map(x => h('div', { class: 'mut-ozet' },
-      h('div', { class: 'uye-ust' }, h('span', null, x.g === bugun ? t('Bugün') : t('Dün')), h('span', { class: 'kucuk' }, t('{a} onayladı · {b} bekliyor · {c} itiraz', { a: x.onay.length, b: x.bekleyen.length, c: x.itiraz.length }))),
-      x.bekleyen.length ? h('div', { class: 'kucuk' }, t('Bekleyen: ') + x.bekleyen.map(ad).join(', ')) : null,
-      x.itiraz.map(i => h('div', { class: 'kucuk uyari-yazi' }, ad(i.u) + ': “' + i.not + '”')))),
-    h('div', { class: 'dugme-satir sol' }, satirlar.map(x => {
+    h('p', { class: 'kucuk' }, t('Bir güne dokunarak o günün onaylamayan ustalarını açabilirsiniz.')),
+    satirlar.map(x => {
       const kalan = [...x.bekleyen, ...x.itiraz.map(i => i.u)];
-      return kalan.length ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hesapAc(x.g, kalan) },
-        t('Onaylamayanları aç') + ' (' + (x.g === bugun ? t('Bugün') : t('Dün')) + ')') : null;
-    }), h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hesapAc(satirlar[0].g, null) }, t('Usta hesaplarını aç')))));
+      return h('button', { class: 'mut-ozet tikla', type: 'button', onclick: () => hesapAc(x.g, kalan.length ? kalan : null) },
+        h('div', { class: 'uye-ust' }, h('strong', null, (x.g === bugun ? t('Bugün') : t('Dün')) + ' ›'), h('span', { class: 'kucuk' }, t('{a} onayladı · {b} bekliyor · {c} itiraz', { a: x.onay.length, b: x.bekleyen.length, c: x.itiraz.length }))),
+        x.bekleyen.length ? h('div', { class: 'kucuk' }, t('Bekleyen: ') + x.bekleyen.map(ad).join(', ')) : null,
+        x.itiraz.map(i => h('div', { class: 'kucuk uyari-yazi' }, ad(i.u) + ': “' + i.not + '”')));
+    }),
+    h('div', { class: 'mut-dugmeler' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hesapAc(satirlar[0].g, null) }, t('Tüm usta hesaplarını aç')))));
 }

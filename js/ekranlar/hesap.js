@@ -102,11 +102,14 @@ function ustaKart(s, m, yetkili, D, yenile) {
     s.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(s.devir))) : null,
     h('div', { class: 'hesap-satir mut' }, h('span', null, t('Mutabakat') + ' (' + tarihYazi(H.tarih).split(' ').slice(0, 2).join(' ') + ')'),
       m ? h('span', { class: 'rozet ' + (m.durum === 'onay' ? 'odendi-rozet' : 'uyari-rozet') }, m.durum === 'onay' ? t('Onayladı') : t('İtiraz var')) : h('span', { class: 'soluk kucuk' }, t('Bekliyor'))),
-    m && m.durum === 'onay' && m.onaylayan ? h('div', { class: 'kucuk' }, t('Sözlü onay: {ad} işaretledi.', { ad: (D.uyeler.find(x => x.id === m.onaylayan) || { ad: '?' }).ad })) : null,
+    m && m.durum === 'onay' && m.onaylayan ? h('div', { class: 'kucuk' }, t('Sözlü onay: {ad} işaretledi.', { ad: (D.uyeler.find(x => x.id === m.onaylayan) || { ad: '?' }).ad }) + (m.not ? ' — ' + m.not : '')) : null,
     m && m.durum === 'itiraz' && m.not ? h('div', { class: 'kucuk uyari-yazi' }, '“' + m.not + '”') : null,
     !m && yetkili ? h('div', { class: 'dugme-satir sol' },
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mutabakatMesaji(s, D) }, t('WhatsApp ile hatırlat')),
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => yoneticiOnayi(s, D, yenile) }, t('Sözlü onayladı'))) : null,
+    m && m.durum === 'itiraz' && yetkili ? h('div', { class: 'dugme-satir sol' },
+      h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => itirazKapat(s, m, D, yenile) }, t('Sözlü mutabakat sağlandı')),
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mutabakatMesaji(s, D) }, t('WhatsApp ile yaz'))) : null,
     yetkili ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => avansFormu(s, D, yenile) }, t('Avans ver')) : null);
 }
 
@@ -145,8 +148,9 @@ export function mutabakatMetni(u, g, tarih, salonAd, mali) {
   g.forEach(({ odeme: o, kalem: k }) => {
     const d = satirDokumu(o, k, mali);
     if (k.tur === 'urun') { urunler.push({ o, k, d }); return; }
-    const m = hizmet.get(o.id) || { o, kalemler: [], tutar: 0, kom: 0, pay: 0 };
-    m.kalemler.push(k.ad); m.tutar += d.tutar; m.kom += d.komisyon; m.pay += d.pay; hizmet.set(o.id, m);
+    const anahtar = o.duzeltmeOf || o.id;
+    const m = hizmet.get(anahtar) || { o, kalemler: [], tutar: 0, kom: 0, pay: 0, yontemler: new Set() };
+    m.yontemler.add(yontemAd(o)); m.kalemler.push(k.ad); m.tutar += d.tutar; m.kom += d.komisyon; m.pay += d.pay; hizmet.set(anahtar, m);
   });
   const hl = [...hizmet.values()];
   const hTop = yuvarla(hl.reduce((a, m) => a + m.tutar, 0)), hPay = yuvarla(hl.reduce((a, m) => a + m.pay, 0));
@@ -157,7 +161,7 @@ export function mutabakatMetni(u, g, tarih, salonAd, mali) {
   if (!hl.length) r.push('Bu gün hizmet kaydı yok.');
   hl.forEach((m, i) => {
     r.push((i + 1) + ') ' + (m.o.musteriAd || 'Müşteri') + ' — ' + m.kalemler.join(' + '));
-    r.push('   Alınan: ' + tl(m.tutar) + ' (' + yontemAd(m.o) + ')' + (m.o.yontem === 'kart' ? ' · Komisyon: ' + tl(yuvarla(m.kom)) : '') + ' · Ustaya kalan: ' + tl(yuvarla(m.pay)));
+    r.push('   Alınan: ' + tl(m.tutar) + ' (' + [...m.yontemler].join(' + ') + ')' + (m.kom > 0 ? ' · Komisyon: ' + tl(yuvarla(m.kom)) : '') + ' · Ustaya kalan: ' + tl(yuvarla(m.pay)));
   });
   if (hl.length) r.push('', '👥 ' + hl.length + ' müşteri · Alınan ' + tl(hTop) + ' · Ustaya kalan ' + tl(hPay));
   r.push('', '🛍️ ÜRÜN SATIŞI');
@@ -184,6 +188,33 @@ function mutabakatMesaji(s, D) {
   pencereAc(t('Mutabakat mesajı') + ' · ' + s.ad, h('div', { class: 'form' },
     h('p', { class: 'kucuk' }, t('Göndermeden önce metni düzenleyebilirsiniz.')), kutu,
     h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme', type: 'button', onclick: () => waAc(u.telefon, kutu.value) }, t("WhatsApp'ta aç")), kopya)));
+}
+
+// İtiraz eden ustayla konuşulup çözüldüğünde yönetici kapatır: itiraz notu korunur, çözüm ve kapatan kişi kayda geçer
+function itirazKapat(s, m, D, yenile) {
+  const g = gunPayi(s, D);
+  const cozum = h('textarea', { rows: 3, maxlength: 120, class: 'liste-metin', placeholder: t('Ne konuşuldu / ne düzeltildi? (örn. kaş işlemi eklendi, usta kabul etti)') });
+  const hata = h('div', { class: 'hata', role: 'alert' });
+  const dugme = h('button', { class: 'dugme', type: 'submit' }, t('Mutabakatı kapat'));
+  const icerik = h('div', null);
+  const p = pencereAc(s.ad + ' · ' + t('itiraz'), icerik);
+  icerik.append(h('form', { class: 'form', novalidate: true,
+    onsubmit: (e) => {
+      e.preventDefault(); hata.textContent = '';
+      if (cozum.value.trim().length < 3) { hata.textContent = t('Çözümü kısaca yazın.'); return; }
+      kilitli(dugme, async () => {
+        try {
+          const not = ('İtiraz: ' + (m.not || '') + ' → Çözüm: ' + cozum.value.trim()).slice(0, 300);
+          const b = writeBatch(db);
+          b.update(doc(db, 'salons', S.salon.id, 'mutabakat', s.uid + '_' + H.tarih), { ustaUid: s.uid, tarih: H.tarih, durum: 'onay', not, tutar: g.pay, onaylayan: auth.currentUser.uid, guncelleme: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'mutabakat_itiraz_kapandi', hedef: s.uid, ayrinti: s.ad + ' ' + H.tarih + ': ' + cozum.value.trim().slice(0, 100), zaman: serverTimestamp() });
+          await b.commit(); p.kapat(); bildir(t('Mutabakat kapatıldı')); yenile();
+        } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
+      });
+    } },
+    h('p', null, t('Ustanın itirazı:') + ' “' + (m.not || '') + '”'),
+    h('p', { class: 'kucuk' }, t('Ustayla konuşup konuyu çözdükten sonra buradan kapatın. İtiraz ve çözüm kayıtta kalır.')),
+    h('label', null, t('Çözüm notu'), cozum), hata, dugme));
 }
 
 // Usta telefona bakmıyorsa yönetici sözlü onayı işaretler (kim işaretlediği kayda geçer)

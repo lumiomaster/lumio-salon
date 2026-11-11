@@ -7,6 +7,7 @@ import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle } from '../ver
 import { goster } from '../main.js';
 import { musterileriYukle } from '../veri.js';
 import { hatirlatmaKarti } from './musteriler.js';
+import { gonderimleriYukle } from '../mesaj-kayit.js';
 import { mutabakatKarti } from './mutabakat-kart.js';
 
 const YAKINDA = [
@@ -65,8 +66,8 @@ function kurulumKarti() {
 // Ana sayfada: doğum günleri, sonraki ziyareti yaklaşanlar, uzun süredir gelmeyenler (WhatsApp tek tık)
 function hatirlatmaKutusu() {
   const kutu = h('div', null);
-  const doldurKutu = () => Promise.all([musterileriYukle(), ayariYukle()]).then(([liste, ayar]) => {
-    doldur(kutu, hatirlatmaKarti(liste, ayar, null, doldurKutu));
+  const doldurKutu = () => Promise.all([musterileriYukle(), ayariYukle(), gonderimleriYukle().catch(() => ({}))]).then(([liste, ayar, G]) => {
+    doldur(kutu, hatirlatmaKarti(liste, ayar, null, doldurKutu, G));
   }).catch(() => {});
   doldurKutu();
   return kutu;

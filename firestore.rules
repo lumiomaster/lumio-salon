@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 5)
+// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 8)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -343,7 +343,8 @@ service cloud.firestore {
         // Usta bu belgeyi okuyamaz (başka ustaların tutarları da içinde); kendi satırlarını "ustaSatirlari"ndan okur.
         allow read: if uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
         allow create: if odemeYazar(salonId) && lisansAktif(salonId)
-          && request.resource.data.keys().hasOnly(['rid', 'musteriId', 'tarih', 'donem', 'yontem', 'musteriAd', 'kalemler', 'ustalar', 'toplam', 'komisyonOrani', 'komisyon', 'durum', 'alan', 'zaman'])
+          && request.resource.data.keys().hasOnly(['rid', 'musteriId', 'tarih', 'donem', 'yontem', 'musteriAd', 'kalemler', 'ustalar', 'toplam', 'komisyonOrani', 'komisyon', 'durum', 'alan', 'zaman', 'duzeltmeOf'])
+          && (!('duzeltmeOf' in request.resource.data) || (request.resource.data.duzeltmeOf is string && request.resource.data.duzeltmeOf.size() > 0 && request.resource.data.duzeltmeOf.size() <= 40))
           && request.resource.data.durum == 'gecerli'
           && request.resource.data.alan == request.auth.uid
           && request.resource.data.zaman == request.time
@@ -452,7 +453,33 @@ service cloud.firestore {
           && request.resource.data.tutar is number
           && request.resource.data.onaylayan == request.auth.uid
           && request.resource.data.guncelleme == request.time;
+        // Usta itiraz ettiyse yönetici/kıdemli/ortak ustayla konuşup "sözlü mutabakat sağlandı" diye kapatır (itiraz notu korunur, kim kapattığı saklanır)
+        allow update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && resource.data.durum == 'itiraz'
+          && request.resource.data.keys().hasOnly(['ustaUid', 'tarih', 'durum', 'not', 'tutar', 'onaylayan', 'guncelleme'])
+          && request.resource.data.ustaUid == resource.data.ustaUid
+          && request.resource.data.tarih == resource.data.tarih
+          && request.resource.data.durum == 'onay'
+          && request.resource.data.not is string && request.resource.data.not.size() <= 300
+          && request.resource.data.tutar is number
+          && request.resource.data.onaylayan == request.auth.uid
+          && request.resource.data.guncelleme == request.time;
         allow delete: if false;
+      }
+
+      // ---- Müşteriye gönderilen mesajların kaydı (aynı mesaj iki kez gitmesin; yalnız eklenir) ----
+      match /mesajlar/{kid} {
+        allow read: if uyeMi(salonId);
+        allow create: if randevuYazar(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'anahtar', 'gonderen', 'gun', 'zaman'])
+          && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0
+          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay']
+          && request.resource.data.anahtar is string && request.resource.data.anahtar.size() <= 40
+          && kid == request.resource.data.musteriId + '_' + request.resource.data.tur + '_' + request.resource.data.anahtar
+          && request.resource.data.gonderen == request.auth.uid
+          && request.resource.data.gun is string && request.resource.data.gun.size() == 10
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
       }
 
       // ---- Ustanın dönemden devreden borcu (yalnız Hesabı kapat yazar) ----

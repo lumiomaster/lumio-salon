@@ -5,6 +5,7 @@ import { randevuYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
+import { mesajGonder, gonderilmisYazi, mesajAnahtar, gonderimleriYukle } from '../mesaj-kayit.js';
 import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle } from '../mesaj.js';
 import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYazarMi, elleIslemFormu } from './islem.js';
 import { randevuFormu, takvimCtx } from './takvim.js';
@@ -20,8 +21,8 @@ export function musterilerEkrani() {
 
 async function yukle(kutu, yenile) {
   try {
-    const [liste, uyeler, ayar] = await Promise.all([musterileriYukle(), uyeleriYukle(), ayariYukle()]);
-    ciz(kutu, liste, uyeler, ayar, yenile);
+    const [liste, uyeler, ayar, G] = await Promise.all([musterileriYukle(), uyeleriYukle(), ayariYukle(), gonderimleriYukle().catch(() => ({}))]);
+    ciz(kutu, liste, uyeler, ayar, yenile, G);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('h1', null, t('Müşteriler')), h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -31,7 +32,7 @@ async function yukle(kutu, yenile) {
 const telLink = (d) => d ? '+' + d : '';
 const sade = (x) => String(x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ');
 
-function ciz(kutu, liste, uyeler, ayar, yenile) {
+function ciz(kutu, liste, uyeler, ayar, yenile, G) {
   const rol = S.profil.rol;
   const yazar = randevuYazarMi(rol) && lisansDurumu(S.salon).aktif;
   const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
@@ -53,7 +54,7 @@ function ciz(kutu, liste, uyeler, ayar, yenile) {
     h('div', { class: 'baslik-satir' }, h('h1', null, t('Müşteriler')),
       yazar ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => yeniMusteri(yenile, uyeler) }, t('+ Müşteri')) : null),
     h('p', { class: 'kucuk' }, rol === 'usta' ? t('Hizmet verdiğiniz müşteriler. Yeni randevu aldığınızda müşteri size eklenir.') : t('{n} müşteri. Salonun ortak defteri.', { n: liste.length })),
-    hatirlatmaKarti(liste, ayar, ctxAl, yenile),
+    hatirlatmaKarti(liste, ayar, ctxAl, yenile, G),
     ara, kutuListe,
     yetkiliMi(rol) && liste.length ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => rehberCsv(liste) }, t('Müşteri rehberini indir (CSV)'))) : null,
     yetkiliMi(rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'kart bilgi' },
@@ -237,22 +238,32 @@ export function hatirlatmaHesapla(liste, ayar, bugunTarih) {
   return { doganlar, hatirlat, kayip, kayipGun };
 }
 
-export function hatirlatmaKarti(liste, ayar, ctxAl, yenile) {
+export function hatirlatmaKarti(liste, ayar, ctxAl, yenile, G) {
+  G = G || {};
   const H = hatirlatmaHesapla(liste, ayar);
   const gizli = gizliOku();
   const kayip = H.kayip.filter(x => !gizli.includes(x.m.id));
   if (!H.doganlar.length && !H.hatirlat.length && !kayip.length) return null;
-  const wa = (m, tur, vars) => m.tel ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => waAc(m.tel, mesajYap(tur, { MUSTERI_ADI: hitap(m.ad), ...vars })) }, 'WhatsApp') : h('span', { class: 'kucuk' }, t('Telefon yok'));
+  // anahtar: aynı mesajın tekrarını ayırt eder. Gönderilmişse rozet ve "tekrar" uyarısı çıkar.
+  const wa = (m, tur, anahtar, vars) => {
+    if (!m.tel) return h('span', { class: 'kucuk' }, t('Telefon yok'));
+    const g = G[mesajAnahtar(m.id, tur, anahtar)] || null;
+    return h('span', { class: 'gonder-kutu' },
+      g ? h('span', { class: 'rozet odendi-rozet gonderildi' }, '✓ ' + gonderilmisYazi(g)) : null,
+      h('button', { class: 'dugme kucuk-dugme' + (g ? ' ikincil' : ''), type: 'button',
+        onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur, anahtar, metin: mesajYap(tur, { MUSTERI_ADI: hitap(m.ad), ...vars }), onceki: g, yenile }) }, g ? t('Tekrar') : 'WhatsApp'));
+  };
+  const yilDe = (kalan) => String(new Date(Date.now() + kalan * 864e5).getFullYear());
   const satir = (m, alt, dugme) => h('div', { class: 'arama-satir' }, h('div', null, h('strong', null, m.ad), h('div', { class: 'kucuk' }, alt)), h('div', { class: 'arama-dugmeler' }, dugme));
   return h('div', { class: 'kart bilgi hatirlatma' },
     h('strong', null, t('Hatırlatmalar')),
-    H.doganlar.some(x => x.kalan === 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎂 ' + t('Bugün doğum günü')), H.doganlar.filter(x => x.kalan === 0).map(({ m }) => satir(m, m.tel ? telGoster(m.tel) : t('Telefon yok'), wa(m, 'dogum')))) : null,
-    H.doganlar.some(x => x.kalan > 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎈 ' + t('Yaklaşan doğum günleri')), H.doganlar.filter(x => x.kalan > 0).map(({ m, kalan }) => satir(m, m.dogum + ' (' + (kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'dogum')))) : null,
+    H.doganlar.some(x => x.kalan === 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎂 ' + t('Bugün doğum günü')), H.doganlar.filter(x => x.kalan === 0).map(({ m }) => satir(m, m.tel ? telGoster(m.tel) : t('Telefon yok'), wa(m, 'dogum', yilDe(0))))) : null,
+    H.doganlar.some(x => x.kalan > 0) ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '🎈 ' + t('Yaklaşan doğum günleri')), H.doganlar.filter(x => x.kalan > 0).map(({ m, kalan }) => satir(m, m.dogum + ' (' + (kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'dogum', yilDe(kalan))))) : null,
     H.hatirlat.length ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '📅 ' + t('Sonraki ziyareti yaklaşanlar')),
-      H.hatirlat.map(({ m, kalan }) => satir(m, tarihTR(m.sonraki) + ' (' + (kalan === 0 ? t('bugün') : kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'takip', { TARIH: tarihTR(m.sonraki) })))) : null,
+      H.hatirlat.map(({ m, kalan }) => satir(m, tarihTR(m.sonraki) + ' (' + (kalan === 0 ? t('bugün') : kalan === 1 ? t('yarın') : t('{n} gün kaldı', { n: kalan })) + ')', wa(m, 'takip', m.sonraki, { TARIH: tarihTR(m.sonraki) })))) : null,
     kayip.length ? h('div', null, h('div', { class: 'kucuk ust-baslik' }, '☕ ' + t('{n} gündür gelmeyenler', { n: H.kayipGun })),
       kayip.map(({ m, gecen }) => satir(m, t('Son ziyaret: {t} ({n} gün önce)', { t: tarihTR(m.sonZiyaret), n: gecen }),
-        h('span', { class: 'arama-dugmeler' }, wa(m, 'davet'), h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Gizle'), onclick: () => { gizliYaz([...gizli, m.id]); yenile(); } }, '✕'))))) : null);
+        h('span', { class: 'arama-dugmeler' }, wa(m, 'davet', m.sonZiyaret || 'x'), h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Gizle'), onclick: () => { gizliYaz([...gizli, m.id]); yenile(); } }, '✕'))))) : null);
 }
 
 function rehberCsv(liste) {

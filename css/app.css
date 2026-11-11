@@ -138,3 +138,17 @@ button.hesap-satir.tikla { padding: 6px 0; }
 button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5e5); }
 .mesaj-kutu { width: 100%; font: inherit; font-size: 14px; line-height: 1.4; box-sizing: border-box; }
 .ust-cizgi { border-top: 1px solid var(--cizgi, #e5e5e5); margin-top: 4px; padding-top: 4px; }
+
+/* ek 7: Ana ekran mutabakat kartı, mesaj gönderildi rozeti, formül bloğu */
+.mut-kart { overflow: hidden; }
+.mut-ozet.tikla { display: block; padding: 10px 0; border-bottom: 1px solid var(--cizgi, #2a3350); }
+.mut-ozet .uye-ust { flex-wrap: wrap; gap: 4px 12px; }
+.mut-dugmeler { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.mut-dugmeler .dugme { width: 100%; }
+.dugme-satir { flex-wrap: wrap; }
+.arama-satir { flex-wrap: wrap; gap: 8px; }
+.gonder-kutu { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rozet.gonderildi { font-size: 12px; white-space: normal; text-align: right; }
+.formul-blok { margin: 6px 0; }
+.formul-blok summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
+.formul-blok textarea, .formul-blok input { width: 100%; box-sizing: border-box; margin-top: 6px; }
