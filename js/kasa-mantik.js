@@ -61,3 +61,14 @@ export function ustaGunSatirlari(odemeler, uid, tarih, mali, taban) {
     for (const k of o.kalemler) if (k.ustaUid === uid) s.push({ odeme: o, kalem: k, pay: satirPayi(o, k, mali, taban) });
   return s;
 }
+
+// Bir kalemin dökümü: komisyon, komisyon sonrası, (ürünse) alış ve kâr, ustaya ve salona kalan
+export function satirDokumu(odeme, k, mali) {
+  const komisyon = yuvarla(k.tutar * (odeme.komisyonOrani || 0) / 100);
+  const net = yuvarla(k.tutar - komisyon);
+  const pay = satirPayi(odeme, k, mali);
+  return {
+    tutar: yuvarla(k.tutar), komisyon, net, alis: k.tur === 'urun' ? yuvarla(k.alis || 0) : 0,
+    kar: k.tur === 'urun' ? urunKari(odeme, k) : null, pay, salon: yuvarla(net - pay)
+  };
+}

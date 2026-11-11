@@ -1,45 +1,36 @@
+# LUMIO SALON – 5. Teslim (Müşteri defteri + usta gizliliği düzeltmesi)
 
----
-## 5. teslim EK paketi (bu zip)
-1. **Firebase > Firestore > Rules**: `firestore.rules` içeriğini yapıştırıp **Yayınla** (yeni kurallar var).
-2. Siteyi yenileyin (Ctrl+Shift+R / telefonda uygulamayı kapatıp açın).
-3. **Salon > Genel > "Eski randevuları yeni düzene çevir"** düğmesine bir kez basın (eski test randevularını ustaların kendi randevusunu görmesi için günceller).
-4. Test edin: usta kendi randevusunu açabiliyor mu; başkasınınkini yalnız "Dolu" görüyor mu.
-- **Ürün satışı (kâr üzerinden):** kâr = satış − kart komisyonu − alış fiyatı. Usta, kârın ürün primi %'sini alır; kalanı kasaya (salona) kalır. Yüzde, Salon > Ustalar'da usta başına değiştirilir.
-- **Müşteri defteri:** doğum günü, sonraki ziyaret, kayıp müşteri (gün sayısı Genel'de), WhatsApp mesajı tek tık, formül/not kaydı, işlem geçmişi, rehber CSV.
-- Notlar: mesaj metinleri şimdilik hazır Türkçe; düzenlenebilir hâli 8. teslimde. Formül şimdilik serbest yazı (ürün+gram 6. teslimde). Sekreter formülleri göremez. Eski test ödemelerinde usta satırı olmayabilir.
+## Düzeltme: usta başkasının müşterisini ve parasını göremez
+- **Takvim:** usta kendi randevularını tam görür. Diğer ustaların randevuları yalnızca **"Dolu"** saat bloğu olarak görünür (yoğunluk), **müşteri adı, hizmet, tutar yok**.
+- **Ödemeler:** usta yalnız **kendi satırını** görür (Kasa > Kazancım). Aynı müşterinin başka ustaya ait tutarı ya da ürün satışı ona görünmez. Bu artık Firebase kurallarıyla zorlanıyor, sadece ekranda gizlenmiyor.
+- Eski (test) randevu ve ödemeler yeni yapıya uymaz: **eski test randevularını ustalar göremez**, eski test ödemeleri ustanın "Kazancım"ında çıkmaz. Yönetici/kıdemli/sekreter/ortak hepsini görmeye devam eder. Test verisini bu yüzden **yeniden oluşturman** gerekir; gerçek kullanıma geçmeden önce Firebase'deki test verisini silmek en temizi.
 
----
-## 5. teslim EK-2 paketi (bu zip)
-- **firestore.rules değişmedi** (önceki ek pakette yayınladıysanız tekrar yayınlamayın).
-- Siteyi sert yenileyin. Telefondaki uygulamayı tamamen kapatıp açın.
-- **Mutabakat:** Mutabakat düğmeleri ustanın "Kazancım" ekranındadır. Eski bir günde (örn. 09.11) düğme yoksa: Salon > Genel > Bakım > **"Eski ödemeleri ustalara yansıt"** düğmesine bir kez basın, sonra usta ekranını yenileyin.
-- **İlave hizmet:** Randevuyu açın > "+ İlave hizmet / işlem". Aynı ya da başka usta seçilir, saat elle verilebilir, kaydedince formül/not penceresi açılır. Ödeme tüm hizmetleri tek seferde alır.
-- **Randevusuz işlem:** Yeni müşteri formunda "Bu müşteriye işlem yaptım" bölümü; mevcut müşteride "+ İşlem kaydı ekle (randevusuz)".
-- **Geri tuşu:** Önce açık pencereyi kapatır, sonra Ana sayfaya döner, Ana sayfada "tekrar basın" uyarısı verir.
-- **Doğum günleri:** Ana sayfada ve Müşteriler'de bugün + önümüzdeki 7 gün.
-- **WhatsApp:** LUMIO'daki gibi api.whatsapp.com bağlantısı (emojiler bozulmasın diye). Metinler LUMIO ile aynı.
+## Yeni: Müşteriler sekmesi (herkes görür)
+- **Tek ortak defter.** Yönetici, kıdemli, ortak, sekreter hepsini görür. **Usta yalnız hizmet verdiği müşterileri** görür; ustaya yeni randevu alındığında müşteri ona otomatik eklenir.
+- Randevu alırken ad yazınca kayıtlı müşteriler çıkar; **telefon yazınca müşteri otomatik bulunur** (aynı telefon iki kez açılmaz).
+- Müşteri ayrıntısı: ad, telefon, **not** (alerji, tercih), **randevu geçmişi**, toplam harcama ve ziyaret sayısı (ustaya gösterilmez), **Ara / WhatsApp / Randevu al**.
+- **+ Müşteri:** randevusuz müşteri ekleme. Ad ya da telefonla arama.
+- **Ayrılan usta listesi** (yalnız yönetici/kıdemli): ustayı seç, ismini ve telefonlarını kopyala ya da CSV indir. İşlem kayıtlara yazılır.
 
----
-## 5. teslim EK-3 paketi
-- **firestore.rules DEĞİŞTİ** (müşteri silme/geri getirme): Firebase > Firestore > Rules'a yapıştırıp **Publish** edin. Bu sefer Publish düğmesi çıkmalı.
-- Uygulamayı kapatıp açın; Ayarlar'ın altındaki sürüm **0.5.3** olmalı. Değilse geri tuşu düzeltmesi henüz gelmemiştir.
-- **Müşteriyi sil:** Müşteri > müşteriyi aç > en altta "Müşteriyi sil" (yalnız yönetici/kıdemli, onay sorar). Uygulamadan kalkar, Firebase'de kayıtlar durur. Aynı telefon tekrar girilirse müşteri geri gelir.
-- **Takvimde bekleme aşamalı iş:** diğer ustalar artık tek kart görür (örn. 11:00–13:00 Dolu, "Bekleme arası müsait: 11:40–12:20").
-- **Salon > Genel > Bakım > "Takvim kilitlerini kontrol et":** eksik kilit varsa tamamlar.
+## A. GitHub'a yükle
+Zip'i **ayıkla** > GitHub **Add file > Upload files** > ayıkladığın klasörün içindeki **her şeyi** sürükle > **Commit changes** > 1–2 dk bekle > **Ctrl+Shift+R**.
 
----
-## 5. teslim EK-4 paketi
-- **firestore.rules DEĞİŞTİ** (yönetici adına mutabakat onayı): Firebase > Rules'a yapıştırıp **Publish** edin.
-- Uygulamayı tamamen kapatıp açın; Ayarlar altındaki sürüm **0.5.4** olmalı.
-- **Mutabakat:** Kasa > Usta hesapları > ustanın altında (henüz onaylamadıysa): "WhatsApp ile hatırlat" (ustaya o günün payı + "Kazancım'dan onaylayın" mesajı) ve "Sözlü onayladı" (sizin işaretlediğiniz kayda geçer, ustanın ekranında da yazar). Mutabakat günü kutusundan geçmiş günü seçin. Ustanın telefonu Ekip'te kayıtlı olmalı.
-- **Geri tuşu yeniden yazıldı:** her pencere ve sekme geçmişe gerçek bir kayıt ekler; geri tuşu önce pencereyi, sonra Ana sayfayı, sonra "tekrar basın" uyarısını getirir.
+## B. Kuralları yenile (YENİ KURALLAR VAR, mutlaka yap)
+Firebase > Firestore Database > **Rules** > her şeyi sil, yeni `firestore.rules`ın tamamını yapıştır > **Publish**.
 
----
-## 5. teslim EK-5 paketi
-- **firestore.rules DEĞİŞTİ** → Firebase > Rules'a yapıştırıp **Publish**. (Usta "Kazancım" boş ekran / izin hatası bu kuraldaydı: henüz olmayan mutabakat kaydını sormak reddediliyordu.)
-- Uygulamayı kapatıp açın; sürüm **0.5.5**.
-- **Roller:** Yönetici, kıdemli ve ortak aynı haklara sahip (randevu, ödeme, avans, ayarlar, ekip, rol değiştirme). Tek fark: yöneticinin rolünü kimse değiştiremez; yönetici herkesinkini değiştirir.
-- **Randevuda süre ve ücret:** her hizmet satırında Süre (dk) ve Ücret (₺) kutusu. Hizmetteki değer hazır gelir, o randevu için değiştirilir; hizmetin kendisi değişmez. Bekleme aşamalı hizmette aşamalar süreyle orantılı uzar/kısalır (120 → 150 dk: 40/40/40 → 50/50/50).
-- **Usta** yalnızca kendine randevu alır/ilave hizmet ekler. Birden fazla ustalı randevuyu yönetici/sekreter değiştirir.
-- **Mutabakat:** Usta uygulamayı açınca Ana sayfada "Onayınızı bekleyen gün" kartı (Onaylıyorum / İtirazım var). Yönetici/kıdemli/ortak Ana sayfada bugün ve dünün özetini görür.
+## C. Test listesi (yeni test verisiyle)
+1. **Takvim:** yeni bir randevu al (müşteri adı + **telefon**), bir ustaya. Müşteriler sekmesinde müşteri görünmeli.
+2. **Aynı telefonla ikinci randevu** (yalnız telefonu yaz, adı kendisi gelmeli), başka bir ustaya. Müşteri sayısı artmamalı.
+3. **Usta olarak giriş (1. usta):** Takvim'de kendi randevusunu tam, diğer ustanınkini "Dolu" olarak görmeli; **ad yazmamalı**. Müşteriler'de yalnız kendi müşterisi olmalı.
+4. **Müşteriler > + Müşteri:** ustayla yeni müşteri ekle; kendi listesinde çıkmalı, yönetici de görmeli.
+5. **Yönetici:** Müşteriler'de arama (ad ve telefon), ayrıntıda **not** yaz, kaydet; randevu geçmişi görünmeli.
+6. **İki ustalı ödeme:** bir randevuda **Ödeme al**, **+ Ürün satışı ekle** ile ikinci ustaya satış yaz. Sonra **1. usta olarak** Kasa > Kazancım: yalnız kendi tutarını (ve payını) görmeli, ürün satışını/toplamı **görmemeli**.
+7. **Ödemeyi iptal et** (yönetici): ustanın Kazancım'ından düşmeli.
+8. **Müşteriler > Liste hazırla:** bir usta seç, listeyi ver; isim ve telefon çıkmalı.
+
+## D. Dürüst notlar
+- Kuralları gerçek Firebase'de deneyemiyorum; ekran akışını sahte Firebase ile denedim (hepsi geçti). "Yetkiniz yok" çıkarsa ekran görüntüsü gönder.
+- Usta, telefon numarasını bildiği bir müşterinin yalnızca **kayıtlı olup olmadığını/adını** doğrudan sorabilir (aynı telefonu ikinci kez açmayı engellemek için gerekli); listeyi göremez.
+- Ustanın müşteriye ait **notları** ustanın kendi müşterilerinde görünür; başka ustanınkini görmez.
+- Müşteri bilgi güncellemesi: telefon bir kez yazıldıktan sonra değiştirilemez (belge adı telefondur); yanlışsa yeni müşteri açılır.
+- Müşteri formülleri (boya) ve stok 6. teslimde.

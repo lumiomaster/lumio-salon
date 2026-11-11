@@ -8,6 +8,7 @@ import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaGunSatirlari, yuvarla } from '../kasa-mantik.js';
 import { tarihTR } from '../mesaj.js';
 import { goster } from '../main.js';
+import { hesapAc } from './hesap.js';
 
 // Ana sayfadaki mutabakat kartı.
 //  - Usta: onayını bekleyen günler, tek dokunuşla Onaylıyorum / İtirazım var
@@ -88,5 +89,9 @@ async function yoneticiKarti(kutu) {
       h('div', { class: 'uye-ust' }, h('span', null, x.g === bugun ? t('Bugün') : t('Dün')), h('span', { class: 'kucuk' }, t('{a} onayladı · {b} bekliyor · {c} itiraz', { a: x.onay.length, b: x.bekleyen.length, c: x.itiraz.length }))),
       x.bekleyen.length ? h('div', { class: 'kucuk' }, t('Bekleyen: ') + x.bekleyen.map(ad).join(', ')) : null,
       x.itiraz.map(i => h('div', { class: 'kucuk uyari-yazi' }, ad(i.u) + ': “' + i.not + '”')))),
-    h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { S.sekme = 'kasa'; S.kasaAlt = 'hesap'; goster(); } }, t('Usta hesaplarını aç')))));
+    h('div', { class: 'dugme-satir sol' }, satirlar.map(x => {
+      const kalan = [...x.bekleyen, ...x.itiraz.map(i => i.u)];
+      return kalan.length ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hesapAc(x.g, kalan) },
+        t('Onaylamayanları aç') + ' (' + (x.g === bugun ? t('Bugün') : t('Dün')) + ')') : null;
+    }), h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hesapAc(satirlar[0].g, null) }, t('Usta hesaplarını aç')))));
 }

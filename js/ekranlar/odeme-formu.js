@@ -2,15 +2,15 @@ import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc } from '../util.js';
 import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle } from '../veri.js';
+import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle, hizmetleriYukle } from '../veri.js';
 import { tarihMetin, dkMetin } from '../takvim-mantik.js';
 import { yuvarla, urunKari } from '../kasa-mantik.js';
 
 // Ödeme alma formu. randevu verilirse kalemleri hazır gelir; verilmezse "ürün satışı" olur.
 // bitti(): ödeme yazılınca ekranı yenilemek için çağrılır.
 export async function odemeFormu(randevu, bitti) {
-  let uyeler, u, ayar;
-  try { [uyeler, u, ayar] = await Promise.all([uyeleriYukle(), ustalariYukle(), ayariYukle(true)]); }
+  let uyeler, u, ayar, hizmetler;
+  try { [uyeler, u, ayar, hizmetler] = await Promise.all([uyeleriYukle(), ustalariYukle(), ayariYukle(true), hizmetleriYukle()]); hizmetler = hizmetler.filter(x => x.aktif); }
   catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); return; }
   const oran = ayar ? ayar.posOrani : 0;
   const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
@@ -36,21 +36,27 @@ export async function odemeFormu(randevu, bitti) {
       h('div', { class: 'satir-ust' },
         s.tur === 'urun'
           ? h('input', { type: 'text', value: s.ad, maxlength: 40, placeholder: t('Ürün adı'), oninput: (e) => { s.ad = e.target.value; } })
-          : h('strong', null, s.ad),
-        s.tur === 'urun' ? h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Satırı sil'), onclick: () => { satirlar.splice(i, 1); ciz(); } }, '🗑') : null),
+          : s.ek
+            ? h('select', { 'aria-label': t('Hizmet'), onchange: (e) => { const hz = hizmetler.find(x => x.id === e.target.value); s.hizmetId = e.target.value; s.ad = hz ? hz.ad : ''; if (hz) s.tutar = String(hz.fiyat || 0).replace('.', ','); ciz(); } },
+              h('option', { value: '', selected: !s.hizmetId }, t('Hizmet seçin…')),
+              hizmetler.map(x => h('option', { value: x.id, selected: x.id === s.hizmetId }, x.ad)))
+            : h('strong', null, s.ad),
+        s.tur === 'urun' || s.ek ? h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Satırı sil'), onclick: () => { satirlar.splice(i, 1); ciz(); } }, '🗑') : null),
       h('div', { class: 'iki-sutun' },
         h('label', null, s.tur === 'urun' ? t('Satan') : t('Usta'),
-          s.tur === 'urun'
+          s.tur === 'urun' || s.ek
             ? h('select', { onchange: (e) => { s.ustaUid = e.target.value; } },
               ustaAday.map(x => h('option', { value: x.id, selected: x.id === s.ustaUid }, x.ad)),
-              h('option', { value: '', selected: s.ustaUid === '' }, t('Salon (prim yok)')))
+              s.ek ? null : h('option', { value: '', selected: s.ustaUid === '' }, t('Salon (prim yok)')))
             : h('div', { class: 'salt-yazi' }, ad(s.ustaUid))),
         h('label', null, s.tur === 'urun' ? t('Satış fiyatı (₺)') : t('Tutar (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.tutar, placeholder: '0',
           oninput: (e) => { s.tutar = e.target.value; ozetCiz(); } }))),
       s.tur === 'urun' ? h('label', null, t('Alış fiyatı (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.alis, placeholder: '0',
         oninput: (e) => { s.alis = e.target.value; ozetCiz(); } })) : null,
       s.tur === 'urun' ? h('div', { class: 'kucuk urun-ozet', 'data-i': String(i) }) : null)),
-      satirlar.length < 12 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }); ciz(); } }, t('+ Ürün satışı ekle')) : null);
+      satirlar.length < 12 ? h('div', { class: 'dugme-satir sol' },
+        randevu ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', hizmetId: '', tutar: '', alis: '', tur: 'hizmet', ek: true }); ciz(); } }, t('+ Hizmet ekle')) : null,
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }); ciz(); } }, t('+ Ürün satışı ekle'))) : null);
     ozetCiz();
   }
   // Ürün satırı dökümü: satış - komisyon - alış = kâr; kâr ustaya (ürün primi) ve kasaya bölünür.
@@ -98,13 +104,17 @@ export async function odemeFormu(randevu, bitti) {
     for (const s of satirlar) {
       const v = s.tutar === '' ? 0 : sayi(s.tutar);
       if (!Number.isFinite(v) || v < 0) { hata.textContent = t('Tutarları sayı olarak yazın.'); return; }
+      if (s.ek) {
+        if (!s.ad) { if (v === 0) continue; hata.textContent = t('Eklenen hizmeti seçin.'); return; }
+        if (!s.ustaUid) { hata.textContent = t('Eklenen hizmetin ustasını seçin.'); return; }
+      }
       if (s.tur === 'urun') {
         if (!s.ad.trim()) { if (v === 0) continue; hata.textContent = t('Ürünün adını yazın.'); return; }
         if (v <= 0) { hata.textContent = t('Ürünün tutarını yazın.'); return; }
       }
       const al = s.tur === 'urun' ? (s.alis === '' ? 0 : sayi(s.alis)) : 0;
       if (!Number.isFinite(al) || al < 0) { hata.textContent = t('Alış fiyatını sayı olarak yazın (bilmiyorsanız 0).'); return; }
-      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), alis: yuvarla(al), tur: s.tur });
+      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), alis: yuvarla(al), tur: s.tur, ...(s.ek ? { ek: true } : {}) });
     }
     if (!kalemler.length) { hata.textContent = t('En az bir kalem olmalı.'); return; }
     const toplam = yuvarla(kalemler.reduce((a, k) => a + k.tutar, 0));

@@ -1,17 +1,26 @@
 import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
-import { yetkiliMi } from '../roller.js';
+import { yetkiliMi, gorenMi } from '../roller.js';
+import { goster } from '../main.js';
+import { kalemDetay } from './kalem-detay.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
   uyeleriYukle, ustalariYukle, donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle,
   gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle
 } from '../veri.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
-import { ustaOzetleri, gunOzeti, odenecek, yuvarla, ustaGunSatirlari } from '../kasa-mantik.js';
+import { ustaOzetleri, gunOzeti, odenecek, yuvarla, ustaGunSatirlari, satirDokumu } from '../kasa-mantik.js';
 import { waAc, tarihTR } from '../mesaj.js';
 
 const H = { tarih: tarihMetin(new Date()) };
+let F = null; // yalnız bu ustalar gösterilsin (Ana ekrandan "onaylamayanları aç")
+
+// Ana ekrandaki mutabakat kartından: o günün hesaplarını (isteğe bağlı yalnız onaylamayan ustalarla) açar
+export function hesapAc(tarih, uids) {
+  H.tarih = tarih; F = uids && uids.length ? uids : null;
+  S.sekme = 'kasa'; S.kasaAlt = 'hesap'; goster();
+}
 
 export function hesapEkrani() {
   const kutu = h('div', null, h('p', { class: 'soluk' }, t('Yükleniyor…')));
@@ -56,6 +65,7 @@ function ciz(kutu, D, yenile) {
   const yetkili = yetkiliMi(S.profil.rol) && lisansDurumu(S.salon).aktif;
   const { satirlar, toplam } = hesapla(D);
   const mut = {}; D.mutabakat.forEach(m => { mut[m.ustaUid] = m; });
+  const gorunen = F ? satirlar.filter(x => F.includes(x.uid) && !(mut[x.uid] && mut[x.uid].durum === 'onay')) : satirlar;
   doldur(kutu,
     h('p', { class: 'kucuk' }, t('Hesap dönemi {n}. Son "Hesabı kapat"tan bu yana alınan ödemeler.', { n: D.donem + 1 })),
     h('div', { class: 'kart kasa-ozet' },
@@ -65,9 +75,12 @@ function ciz(kutu, D, yenile) {
       h('div', { class: 'uye-ust kucuk' }, h('span', null, t('Ustaların hakedişi')), h('span', null, '− ' + para(toplam.hakedis))),
       h('div', { class: 'uye-ust ust-cizgi' }, h('span', null, t('Salonda kalan')), h('strong', null, para(toplam.salon)))),
     h('div', { class: 'baslik-satir' }, h('h2', { class: 'ilk' }, t('Ustalar')),
-      h('label', { class: 'mut-gun' }, t('Mutabakat günü'), h('input', { type: 'date', value: H.tarih, onchange: (e) => { if (e.target.value) { H.tarih = e.target.value; yenile(); } } }))),
+      h('label', { class: 'mut-gun' }, t('Mutabakat günü'), h('input', { type: 'date', value: H.tarih, onchange: (e) => { if (e.target.value) { H.tarih = e.target.value; F = null; yenile(); } } }))),
+    F ? h('div', { class: 'kart bilgi' }, h('strong', null, t('Yalnız {gun} günü mutabakatını onaylamayan ustalar gösteriliyor.', { gun: tarihTR(H.tarih) })),
+      gorunen.length ? null : h('p', null, t('Hepsi onaylamış.')),
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { F = null; yenile(); } }, t('Hepsini göster'))) : null,
     satirlar.length === 0 ? h('p', { class: 'soluk' }, t('Henüz usta yok.')) : null,
-    satirlar.map(s => ustaKart(s, mut[s.uid], yetkili, D, yenile)),
+    gorunen.map(s => ustaKart(s, mut[s.uid], yetkili, D, yenile)),
     yetkili ? h('div', { class: 'kart bilgi' },
       h('strong', null, t('Hesabı kapat (sıfırla)')),
       h('p', null, t('Ustalarla hesaplaştıktan sonra dönemi kapatın. Ödenecek tutarlar kayda geçer, sayaçlar sıfırlanır. Ustanın hakedişinden fazla avansı varsa fark borç olarak bir sonraki döneme devreder.')),
@@ -82,8 +95,8 @@ function ustaKart(s, m, yetkili, D, yenile) {
   return h('div', { class: 'kart usta-hesap' },
     h('div', { class: 'uye-ust' }, h('strong', null, s.ad), h('strong', { class: s.odenecek < 0 ? 'eksi' : '' }, para(s.odenecek))),
     s.maliYok ? h('div', { class: 'hata' }, t('Yüzdesi girilmemiş (Salon > Ustalar).')) : null,
-    h('div', { class: 'hesap-satir' }, h('span', null, t('Hizmet cirosu')), h('span', null, para(s.hizmet))),
-    s.urun > 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Ürün satışı')), h('span', null, para(s.urun))) : null,
+    h('button', { class: 'hesap-satir tikla', type: 'button', onclick: () => kalemListesi(s, D, 'hizmet') }, h('span', null, t('Hizmet cirosu') + ' ›'), h('span', null, para(s.hizmet))),
+    s.urun > 0 ? h('button', { class: 'hesap-satir tikla', type: 'button', onclick: () => kalemListesi(s, D, 'urun') }, h('span', null, t('Ürün satışı') + ' ›'), h('span', null, para(s.urun))) : null,
     h('div', { class: 'hesap-satir' }, h('span', null, t('Hakediş (komisyon düşülmüş)')), h('span', null, para(s.hakedis))),
     s.avans !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Verilen avans')), h('span', null, '− ' + para(s.avans))) : null,
     s.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(s.devir))) : null,
@@ -104,15 +117,73 @@ function gunPayi(s, D) {
   return { satirlar, pay: yuvarla(satirlar.reduce((a, x) => a + x.pay, 0)) };
 }
 
-// Ustaya "Kazancım'dan onaylayın" mesajı (WhatsApp tek tık)
+// Dönemdeki hizmet ya da ürün kalemlerinin listesi; kaleme dokununca ayrıntı açılır
+function kalemListesi(s, D, tur) {
+  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const mali = D.u.mali[s.uid];
+  const satirlar = [];
+  D.odemeler.filter(o => o.durum === 'gecerli').forEach(o => (o.kalemler || []).forEach(k => { if (k.ustaUid === s.uid && (k.tur === 'urun') === (tur === 'urun')) satirlar.push({ o, k }); }));
+  satirlar.sort((a, b) => (a.o.tarih < b.o.tarih ? 1 : -1));
+  const icerik = h('div', null, satirlar.length ? [
+    h('p', { class: 'kucuk' }, t('Ayrıntı için bir satıra dokunun.')),
+    satirlar.map(({ o, k }) => {
+      const d = satirDokumu(o, k, mali);
+      return h('button', { class: 'kart odeme tikla', type: 'button', onclick: () => kalemDetay(o, k, ad, yetkiliMi(S.profil.rol) ? 'tam' : 'sekreter') },
+        h('div', { class: 'uye-ust' }, h('strong', null, k.ad), h('span', null, para(k.tutar))),
+        h('div', { class: 'kucuk' }, tarihYazi(o.tarih).split(' ').slice(0, 2).join(' ') + ' · ' + (o.musteriAd || '—') + ' · ' + (o.yontem === 'kart' ? t('Kart') : t('Nakit')) + ' · ' + t('ustaya {p}', { p: para(d.pay) })));
+    })] : h('p', { class: 'soluk' }, t('Kayıt yok.')));
+  pencereAc(s.ad + ' · ' + (tur === 'urun' ? t('Ürün satışları') : t('Hizmetler')), icerik);
+}
+
+const yontemAd = (o) => (o.yontem === 'kart' ? 'Kart' : 'Nakit');
+const tl = (n) => para(n);
+
+// Ustaya gönderilecek günlük hesap metni: müşteri müşteri döküm + ürün satışı + özet
+export function mutabakatMetni(u, g, tarih, salonAd, mali) {
+  const ad = (u.ad || '').split(' ')[0];
+  const hizmet = new Map(), urunler = [];
+  g.forEach(({ odeme: o, kalem: k }) => {
+    const d = satirDokumu(o, k, mali);
+    if (k.tur === 'urun') { urunler.push({ o, k, d }); return; }
+    const m = hizmet.get(o.id) || { o, kalemler: [], tutar: 0, kom: 0, pay: 0 };
+    m.kalemler.push(k.ad); m.tutar += d.tutar; m.kom += d.komisyon; m.pay += d.pay; hizmet.set(o.id, m);
+  });
+  const hl = [...hizmet.values()];
+  const hTop = yuvarla(hl.reduce((a, m) => a + m.tutar, 0)), hPay = yuvarla(hl.reduce((a, m) => a + m.pay, 0));
+  const uTop = yuvarla(urunler.reduce((a, x) => a + x.d.tutar, 0)), uPay = yuvarla(urunler.reduce((a, x) => a + x.d.pay, 0));
+  const r = [];
+  r.push('Merhaba ' + ad + ' 👋', '', '📅 ' + tarihTR(tarih) + ' günü hesabınız:', '');
+  r.push('✂️ HİZMETLER');
+  if (!hl.length) r.push('Bu gün hizmet kaydı yok.');
+  hl.forEach((m, i) => {
+    r.push((i + 1) + ') ' + (m.o.musteriAd || 'Müşteri') + ' — ' + m.kalemler.join(' + '));
+    r.push('   Alınan: ' + tl(m.tutar) + ' (' + yontemAd(m.o) + ')' + (m.o.yontem === 'kart' ? ' · Komisyon: ' + tl(yuvarla(m.kom)) : '') + ' · Ustaya kalan: ' + tl(yuvarla(m.pay)));
+  });
+  if (hl.length) r.push('', '👥 ' + hl.length + ' müşteri · Alınan ' + tl(hTop) + ' · Ustaya kalan ' + tl(hPay));
+  r.push('', '🛍️ ÜRÜN SATIŞI');
+  if (!urunler.length) r.push('Bugün ürün satışınız yok. Her müşteriye bakım sonrası evde kullanacağı bir ürün önermeyi deneyin; küçük bir öneri bile hem müşterinin saçına/cildine hem sizin kazancınıza katkı sağlar 💪');
+  else {
+    r.push('🎉 Tebrikler, bugün ürün sattınız!');
+    urunler.forEach(({ o, k, d }, i) => r.push((i + 1) + ') ' + k.ad + (o.musteriAd ? ' (' + o.musteriAd + ')' : '') + ' — Alınan: ' + tl(d.tutar) + ' (' + yontemAd(o) + ')' + (o.yontem === 'kart' ? ' · Komisyon: ' + tl(d.komisyon) : '') + ' · Ustaya kalan: ' + tl(d.pay)));
+    r.push('', '📦 ' + urunler.length + ' ürün · Alınan ' + tl(uTop) + ' · Ustaya kalan ' + tl(uPay));
+  }
+  r.push('', '━━━━━━━━━━', 'Hizmetlerden: ' + tl(hPay), 'Ürün satışından: ' + tl(uPay), '💰 GENEL TOPLAM KAZANCINIZ: ' + tl(yuvarla(hPay + uPay)), '',
+    '✅ Doğruysa uygulamada Ana sayfadaki "Onaylıyorum" düğmesine basın; yanlışlık varsa "İtirazım var" deyin.', '', salonAd || '');
+  return r.join('\n');
+}
+
+// Ustaya mutabakat mesajı: önce önizleme, sonra WhatsApp
 function mutabakatMesaji(s, D) {
   const u = D.uyeler.find(x => x.id === s.uid);
   const g = gunPayi(s, D);
   if (!u || !u.telefon) { bildir(t('Bu ustanın telefonu kayıtlı değil.'), 'hata'); return; }
   if (!g.satirlar.length) { bildir(t('Bu gün için ustanın işlemi yok.'), 'hata'); return; }
-  const ad = (u.ad || '').split(' ')[0];
-  const metin = 'Merhaba ' + ad + ' 👋\n\n📅 ' + tarihTR(H.tarih) + ' günü hesabınız hazır:\n💰 Payınız: ' + para(g.pay) + '\n\n✅ LUMIO SALON uygulamasını açın; Ana sayfanın en üstünde "Onayınızı bekleyen gün" kartı çıkacak. Hesap doğruysa "Onaylıyorum", yanlışlık varsa "İtirazım var" diyebilirsiniz.\n\n' + (S.salon ? S.salon.ad : '');
-  waAc(u.telefon, metin);
+  const kutu = h('textarea', { rows: 16, class: 'mesaj-kutu' });
+  kutu.value = mutabakatMetni(u, g.satirlar, H.tarih, S.salon ? S.salon.ad : '', D.u.mali[s.uid]);
+  const kopya = h('button', { class: 'dugme ikincil', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(kutu.value); bildir(t('Kopyalandı')); } catch (e) { kutu.select(); } } }, t('Kopyala'));
+  pencereAc(t('Mutabakat mesajı') + ' · ' + s.ad, h('div', { class: 'form' },
+    h('p', { class: 'kucuk' }, t('Göndermeden önce metni düzenleyebilirsiniz.')), kutu,
+    h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme', type: 'button', onclick: () => waAc(u.telefon, kutu.value) }, t("WhatsApp'ta aç")), kopya)));
 }
 
 // Usta telefona bakmıyorsa yönetici sözlü onayı işaretler (kim işaretlediği kayda geçer)

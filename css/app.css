@@ -131,3 +131,10 @@ textarea.liste-metin { resize: vertical; }
 .mut-gun-satir { padding: 8px 0; border-top: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
 .mut-ozet { padding: 6px 0; }
 .sure-fiyat input { width: 100%; }
+
+/* ek 6: tıklanabilir kalemler, mesaj önizleme */
+button.tikla { width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button.hesap-satir.tikla { padding: 6px 0; }
+button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5e5); }
+.mesaj-kutu { width: 100%; font: inherit; font-size: 14px; line-height: 1.4; box-sizing: border-box; }
+.ust-cizgi { border-top: 1px solid var(--cizgi, #e5e5e5); margin-top: 4px; padding-top: 4px; }

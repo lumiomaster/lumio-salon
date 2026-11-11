@@ -3,7 +3,7 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, lisansDurumu } from '../ut
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { ayariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
+import { ayariYukle, musterileriYukle, tumRandevulariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
@@ -112,8 +112,37 @@ function bakimKarti() {
       durum3.textContent = eklenen ? t('{n} eksik takvim kilidi tamamlandı.', { n: eklenen }) : t('Eksik kilit yok, takvim sağlam.');
     } catch (err) { console.error(err); durum3.textContent = hataMetni(err); }
   }) }, t('Takvim kilitlerini kontrol et'));
+  // Müşteri defteri: randevuda adı geçen ama defterde olmayan müşterileri ekler (aynı ad = aynı kişi, telefon varsa telefon esas)
+  const durum4 = h('p', { class: 'kucuk' });
+  const dugme4 = h('button', { class: 'dugme ikincil', type: 'button', onclick: () => kilitli(dugme4, async () => {
+    try {
+      const [rs, ms] = await Promise.all([tumRandevulariYukle(), musterileriYukle()]);
+      const norm = (x) => (x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+      const telVar = new Set(ms.map(m => m.tel).filter(Boolean)), adVar = new Set(ms.map(m => norm(m.ad)));
+      const yeniler = new Map();
+      rs.filter(r => r.durum !== 'iptal' && (r.musteriAd || '').trim().length >= 2).sort((a, b) => (a.tarih < b.tarih ? 1 : -1)).forEach(r => {
+        const tel = r.musteriTel || '', anahtar = tel ? 't' + tel : 'a' + norm(r.musteriAd);
+        if (tel ? telVar.has(tel) : adVar.has(norm(r.musteriAd))) return;
+        const m = yeniler.get(anahtar) || { ad: r.musteriAd.trim(), tel, ustalar: new Set(), sonZiyaret: '' };
+        (r.ustalar || (r.kalemler || []).map(k => k.ustaUid)).forEach(u => m.ustalar.add(u));
+        if (r.durum === 'odendi' && r.tarih > m.sonZiyaret) m.sonZiyaret = r.tarih;
+        yeniler.set(anahtar, m);
+      });
+      const liste = [...yeniler.values()];
+      for (let i = 0; i < liste.length; i += 200) {
+        const b = writeBatch(db);
+        liste.slice(i, i + 200).forEach(m => {
+          const ref = m.tel ? doc(db, 'salons', S.salon.id, 'musteriler', m.tel) : doc(collection(db, 'salons', S.salon.id, 'musteriler'));
+          b.set(ref, { ad: m.ad, tel: m.tel, not: '', dogum: '', sonraki: '', sonZiyaret: m.sonZiyaret, ustalar: [...m.ustalar].filter(Boolean), olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
+        });
+        await b.commit();
+      }
+      durum4.textContent = liste.length ? t('{n} müşteri deftere eklendi.', { n: liste.length }) : t('Eksik müşteri yok, defter tam.');
+    } catch (err) { console.error(err); durum4.textContent = hataMetni(err); }
+  }) }, t('Eski randevulardan müşteri defterini tamamla'));
   return h('div', { class: 'kart bilgi' }, h('strong', null, t('Bakım')),
     h('p', null, t('Yeni sürüme geçmeden önce alınmış randevuları ustalar göremiyorsa bir kez basın.')), dugme, durum,
     h('p', null, t('Eski bir günün ödemesi için usta "Kazancım"da mutabakat düğmesini göremiyorsa (günün tutarı boş görünüyorsa) bir kez basın.')), dugme2, durum2,
-    h('p', null, t('Başka ustalar bir randevunun dolu saatini eksik görüyorsa bir kez basın.')), dugme3, durum3);
+    h('p', null, t('Başka ustalar bir randevunun dolu saatini eksik görüyorsa bir kez basın.')), dugme3, durum3,
+    h('p', null, t('Randevu aldığınız bir kişi Müşteriler listesinde yoksa bir kez basın.')), dugme4, durum4);
 }

@@ -8,6 +8,7 @@ import { tarihMetin, tarihEkle, tarihYazi, dkMetin } from '../takvim-mantik.js';
 import { gunOzeti } from '../kasa-mantik.js';
 import { goster } from '../main.js';
 import { odemeFormu } from './odeme-formu.js';
+import { kalemDetay } from './kalem-detay.js';
 import { iptalFormu } from './takvim.js';
 import { hesapEkrani } from './hesap.js';
 import { kazancimEkrani } from './kazancim.js';
@@ -92,9 +93,10 @@ function odemeAyrinti(o, ad, donem, yenile) {
   doldur(icerik,h('div', { class: 'ayrinti' },
     h('div', null, h('strong', null, o.musteriAd || t('Satış')), o.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : null),
     h('div', { class: 'soluk' }, tarihYazi(o.tarih) + ' ' + saat(o.zaman) + ' · ' + (o.yontem === 'kart' ? t('Kart') : t('Nakit'))),
-    h('div', { class: 'kalemler' }, o.kalemler.map(k => h('div', { class: 'kalem' },
+    h('p', { class: 'kucuk' }, t('Ayrıntı için bir kaleme dokunun.')),
+    h('div', { class: 'kalemler' }, o.kalemler.map(k => h('button', { class: 'kalem tikla', type: 'button', onclick: () => kalemDetay(o, k, ad, gorenMi(S.profil.rol) ? 'tam' : 'sekreter') },
       h('div', { class: 'uye-ust' }, h('strong', null, k.ad + (k.tur === 'urun' ? ' (' + t('ürün') + ')' : '')), h('span', null, para(k.tutar))),
-      h('div', { class: 'kucuk' }, k.ustaUid ? ad(k.ustaUid) : t('Salon'))))),
+      h('div', { class: 'kucuk' }, (k.ustaUid ? ad(k.ustaUid) : t('Salon')) + ' ›')))),
     o.komisyon > 0 ? h('div', { class: 'uye-ust kucuk' }, h('span', null, t('Kart komisyonu')), h('span', null, '− ' + para(o.komisyon))) : null,
     h('div', { class: 'uye-ust' }, h('span', { class: 'soluk' }, t('Toplam')), h('strong', null, para(o.toplam))),
     o.iptalNedeni ? h('p', { class: 'kucuk' }, t('İptal nedeni: ') + o.iptalNedeni) : null,

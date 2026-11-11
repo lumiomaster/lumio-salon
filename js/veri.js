@@ -217,3 +217,10 @@ export async function eskiRandevulariYukle() {
   const sn = await getDocs(yol('randevular'));
   return sn.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => !Array.isArray(r.ustalar));
 }
+
+// Bakım: müşteri defterini randevulardan tamamlamak için tüm randevular
+export async function tumRandevulariYukle() {
+  kontrol();
+  const sn = await getDocs(yol('randevular'));
+  return sn.docs.map(d => ({ id: d.id, ...d.data() }));
+}

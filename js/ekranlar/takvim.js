@@ -426,6 +426,12 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
         const ustalarListe = [...new Set(kalemler.map(k => k.ustaUid))];
         let mid = musteriId;
         if (!mid && telD) { const var_ = await musteriGetir(telD); if (var_) mid = var_.id; }
+        // Telefon yoksa aynı isimde tek kayıtlı müşteri varsa onunla eşleştir (aynı kişi için tekrar tekrar yeni kayıt açılmasın)
+        if (!mid && !telD) {
+          const norm = (x) => (x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+          const ayni = (await musterileriYukle()).filter(m => norm(m.ad) === norm(ad));
+          if (ayni.length === 1) mid = ayni[0].id;
+        }
         if (mid) { const mm = await musteriGetir(mid); if (mm && mm.silindi) await musteriGeriGetir(mid); }
         if (mid) b.update(doc(db, 'salons', S.salon.id, 'musteriler', mid), { ustalar: arrayUnion(...ustalarListe), guncelleme: serverTimestamp() });
         else {

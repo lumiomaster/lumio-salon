@@ -1,11 +1,11 @@
 /* LUMIO SALON - Service Worker (3. teslim)
    Uygulama kabuğu önbelleğe alınır; veri HER ZAMAN internetten gelir (Pro internetle çalışır).
    Her teslimde CACHE sürümünü artırın ki yeni dosyalar hemen gelsin. */
-const CACHE = 'lumio-salon-v1-t5f';
+const CACHE = 'lumio-salon-v1-t5g';
 const KABUK = [
   './', './index.html', './manifest.json', './css/app.css',
   './js/main.js', './js/config.js', './js/i18n.js', './js/util.js', './js/durum.js', './js/fb.js', './js/roller.js',
-  './js/ekranlar/giris.js', './js/ekranlar/ana.js', './js/ekranlar/ekip.js', './js/ekranlar/ayarlar.js', './js/veri.js', './js/ekranlar/salon.js', './js/ekranlar/genel.js', './js/ekranlar/hizmetler.js', './js/ekranlar/ustalar.js', './js/ekranlar/takvim.js', './js/ekranlar/kasa.js', './js/ekranlar/musteriler.js', './js/ekranlar/hesap.js', './js/ekranlar/kazancim.js', './js/ekranlar/odeme-formu.js', './js/kasa-mantik.js', './js/takvim-mantik.js', './js/mesaj.js', './js/geri.js', './js/gecmis.js', './js/ekranlar/islem.js', './js/ekranlar/ilave.js', './js/ekranlar/mutabakat-kart.js',
+  './js/ekranlar/giris.js', './js/ekranlar/ana.js', './js/ekranlar/ekip.js', './js/ekranlar/ayarlar.js', './js/veri.js', './js/ekranlar/salon.js', './js/ekranlar/genel.js', './js/ekranlar/hizmetler.js', './js/ekranlar/ustalar.js', './js/ekranlar/takvim.js', './js/ekranlar/kasa.js', './js/ekranlar/musteriler.js', './js/ekranlar/hesap.js', './js/ekranlar/kazancim.js', './js/ekranlar/odeme-formu.js', './js/kasa-mantik.js', './js/takvim-mantik.js', './js/mesaj.js', './js/geri.js', './js/gecmis.js', './js/ekranlar/islem.js', './js/ekranlar/ilave.js', './js/ekranlar/mutabakat-kart.js', './js/ekranlar/kalem-detay.js',
   './icons/logo.png', './icons/icon-192.png'
 ];
 
