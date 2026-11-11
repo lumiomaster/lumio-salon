@@ -44,6 +44,29 @@ export function mesgulAraliklar(hizmet, bas) {
   return sonuc;
 }
 
+// Randevu için hizmetin süresini/ücretini değiştirir (hizmetin kendisi değişmez).
+// Bekleme aşamalı hizmette aşamalar süreyle ORANTILI uzar/kısalır (5 dk'ya yuvarlanır, kalan son aşamaya eklenir).
+export function hizmetUyarla(hz, sure, fiyat) {
+  const s = Number(sure), f = Number(fiyat);
+  const yeniSure = Number.isFinite(s) && s >= 5 ? Math.round(s / 5) * 5 : hz.sure;
+  const yeniFiyat = fiyat === '' || fiyat == null || !Number.isFinite(f) || f < 0 ? hz.fiyat : f;
+  let as = hz.asamalar || [];
+  if (as.length && yeniSure !== hz.sure) {
+    const oran = yeniSure / hz.sure;
+    const yeni = as.map(a => Math.max(5, Math.floor(a.sure * oran / 5) * 5));
+    const ilk = yeni.slice(0, -1).reduce((x, y) => x + y, 0);
+    yeni[yeni.length - 1] = yeniSure - ilk;
+    // son aşama çok küçük kalırsa en büyük aşamadan 5'er dk alınır
+    while (yeni[yeni.length - 1] < 5) {
+      let k = 0; yeni.slice(0, -1).forEach((v, i) => { if (v > yeni[k]) k = i; });
+      if (yeni.length < 2 || yeni[k] <= 5) break;
+      yeni[k] -= 5; yeni[yeni.length - 1] += 5;
+    }
+    as = as.map((a, i) => ({ ...a, sure: yeni[i] }));
+  }
+  return { ...hz, sure: yeniSure, fiyat: yeniFiyat, asamalar: as };
+}
+
 // Aralıkların kapladığı dilim numaraları (tekrarsız, sıralı)
 export function dilimler(araliklar) {
   const k = new Set();

@@ -1,6 +1,7 @@
 // Rol kuralları tek yerde. firestore.rules ile AYNI olmalı (güvenliği asıl sağlayan kurallar dosyasıdır,
 // buradaki kontroller yalnızca ekranda doğru düğmeleri göstermek içindir).
-export const YETKILI = ['yonetici', 'kidemli'];
+// Yönetici, kıdemli ve ortak aynı haklara sahiptir. Tek fark: yöneticinin rolünü kimse değiştiremez, yönetici herkesinkini değiştirir.
+export const YETKILI = ['yonetici', 'kidemli', 'ortak'];
 export const GOREN = ['yonetici', 'kidemli', 'ortak'];
 
 export function yetkiliMi(rol) { return YETKILI.includes(rol); }
@@ -8,15 +9,12 @@ export function gorenMi(rol) { return GOREN.includes(rol); }
 
 // Bu rol hangi rollerde kişi ekleyebilir?
 export function eklenebilirRoller(rol) {
-  if (rol === 'yonetici') return ['kidemli', 'ortak', 'sekreter', 'usta'];
-  if (rol === 'kidemli') return ['ortak', 'sekreter', 'usta'];
-  return [];
+  return yetkiliMi(rol) ? ['kidemli', 'ortak', 'sekreter', 'usta'] : [];
 }
 
 // "ben" rolündeki kişi "hedef" rolündeki kişiyi yönetebilir mi (pasif yap, rol değiştir)?
 export function yonetebilir(ben, hedef) {
   if (hedef === 'yonetici') return false;
-  if (hedef === 'kidemli') return ben === 'yonetici';
   return yetkiliMi(ben);
 }
 
@@ -32,10 +30,10 @@ export const SEKMELER = [
 ];
 export function sekmelerim(rol) { return SEKMELER.filter(s => s.roller.includes(rol)); }
 
-// Randevu alabilen, değiştirebilen ve iptal edebilen roller (ortak yalnız görür)
-export const RANDEVU_YAZAR = ['yonetici', 'kidemli', 'sekreter', 'usta'];
+// Randevu alabilen, değiştirebilen ve iptal edebilen roller
+export const RANDEVU_YAZAR = ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'];
 export function randevuYazarMi(rol) { return RANDEVU_YAZAR.includes(rol); }
 
-// Ödeme alabilenler (ortak yalnız görür, usta ödeme almaz)
-export const ODEME_YAZAR = ['yonetici', 'kidemli', 'sekreter'];
+// Ödeme alabilenler (usta ödeme almaz)
+export const ODEME_YAZAR = ['yonetici', 'kidemli', 'ortak', 'sekreter'];
 export function odemeYazarMi(rol) { return ODEME_YAZAR.includes(rol); }

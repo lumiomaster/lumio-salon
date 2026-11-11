@@ -34,3 +34,12 @@
 - Uygulamayı tamamen kapatıp açın; Ayarlar altındaki sürüm **0.5.4** olmalı.
 - **Mutabakat:** Kasa > Usta hesapları > ustanın altında (henüz onaylamadıysa): "WhatsApp ile hatırlat" (ustaya o günün payı + "Kazancım'dan onaylayın" mesajı) ve "Sözlü onayladı" (sizin işaretlediğiniz kayda geçer, ustanın ekranında da yazar). Mutabakat günü kutusundan geçmiş günü seçin. Ustanın telefonu Ekip'te kayıtlı olmalı.
 - **Geri tuşu yeniden yazıldı:** her pencere ve sekme geçmişe gerçek bir kayıt ekler; geri tuşu önce pencereyi, sonra Ana sayfayı, sonra "tekrar basın" uyarısını getirir.
+
+---
+## 5. teslim EK-5 paketi
+- **firestore.rules DEĞİŞTİ** → Firebase > Rules'a yapıştırıp **Publish**. (Usta "Kazancım" boş ekran / izin hatası bu kuraldaydı: henüz olmayan mutabakat kaydını sormak reddediliyordu.)
+- Uygulamayı kapatıp açın; sürüm **0.5.5**.
+- **Roller:** Yönetici, kıdemli ve ortak aynı haklara sahip (randevu, ödeme, avans, ayarlar, ekip, rol değiştirme). Tek fark: yöneticinin rolünü kimse değiştiremez; yönetici herkesinkini değiştirir.
+- **Randevuda süre ve ücret:** her hizmet satırında Süre (dk) ve Ücret (₺) kutusu. Hizmetteki değer hazır gelir, o randevu için değiştirilir; hizmetin kendisi değişmez. Bekleme aşamalı hizmette aşamalar süreyle orantılı uzar/kısalır (120 → 150 dk: 40/40/40 → 50/50/50).
+- **Usta** yalnızca kendine randevu alır/ilave hizmet ekler. Birden fazla ustalı randevuyu yönetici/sekreter değiştirir.
+- **Mutabakat:** Usta uygulamayı açınca Ana sayfada "Onayınızı bekleyen gün" kartı (Onaylıyorum / İtirazım var). Yönetici/kıdemli/ortak Ana sayfada bugün ve dünün özetini görür.

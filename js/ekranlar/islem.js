@@ -33,18 +33,18 @@ export function formulFormu(randevu, i, mevcut, bitti) {
 // Bu kişi bu kalemin formül/notunu yazabilir mi? (usta yalnız kendi kalemini; yönetici ve kıdemli hepsini)
 export function formulYazabilir(k) {
   const rol = S.profil.rol;
-  return rol === 'yonetici' || rol === 'kidemli' || (rol === 'usta' && k.ustaUid === auth.currentUser.uid);
+  return rol === 'yonetici' || rol === 'kidemli' || rol === 'ortak' || (rol === 'usta' && k.ustaUid === auth.currentUser.uid);
 }
 // Formül/notu okuyabilen roller (sekreter okuyamaz)
 export const formulOkur = () => ['yonetici', 'kidemli', 'ortak', 'usta'].includes(S.profil.rol);
 
 // ---- Randevusuz / geçmiş işlem kaydı (müşteri defteri) ----
 // Yönetici ve kıdemli kimin yaptığını seçer; usta kendi adına yazar; sekreter yazamaz.
-export const islemYazarMi = () => ['yonetici', 'kidemli', 'usta'].includes(S.profil.rol);
+export const islemYazarMi = () => ['yonetici', 'kidemli', 'ortak', 'usta'].includes(S.profil.rol);
 
 export function islemAlanlari(uyeler) {
   const ben = auth.currentUser.uid;
-  const adaylar = uyeler.filter(u => u.aktif && ['usta', 'kidemli', 'yonetici'].includes(u.rol));
+  const adaylar = uyeler.filter(u => u.aktif && ['usta', 'kidemli', 'ortak', 'yonetici'].includes(u.rol));
   const bugun = new Date(); const iso = bugun.getFullYear() + '-' + String(bugun.getMonth() + 1).padStart(2, '0') + '-' + String(bugun.getDate()).padStart(2, '0');
   const tarih = h('input', { type: 'date', value: iso, max: iso });
   const usta = h('select', { disabled: S.profil.rol === 'usta' }, adaylar.map(u => h('option', { value: u.id, selected: u.id === ben }, u.ad)));

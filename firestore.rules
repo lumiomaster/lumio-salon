@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 4)
+// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 5)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -38,7 +38,7 @@ service cloud.firestore {
 
     // Yönetici ve kıdemli yetkili
     function yetkiliMi(salonId) {
-      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli'];
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak'];
     }
 
     // Maliyet ve kayıtları görebilenler: yönetici, kıdemli yetkili, ortak
@@ -92,7 +92,7 @@ service cloud.firestore {
 
     // Randevu yazabilenler: yönetici, kıdemli yetkili, sekreter, usta (ortak yalnız görür)
     function randevuYazar(salonId) {
-      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'sekreter', 'usta'];
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'];
     }
 
 
@@ -111,7 +111,7 @@ service cloud.firestore {
 
     // Ödeme alabilenler: yönetici, kıdemli yetkili, sekreter
     function odemeYazar(salonId) {
-      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'sekreter'];
+      return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
     }
 
     function randevuTemel() {
@@ -159,27 +159,22 @@ service cloud.firestore {
             && yetkiliMi(request.resource.data.salonId)
             && lisansAktif(request.resource.data.salonId)
             && (
-              (ben().rol == 'yonetici' && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'])
-              || (ben().rol == 'kidemli' && request.resource.data.rol in ['ortak', 'sekreter', 'usta'])
+              (ben().rol in ['yonetici', 'kidemli', 'ortak'] && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'])
             )
           )
         );
 
       // Rol, aktiflik ve ad değişimi. Yönetici belgesine kimse dokunamaz;
-      // kıdemli yetkiliye yalnızca yönetici dokunabilir.
+      // yönetici, kıdemli ve ortak aynı haklara sahiptir; yalnız yöneticinin rolü kimse tarafından değiştirilemez.
       allow update: if yetkiliMi(resource.data.salonId)
         && lisansAktif(resource.data.salonId)
         && uid != request.auth.uid
         && resource.data.rol != 'yonetici'
-        && (resource.data.rol != 'kidemli' || ben().rol == 'yonetici')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rol', 'aktif', 'ad'])
         && request.resource.data.ad is string
         && request.resource.data.ad.size() >= 2
         && request.resource.data.ad.size() <= 60
-        && (
-          (ben().rol == 'yonetici' && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'])
-          || (ben().rol == 'kidemli' && request.resource.data.rol in ['ortak', 'sekreter', 'usta'])
-        );
+        && request.resource.data.rol in ['kidemli', 'ortak', 'sekreter', 'usta'];
 
       allow delete: if false;
     }
@@ -292,6 +287,7 @@ service cloud.firestore {
           && request.resource.data.olusturan == request.auth.uid
           && request.resource.data.olusturma == request.time
           && randevuTemel()
+          && (ben().rol != 'usta' || request.resource.data.ustalar == [request.auth.uid])
           && existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0]));
         allow update: if (
             // 1) düzenleme / erteleme / iptal
@@ -299,6 +295,7 @@ service cloud.firestore {
             && resource.data.durum == 'bekliyor'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['musteriAd', 'musteriTel', 'musteriId', 'ustalar', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'iptalNedeni', 'guncelleme'])
             && request.resource.data.durum in ['bekliyor', 'iptal']
+            && (ben().rol != 'usta' || (resource.data.ustalar == [request.auth.uid] && request.resource.data.ustalar == [request.auth.uid]))
             && randevuTemel()
             && (request.resource.data.durum == 'iptal' || existsAfter(kilitYolu(salonId, request.resource.data.kilitler[0])))
           ) || (
@@ -401,7 +398,7 @@ service cloud.firestore {
       match /islemler/{iid} {
         allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
-          && (ben().rol in ['yonetici', 'kidemli'] || (ben().rol == 'usta' && request.resource.data.ustaUid == request.auth.uid))
+          && (ben().rol in ['yonetici', 'kidemli', 'ortak'] || (ben().rol == 'usta' && request.resource.data.ustaUid == request.auth.uid))
           && request.resource.data.keys().hasOnly(['musteriId', 'ustaUid', 'rid', 'tarih', 'hizmet', 'formul', 'not', 'guncelleme'])
           && request.resource.data.musteriId is string
           && request.resource.data.ustaUid is string
@@ -433,7 +430,8 @@ service cloud.firestore {
 
       // ---- Akşam mutabakatı: usta kendi gününü onaylar ya da itiraz eder ----
       match /mutabakat/{mid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        // (resource == null: henüz olmayan belgeyi sormak da izinlidir; yoksa usta "yok" cevabını alamaz ve ekran boş kalır)
+        allow read: if gorenMi(salonId) || (uyeMi(salonId) && (resource == null || resource.data.ustaUid == request.auth.uid));
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ustaUid', 'tarih', 'durum', 'not', 'tutar', 'guncelleme'])
           && request.resource.data.ustaUid == request.auth.uid

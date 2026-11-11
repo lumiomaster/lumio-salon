@@ -43,8 +43,7 @@ export function ekipEkrani() {
       yetkili ? h('button', { class: 'dugme kucuk-dugme', type: 'button', disabled: !lisansOk, onclick: () => ekleFormu() }, t('+ Kişi ekle')) : null),
     hata ? h('div', { class: 'uyari' }, hata, ' ', h('button', { class: 'baglanti', type: 'button', onclick: () => { liste = null; goster(); } }, t('Tekrar dene'))) : null,
     liste === null ? h('p', { class: 'soluk' }, t('Yükleniyor…')) :
-      h('div', { class: 'liste' }, liste.map(k => uyeKarti(k, benRol, lisansOk))),
-    benRol === 'ortak' ? h('p', { class: 'kucuk' }, t('Ortak olarak ekibi görebilirsiniz; değişiklik yönetici ya da kıdemli yetkili tarafından yapılır.')) : null);
+      h('div', { class: 'liste' }, liste.map(k => uyeKarti(k, benRol, lisansOk))));
 }
 
 function uyeKarti(k, benRol, lisansOk) {

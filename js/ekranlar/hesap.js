@@ -111,7 +111,7 @@ function mutabakatMesaji(s, D) {
   if (!u || !u.telefon) { bildir(t('Bu ustanın telefonu kayıtlı değil.'), 'hata'); return; }
   if (!g.satirlar.length) { bildir(t('Bu gün için ustanın işlemi yok.'), 'hata'); return; }
   const ad = (u.ad || '').split(' ')[0];
-  const metin = 'Merhaba ' + ad + ' 👋\n\n📅 ' + tarihTR(H.tarih) + ' günü hesabınız hazır:\n💰 Payınız: ' + para(g.pay) + '\n\n✅ Lütfen LUMIO SALON uygulamasında "Kazancım" ekranından kontrol edip onaylayın. Bir yanlışlık varsa "İtirazım var" diyerek yazabilirsiniz.\n\n' + (S.salon ? S.salon.ad : '');
+  const metin = 'Merhaba ' + ad + ' 👋\n\n📅 ' + tarihTR(H.tarih) + ' günü hesabınız hazır:\n💰 Payınız: ' + para(g.pay) + '\n\n✅ LUMIO SALON uygulamasını açın; Ana sayfanın en üstünde "Onayınızı bekleyen gün" kartı çıkacak. Hesap doğruysa "Onaylıyorum", yanlışlık varsa "İtirazım var" diyebilirsiniz.\n\n' + (S.salon ? S.salon.ad : '');
   waAc(u.telefon, metin);
 }
 

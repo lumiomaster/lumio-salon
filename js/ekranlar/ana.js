@@ -7,6 +7,7 @@ import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle } from '../ver
 import { goster } from '../main.js';
 import { musterileriYukle } from '../veri.js';
 import { hatirlatmaKarti } from './musteriler.js';
+import { mutabakatKarti } from './mutabakat-kart.js';
 
 const YAKINDA = [
   { ad: 'Stok ve sipariş', ikon: '📦', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter'] },
@@ -31,6 +32,7 @@ export function anaEkrani() {
     h('h1', null, t('Merhaba {ad}', { ad: p.ad.split(' ')[0] })),
     h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol)),
     lisansKart,
+    mutabakatKarti(),
     hatirlatmaKutusu(),
     yetkiliMi(p.rol) ? kurulumKarti() : null,
     h('h2', null, t('Yakında eklenecek')),

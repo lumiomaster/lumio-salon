@@ -128,3 +128,6 @@ textarea.liste-metin { resize: vertical; }
 .tehlike-kutu { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
 .dugme.tehlike { background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; }
 .dolu-bos { font-size: 12px; opacity: .8; }
+.mut-gun-satir { padding: 8px 0; border-top: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
+.mut-ozet { padding: 6px 0; }
+.sure-fiyat input { width: 100%; }

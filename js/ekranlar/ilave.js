@@ -3,7 +3,7 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc } from '../util.
 import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { kilitleriYukle } from '../veri.js';
-import { dkMetin, metinDk, mesgulAraliklar, dilimler, kalemYap, ustaDurumu, randevuKilitleri } from '../takvim-mantik.js';
+import { dkMetin, metinDk, hizmetUyarla, mesgulAraliklar, dilimler, kalemYap, ustaDurumu, randevuKilitleri } from '../takvim-mantik.js';
 import { formulFormu, formulYazabilir } from './islem.js';
 
 const DURUM_YAZI = { ok: 'müsait', disarda: 'mesai dışı', izin: 'izinli', dolu: 'dolu' };
@@ -13,12 +13,15 @@ const DURUM_YAZI = { ok: 'müsait', disarda: 'mesai dışı', izin: 'izinli', do
 export function ilaveHizmetFormu(r, ctx, yenile) {
   const adim = (ctx.ayar && ctx.ayar.randevuAdimi) || 15;
   const hizmetler = ctx.hizmetler.filter(x => x.aktif);
-  const ustaListe = ctx.uyeler.filter(u => u.aktif && ctx.profil[u.id] && ctx.profil[u.id].calisir);
+  // Usta yalnızca kendine hizmet ekler
+  const ustaListe = ctx.uyeler.filter(u => u.aktif && ctx.profil[u.id] && ctx.profil[u.id].calisir && (S.profil.rol !== 'usta' || u.id === auth.currentUser.uid));
   let harita = {};
   const son = r.kalemler[r.kalemler.length - 1];
 
   const hizSec = h('select', { 'aria-label': t('Hizmet') }, h('option', { value: '' }, t('Hizmet seçin')),
     hizmetler.map(x => h('option', { value: x.id }, x.ad + ' · ' + x.sure + ' ' + t('dk'))));
+  const sureK = h('input', { type: 'number', inputmode: 'numeric', min: 5, max: 600, step: 5 });
+  const fiyatK = h('input', { type: 'number', inputmode: 'decimal', min: 0, step: 'any' });
   const saatK = h('input', { type: 'time', step: String(adim * 60), value: dkMetin(Math.min(r.bit, 1435)) });
   const ustaSec = h('select', { 'aria-label': t('Usta'), disabled: true });
   const bilgi = h('div', { class: 'kucuk' });
@@ -27,7 +30,8 @@ export function ilaveHizmetFormu(r, ctx, yenile) {
 
   let adaylar = [];
   function hesapla() {
-    const hz = hizmetler.find(x => x.id === hizSec.value);
+    const taban = hizmetler.find(x => x.id === hizSec.value);
+    const hz = taban ? hizmetUyarla(taban, sureK.value === '' ? '' : Number(sureK.value), fiyatK.value === '' ? '' : Number(fiyatK.value)) : null;
     const bas = metinDk(saatK.value);
     adaylar = [];
     if (!hz || !Number.isFinite(bas)) { doldur(ustaSec); ustaSec.disabled = true; doldur(bilgi); return null; }
@@ -43,7 +47,10 @@ export function ilaveHizmetFormu(r, ctx, yenile) {
     return { hz, bas, ar, dl };
   }
   const guncelle = () => { hata.textContent = ''; hesapla(); };
-  hizSec.addEventListener('change', guncelle); saatK.addEventListener('change', guncelle); ustaSec.addEventListener('change', () => { hata.textContent = ''; });
+  // Hizmet seçilince süre ve ücret hizmetteki değerle dolar; bu randevu için değiştirilebilir
+  hizSec.addEventListener('change', () => { const tb = hizmetler.find(x => x.id === hizSec.value); sureK.value = tb ? tb.sure : ''; fiyatK.value = tb ? tb.fiyat : ''; guncelle(); });
+  sureK.addEventListener('change', guncelle); fiyatK.addEventListener('change', guncelle);
+  saatK.addEventListener('change', guncelle); ustaSec.addEventListener('change', () => { hata.textContent = ''; });
 
   kilitleriYukle(r.tarih).then(m => { harita = m; hesapla(); }).catch(e => { console.error(e); hata.textContent = hataMetni(e); });
 
@@ -83,6 +90,7 @@ export function ilaveHizmetFormu(r, ctx, yenile) {
     } },
     h('p', { class: 'kucuk' }, t('Müşteri zaten salonda: yeni randevu açmayın, hizmeti bu randevuya ekleyin. Başka bir ustanın işi de olabilir (örn. manikür).')),
     h('label', null, t('Hizmet'), hizSec),
+    h('div', { class: 'iki-sutun' }, h('label', null, t('Süre (dk)'), sureK), h('label', null, t('Ücret (₺)'), fiyatK)),
     h('label', null, t('Başlangıç saati'), saatK),
     h('label', null, t('Usta'), ustaSec), bilgi, hata, dugme));
 }

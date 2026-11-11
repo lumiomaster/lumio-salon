@@ -9,7 +9,7 @@ import { mesajYap, waAc, waLink, hitap, tarihTR } from '../mesaj.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, musteriGeriGetir, islemleriYukle } from '../veri.js';
 import {
-  DILIM, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
+  DILIM, hizmetUyarla, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
   ustaDurumu, randevuKilitleri, izinCakisanKalemler
 } from '../takvim-mantik.js';
 
@@ -157,6 +157,8 @@ function ayrinti(r, ctx, yazar, yenile) {
   const icerik = h('div', null);
   const p = pencereAc(t('Randevu'), icerik);
   const aktif = r.durum === 'bekliyor';
+  // Usta yalnızca kendi ustalığındaki randevuyu değiştirir; başka ustalı kalemi olan randevuyu yönetici/sekreter değiştirir
+  const kendiRandevum = S.profil.rol !== 'usta' || (r.ustalar || []).length === 1;
   const toplam = r.kalemler.reduce((s, k) => s + (Number(k.fiyat) || 0), 0);
   const olusturan = ctx.uyeler.find(u => u.id === r.olusturan);
   doldur(icerik,
@@ -178,9 +180,9 @@ function ayrinti(r, ctx, yazar, yenile) {
       olusturan ? h('p', { class: 'kucuk' }, t('Randevuyu alan: ') + olusturan.ad) : null),
     aktif && odemeYazarMi(S.profil.rol) && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); odemeFormu(r, yenile); } }, t('Ödeme al'))) : null,
-    aktif && yazar && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
+    aktif && yazar && kendiRandevum && lisansDurumu(S.salon).aktif ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); ilaveHizmetFormu(r, ctx, yenile); } }, t('+ İlave hizmet / işlem'))) : null,
-    aktif && yazar ? h('div', { class: 'dugme-satir' },
+    aktif && yazar && kendiRandevum ? h('div', { class: 'dugme-satir' },
       h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); iptalFormu(r, ctx, yenile); } }, t('İptal et')),
       h('button', { class: 'dugme', type: 'button', onclick: () => { p.kapat(); randevuFormu(r, ctx, r.tarih, yenile); } }, t('Düzenle / ertele'))) : null);
 
@@ -237,7 +239,8 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
   const yeni = !mevcut;
   const adim = (ctx.ayar && ctx.ayar.randevuAdimi) || 15;
   const aktifHizmetler = ctx.hizmetler.filter(x => x.aktif);
-  const ustaListe = ustalar(ctx);
+  // Usta yalnızca kendine randevu alabilir
+  const ustaListe = ustalar(ctx).filter(u => S.profil.rol !== 'usta' || u.id === auth.currentUser.uid);
   let kilitHarita = {};      // sunucudaki dolu dilimler (kendi randevum hariç)
   let yuklemeNo = 0;
 
@@ -272,14 +275,17 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
   const ozet = h('div', { class: 'randevu-ozet' });
 
   let satirlar = mevcut
-    ? mevcut.kalemler.map((k, i) => ({ hizmetId: k.hizmetId, ustaUid: k.ustaUid, bas: k.bas, elle: i > 0 && k.bas !== mevcut.kalemler[i - 1].bit, ustaElle: true, snap: k }))
-    : [{ hizmetId: '', ustaUid: '', bas: null, elle: false, ustaElle: false }];
+    ? mevcut.kalemler.map((k, i) => ({ hizmetId: k.hizmetId, ustaUid: k.ustaUid, bas: k.bas, elle: i > 0 && k.bas !== mevcut.kalemler[i - 1].bit, ustaElle: true, snap: k, sureK: '', fiyatK: '' }))
+    : [{ hizmetId: '', ustaUid: '', bas: null, elle: false, ustaElle: false, sureK: '', fiyatK: '' }];
 
-  const hizmetOf = (s) => {
+  // Hizmetin taban değeri (kayıtlı randevuda o randevudaki değer)
+  const hizmetTaban = (s) => {
     if (!s.hizmetId) return null;
     if (s.snap && s.snap.hizmetId === s.hizmetId) return { id: s.snap.hizmetId, ad: s.snap.ad, fiyat: s.snap.fiyat, sure: s.snap.sure, asamalar: s.snap.asamalar || [] };
     return ctx.hizmetler.find(x => x.id === s.hizmetId) || null;
   };
+  // Bu randevu için süre ve ücret elle değiştirilmiş olabilir
+  const hizmetOf = (s) => { const b = hizmetTaban(s); return b ? hizmetUyarla(b, s.sureK, s.fiyatK) : null; };
 
   // Her satırın başlangıcını, hizmetini, uygun ustalarını sırayla hesaplar
   function hesapla() {
@@ -328,7 +334,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
     const sonuc = hesapla();
     doldur(satirKutu, sonuc.map((r, i) => {
       const s = r.s;
-      const hizSec = h('select', { 'aria-label': t('Hizmet'), onchange: (e) => { s.hizmetId = e.target.value; s.snap = null; s.ustaUid = ''; s.ustaElle = false; ciz(); } },
+      const hizSec = h('select', { 'aria-label': t('Hizmet'), onchange: (e) => { s.hizmetId = e.target.value; s.snap = null; s.ustaUid = ''; s.ustaElle = false; s.sureK = ''; s.fiyatK = ''; ciz(); } },
         h('option', { value: '' }, t('Hizmet seçin')),
         aktifHizmetler.map(x => h('option', { value: x.id, selected: x.id === s.hizmetId }, x.ad + ' · ' + x.sure + ' ' + t('dk'))),
         s.hizmetId && !aktifHizmetler.some(x => x.id === s.hizmetId) && r.hz ? h('option', { value: s.hizmetId, selected: true }, r.hz.ad + ' (' + t('pasif') + ')') : null);
@@ -342,12 +348,16 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
       return h('div', { class: 'satir' },
         h('div', { class: 'satir-ust' }, hizSec,
           satirlar.length > 1 ? h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Kalemi sil'), onclick: () => { satirlar.splice(i, 1); ciz(); } }, '🗑') : null),
+        r.hz ? h('div', { class: 'iki-sutun sure-fiyat' },
+          h('label', null, t('Süre (dk)'), h('input', { type: 'number', inputmode: 'numeric', min: 5, max: 600, step: 5, value: r.hz.sure, onchange: (e) => { const v = Number(e.target.value); s.sureK = Number.isFinite(v) && v >= 5 ? Math.round(v / 5) * 5 : ''; ciz(); } })),
+          h('label', null, t('Ücret (₺)'), h('input', { type: 'number', inputmode: 'decimal', min: 0, step: 'any', value: r.hz.fiyat, onchange: (e) => { const v = e.target.value === '' ? '' : Number(e.target.value); s.fiyatK = Number.isFinite(v) && v >= 0 ? v : ''; ciz(); } }))) : null,
+        r.hz && hizmetTaban(s) && (r.hz.sure !== hizmetTaban(s).sure || r.hz.fiyat !== hizmetTaban(s).fiyat) ? h('div', { class: 'kucuk uyari-yazi' }, t('Bu randevuya özel: hizmet normalde {s} dk, {f}', { s: hizmetTaban(s).sure, f: para(hizmetTaban(s).fiyat) })) : null,
         i > 0 ? h('label', null, t('Başlangıç'), h('input', { type: 'time', step: String(adim * 60), value: Number.isFinite(r.bas) ? dkMetin(r.bas) : '',
           onchange: (e) => { const v = metinDk(e.target.value); if (Number.isFinite(v)) { s.bas = v; s.elle = true; ciz(); } } })) : null,
         h('label', null, t('Usta'), ustaSec),
         r.hz && r.bit != null ? h('div', { class: 'kucuk' }, dkMetin(r.bas) + '–' + dkMetin(r.bit) + ' · ' + r.hz.sure + ' ' + t('dk') + (r.hz.fiyat > 0 ? ' · ' + para(r.hz.fiyat) : '')) : null,
         notlar);
-    }), satirlar.length < 6 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ hizmetId: '', ustaUid: '', bas: null, elle: false, ustaElle: false }); ciz(); } }, t('+ Hizmet ekle')) : null);
+    }), satirlar.length < 6 ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ hizmetId: '', ustaUid: '', bas: null, elle: false, ustaElle: false, sureK: '', fiyatK: '' }); ciz(); } }, t('+ Hizmet ekle')) : null);
     const bitler = sonuc.filter(r => r.bit != null).map(r => r.bit);
     const toplam = sonuc.reduce((a, r) => a + (r.hz ? Number(r.hz.fiyat) || 0 : 0), 0);
     doldur(ozet, bitler.length ? h('div', { class: 'uye-ust' }, h('span', { class: 'soluk' }, t('Bitiş {saat}', { saat: dkMetin(Math.max(...bitler)) })), h('strong', null, para(toplam))) : null);

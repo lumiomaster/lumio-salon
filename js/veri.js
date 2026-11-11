@@ -116,6 +116,11 @@ export async function benimMutabakatim(uid, tarih) {
   const d = await getDoc(doc(db, 'salons', S.salon.id, 'mutabakat', uid + '_' + tarih));
   return d.exists() ? d.data() : null;
 }
+// Ustanın kendi mutabakat kayıtları (tümü)
+export async function mutabakatlarimiYukle(uid) {
+  kontrol();
+  return liste(await getDocs(query(yol('mutabakat'), where('ustaUid', '==', uid))));
+}
 // Devreden borçlar: { uid: devir }
 export async function devirleriYukle(uid) {
   kontrol();
