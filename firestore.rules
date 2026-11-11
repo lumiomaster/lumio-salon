@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (5. teslim, ek 8)
+// LUMIO SALON - Firestore güvenlik kuralları (6. teslim, 2. parça)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -112,6 +112,20 @@ service cloud.firestore {
     // Ödeme alabilenler: yönetici, kıdemli yetkili, sekreter
     function odemeYazar(salonId) {
       return uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
+    }
+
+    // Ürün kartı alanları (stok: gram ya da adet cinsinden; paketGram: tüp/paket başına gram)
+    function urunGecerli() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['ad', 'birim', 'paketGram', 'stok', 'enAz', 'aktif', 'guncelleme'])
+        && d.ad is string && d.ad.size() >= 2 && d.ad.size() <= 60
+        && d.birim in ['gram', 'adet']
+        && d.paketGram is number && d.paketGram >= 0 && d.paketGram <= 100000
+        && (d.birim == 'adet' || d.paketGram > 0)
+        && d.stok is number && d.stok >= -10000000 && d.stok <= 10000000
+        && d.enAz is number && d.enAz >= 0 && d.enAz <= 10000000
+        && d.aktif is bool
+        && d.guncelleme == request.time;
     }
 
     function randevuTemel() {
@@ -231,6 +245,14 @@ service cloud.firestore {
               && request.resource.data.randevuAdimi in [5, 10, 15, 20, 30, 60]
               && request.resource.data.salonTel is string && request.resource.data.salonTel.size() <= 30
               && request.resource.data.kayipGun is int && request.resource.data.kayipGun >= 7 && request.resource.data.kayipGun <= 730
+              && request.resource.data.guncelleme == request.time
+            )
+            ||
+            (
+              ayarId == 'stok'
+              && request.resource.data.keys().hasOnly(['sonSayim', 'tedarikciTel', 'guncelleme'])
+              && request.resource.data.sonSayim is string && request.resource.data.sonSayim.size() <= 10
+              && request.resource.data.tedarikciTel is string && request.resource.data.tedarikciTel.size() <= 30
               && request.resource.data.guncelleme == request.time
             )
             ||
@@ -400,7 +422,8 @@ service cloud.firestore {
         allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
           && (ben().rol in ['yonetici', 'kidemli', 'ortak'] || (ben().rol == 'usta' && request.resource.data.ustaUid == request.auth.uid))
-          && request.resource.data.keys().hasOnly(['musteriId', 'ustaUid', 'rid', 'tarih', 'hizmet', 'formul', 'not', 'guncelleme'])
+          && request.resource.data.keys().hasOnly(['musteriId', 'ustaUid', 'rid', 'tarih', 'hizmet', 'formul', 'not', 'urunler', 'guncelleme'])
+          && (!('urunler' in request.resource.data) || (request.resource.data.urunler is list && request.resource.data.urunler.size() <= 12))
           && request.resource.data.musteriId is string
           && request.resource.data.ustaUid is string
           && request.resource.data.rid is string
@@ -480,6 +503,85 @@ service cloud.firestore {
           && request.resource.data.gun is string && request.resource.data.gun.size() == 10
           && request.resource.data.zaman == request.time;
         allow update, delete: if false;
+      }
+
+      // ---- Stok (6. teslim): ürün kartı, fiyat (alış maliyeti gizli), hareket günlüğü, alış faturaları ----
+      // Ürün kartı: herkes okur (formülde ürün seçilir). Stok miktarını formül/satış yazanlar da düşürebilir (yalnız 'stok' alanı).
+      match /urunler/{urunId} {
+        allow read: if uyeMi(salonId);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId) && urunGecerli();
+        allow update: if lisansAktif(salonId) && (
+          (yetkiliMi(salonId) && urunGecerli())
+          ||
+          (uyeMi(salonId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stok', 'guncelleme'])
+            && request.resource.data.stok is number
+            && request.resource.data.stok - resource.data.stok <= 1000000
+            && request.resource.data.stok - resource.data.stok >= -1000000
+            && request.resource.data.guncelleme == request.time)
+        );
+        allow delete: if false;
+      }
+      // Alış ve satış fiyatı: ustalar göremez
+      match /urunFiyat/{urunId} {
+        allow read: if uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['alis', 'satis', 'guncelleme'])
+          && request.resource.data.alis is number && request.resource.data.alis >= 0 && request.resource.data.alis <= 10000000
+          && request.resource.data.satis is number && request.resource.data.satis >= 0 && request.resource.data.satis <= 10000000
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
+      }
+      match /stokHareket/{hid} {
+        allow read: if gorenMi(salonId);
+        allow create: if uyeMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['urunId', 'miktar', 'tur', 'ref', 'not', 'uid', 'gun', 'zaman'])
+          && request.resource.data.urunId is string && request.resource.data.urunId.size() > 0
+          && request.resource.data.miktar is number && request.resource.data.miktar >= -10000000 && request.resource.data.miktar <= 10000000
+          && request.resource.data.tur in ['giris', 'sayim', 'formul', 'satis', 'duzeltme']
+          && request.resource.data.ref is string && request.resource.data.ref.size() <= 60
+          && request.resource.data.not is string && request.resource.data.not.size() <= 100
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.gun is string && request.resource.data.gun.size() == 10
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+      match /alislar/{aid} {
+        allow read: if gorenMi(salonId);
+        allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['tarih', 'tedarikci', 'faturaNo', 'kalemler', 'toplam', 'not', 'uid', 'zaman'])
+          && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
+          && request.resource.data.tedarikci is string && request.resource.data.tedarikci.size() <= 60
+          && request.resource.data.faturaNo is string && request.resource.data.faturaNo.size() <= 30
+          && request.resource.data.kalemler is list && request.resource.data.kalemler.size() >= 1 && request.resource.data.kalemler.size() <= 40
+          && request.resource.data.toplam is number && request.resource.data.toplam >= 0 && request.resource.data.toplam <= 100000000
+          && request.resource.data.not is string && request.resource.data.not.size() <= 200
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+
+      // ---- Ekip sohbeti: salondaki herkes okur ve yazar; kendi mesajını (yönetici/kıdemli/ortak hepsini) siler ----
+      match /sohbet/{mid} {
+        allow read: if uyeMi(salonId);
+        allow create: if uyeMi(salonId) && lisansAktif(salonId)
+          && request.resource.data.keys().hasOnly(['uid', 'metin', 'gun', 'zaman'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.metin is string && request.resource.data.metin.size() >= 1 && request.resource.data.metin.size() <= 500
+          && request.resource.data.gun is string && request.resource.data.gun.size() == 10
+          && request.resource.data.zaman == request.time;
+        allow update: if false;
+        allow delete: if uyeMi(salonId) && (resource.data.uid == request.auth.uid || yetkiliMi(salonId));
+      }
+      // Okunmamış mesaj rozeti için son mesajın zamanı (tek belge)
+      match /sohbetDurum/{did} {
+        allow read: if uyeMi(salonId);
+        allow create, update: if uyeMi(salonId) && lisansAktif(salonId) && did == 'son'
+          && request.resource.data.keys().hasOnly(['uid', 'gun', 'zaman'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.gun is string && request.resource.data.gun.size() == 10
+          && request.resource.data.zaman == request.time;
+        allow delete: if false;
       }
 
       // ---- Ustanın dönemden devreden borcu (yalnız Hesabı kapat yazar) ----

@@ -3,7 +3,9 @@ import { ROLLER } from '../config.js';
 import { h, doldur, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
-import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle } from '../veri.js';
+import { ayariYukle, hizmetleriYukle, ustalariYukle, uyeleriYukle, urunleriYukle, stokAyariYukle } from '../veri.js';
+import { azMi } from '../stok-mantik.js';
+import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 import { goster } from '../main.js';
 import { musterileriYukle } from '../veri.js';
 import { hatirlatmaKarti } from './musteriler.js';
@@ -11,7 +13,6 @@ import { gonderimleriYukle } from '../mesaj-kayit.js';
 import { mutabakatKarti } from './mutabakat-kart.js';
 
 const YAKINDA = [
-  { ad: 'Stok ve sipariş', ikon: '📦', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter'] },
   { ad: 'Maliyet ve kâr', ikon: '📈', roller: ['yonetici', 'kidemli', 'ortak'] }
 ];
 
@@ -35,6 +36,7 @@ export function anaEkrani() {
     lisansKart,
     mutabakatKarti(),
     hatirlatmaKutusu(),
+    yetkiliMi(p.rol) ? stokKarti() : null,
     yetkiliMi(p.rol) ? kurulumKarti() : null,
     h('h2', null, t('Yakında eklenecek')),
     h('div', { class: 'yakinda' }, YAKINDA.filter(y => y.roller.includes(p.rol)).map(y =>
@@ -70,5 +72,22 @@ function hatirlatmaKutusu() {
     doldur(kutu, hatirlatmaKarti(liste, ayar, null, doldurKutu, G));
   }).catch(() => {});
   doldurKutu();
+  return kutu;
+}
+
+// Azalan ürünler ve haftalık sayım hatırlatması (yalnız yönetici/kıdemli/ortak)
+function stokKarti() {
+  const kutu = h('div', null);
+  Promise.all([urunleriYukle(), stokAyariYukle()]).then(([urunler, ayar]) => {
+    const aktif = urunler.filter(u => u.aktif !== false);
+    if (!aktif.length) return;
+    const azlar = aktif.filter(azMi);
+    const gecikti = !ayar.sonSayim || ayar.sonSayim < tarihEkle(tarihMetin(new Date()), -7);
+    if (!azlar.length && !gecikti) return;
+    doldur(kutu, h('div', { class: 'kart bilgi' }, h('strong', null, '📦 ' + t('Stok')),
+      azlar.length ? h('p', { class: 'kucuk' }, '⚠️ ' + t('{n} ürün azalıyor: {liste}', { n: azlar.length, liste: azlar.slice(0, 4).map(u => u.ad).join(', ') + (azlar.length > 4 ? '…' : '') })) : null,
+      gecikti ? h('p', { class: 'kucuk' }, t('Haftalık sayım zamanı geldi.')) : null,
+      h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { S.sekme = 'salon'; S.salonAlt = 'stok'; goster(); } }, t('Stok sayfasını aç')))));
+  }).catch(() => {});
   return kutu;
 }

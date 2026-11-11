@@ -2,15 +2,17 @@ import { t } from '../i18n.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc } from '../util.js';
 import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
-import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle, hizmetleriYukle } from '../veri.js';
+import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle, hizmetleriYukle, urunleriYukle } from '../veri.js';
+import { satisStokYaz } from '../stok-yaz.js';
+import { paketBoyu, birimAdi, stokYazi } from '../stok-mantik.js';
 import { tarihMetin, dkMetin } from '../takvim-mantik.js';
 import { yuvarla, urunKari } from '../kasa-mantik.js';
 
 // Ödeme alma formu. randevu verilirse kalemleri hazır gelir; verilmezse "ürün satışı" olur.
 // bitti(): ödeme yazılınca ekranı yenilemek için çağrılır.
 export async function odemeFormu(randevu, bitti) {
-  let uyeler, u, ayar, hizmetler;
-  try { [uyeler, u, ayar, hizmetler] = await Promise.all([uyeleriYukle(), ustalariYukle(), ayariYukle(true), hizmetleriYukle()]); hizmetler = hizmetler.filter(x => x.aktif); }
+  let uyeler, u, ayar, hizmetler, urunler;
+  try { [uyeler, u, ayar, hizmetler, urunler] = await Promise.all([uyeleriYukle(), ustalariYukle(), ayariYukle(true), hizmetleriYukle(), urunleriYukle().catch(() => [])]); hizmetler = hizmetler.filter(x => x.aktif); urunler = urunler.filter(x => x.aktif !== false); }
   catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); return; }
   const oran = ayar ? ayar.posOrani : 0;
   const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
@@ -18,7 +20,7 @@ export async function odemeFormu(randevu, bitti) {
 
   const satirlar = randevu
     ? randevu.kalemler.map(k => ({ ustaUid: k.ustaUid, ad: k.ad, tutar: String(k.fiyat || 0).replace('.', ','), alis: '', tur: 'hizmet' }))
-    : [{ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }];
+    : [{ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun', urunId: '', adet: '' }];
   let yontem = 'nakit';
   const musteri = h('input', { type: 'text', maxlength: 60, value: randevu ? randevu.musteriAd : '', placeholder: randevu ? '' : t('Müşteri (isteğe bağlı)') });
   const sonraki = h('input', { type: 'date' });
@@ -35,7 +37,12 @@ export async function odemeFormu(randevu, bitti) {
     doldur(satirKutu, satirlar.map((s, i) => h('div', { class: 'satir' },
       h('div', { class: 'satir-ust' },
         s.tur === 'urun'
-          ? h('input', { type: 'text', value: s.ad, maxlength: 40, placeholder: t('Ürün adı'), oninput: (e) => { s.ad = e.target.value; } })
+          ? h('div', { class: 'urun-sec' },
+            urunler.length ? h('select', { 'aria-label': t('Stoktan ürün'), onchange: (e) => urunSec(s, e.target.value) },
+              h('option', { value: '' }, t('Stoktan seç (ya da elle yazın)…')),
+              urunler.map(x => h('option', { value: x.id, selected: x.id === s.urunId }, x.ad + ' · ' + stokYazi(x, x.stok)))) : null,
+            h('input', { type: 'text', value: s.ad, maxlength: 40, placeholder: t('Ürün adı'), oninput: (e) => { s.ad = e.target.value; } }),
+            s.urunId ? h('label', null, t('Adet ({b})', { b: birimAdi(urunler.find(x => x.id === s.urunId) || { birim: 'adet' }) }), h('input', { type: 'text', inputmode: 'decimal', value: s.adet, oninput: (e) => { s.adet = e.target.value; adetDegisti(s); } })) : null)
           : s.ek
             ? h('select', { 'aria-label': t('Hizmet'), onchange: (e) => { const hz = hizmetler.find(x => x.id === e.target.value); s.hizmetId = e.target.value; s.ad = hz ? hz.ad : ''; if (hz) s.tutar = String(hz.fiyat || 0).replace('.', ','); ciz(); } },
               h('option', { value: '', selected: !s.hizmetId }, t('Hizmet seçin…')),
@@ -56,7 +63,7 @@ export async function odemeFormu(randevu, bitti) {
       s.tur === 'urun' ? h('div', { class: 'kucuk urun-ozet', 'data-i': String(i) }) : null)),
       satirlar.length < 12 ? h('div', { class: 'dugme-satir sol' },
         randevu ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', hizmetId: '', tutar: '', alis: '', tur: 'hizmet', ek: true }); ciz(); } }, t('+ Hizmet ekle')) : null,
-        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun' }); ciz(); } }, t('+ Ürün satışı ekle'))) : null);
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ ustaUid: ustaAday[0] ? ustaAday[0].id : '', ad: '', tutar: '', alis: '', tur: 'urun', urunId: '', adet: '' }); ciz(); } }, t('+ Ürün satışı ekle'))) : null);
     ozetCiz();
   }
   // Ürün satırı dökümü: satış - komisyon - alış = kâr; kâr ustaya (ürün primi) ve kasaya bölünür.
@@ -75,6 +82,20 @@ export async function odemeFormu(randevu, bitti) {
       else if (mali) { const up = yuvarla(kar * (mali.urunPrimi || 0) / 100); metin += ' · ' + t('usta %{y}: {u}, kasa: {k}', { y: String(mali.urunPrimi || 0).replace('.', ','), u: para(up), k: para(yuvarla(kar - up)) }); }
       el.textContent = metin;
     });
+  }
+  // Stoktan ürün seçilince fiyatlar kartından gelir (adet × birim fiyat); elle değiştirilebilir
+  function urunSec(s, id) {
+    const x = urunler.find(y => y.id === id);
+    if (!x) { s.urunId = ''; s.adet = ''; ciz(); return; }
+    s.urunId = id; s.ad = x.ad; s.adet = '1';
+    s.tutar = x.satis ? String(x.satis).replace('.', ',') : ''; s.alis = x.alis ? String(x.alis).replace('.', ',') : '';
+    ciz();
+  }
+  function adetDegisti(s) {
+    const x = urunler.find(y => y.id === s.urunId); const a = sayi(s.adet);
+    if (!x || !(a > 0)) return;
+    s.tutar = String(yuvarla((x.satis || 0) * a)).replace('.', ','); s.alis = String(yuvarla((x.alis || 0) * a)).replace('.', ',');
+    ciz();
   }
   function ozetCiz() {
     urunOzetleri();
@@ -114,7 +135,7 @@ export async function odemeFormu(randevu, bitti) {
       }
       const al = s.tur === 'urun' ? (s.alis === '' ? 0 : sayi(s.alis)) : 0;
       if (!Number.isFinite(al) || al < 0) { hata.textContent = t('Alış fiyatını sayı olarak yazın (bilmiyorsanız 0).'); return; }
-      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), alis: yuvarla(al), tur: s.tur, ...(s.ek ? { ek: true } : {}) });
+      kalemler.push({ ustaUid: s.ustaUid, ad: s.tur === 'urun' ? s.ad.trim() : s.ad, tutar: yuvarla(v), alis: yuvarla(al), tur: s.tur, ...(s.ek ? { ek: true } : {}), ...(s.tur === 'urun' && s.urunId && sayi(s.adet) > 0 ? { urunId: s.urunId, adet: sayi(s.adet), stokMiktar: yuvarla(sayi(s.adet) * paketBoyu(urunler.find(x => x.id === s.urunId) || { birim: 'adet' })) } : {}) });
     }
     if (!kalemler.length) { hata.textContent = t('En az bir kalem olmalı.'); return; }
     const toplam = yuvarla(kalemler.reduce((a, k) => a + k.tutar, 0));
@@ -137,6 +158,7 @@ export async function odemeFormu(randevu, bitti) {
           ustaUid: k.ustaUid, odemeId: ref.id, tarih: tarihMetin(new Date()), donem, musteriAd: musteri.value.trim(), ad: k.ad, tutar: k.tutar, alis: k.alis, tur: k.tur,
           yontem, komisyonOrani: oranT, durum: 'gecerli'
         }));
+        satisStokYaz(b, ref.id, kalemler, false);
         if (randevu && randevu.musteriId) b.update(doc(db, 'salons', S.salon.id, 'musteriler', randevu.musteriId), { sonZiyaret: tarihMetin(new Date()), sonraki: sonraki.value || '', guncelleme: serverTimestamp() });
         if (randevu) b.update(doc(db, 'salons', S.salon.id, 'randevular', randevu.id), { durum: 'odendi', odemeId: ref.id, guncelleme: serverTimestamp() });
         b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {

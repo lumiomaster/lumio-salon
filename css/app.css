@@ -152,3 +152,27 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .formul-blok { margin: 6px 0; }
 .formul-blok summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
 .formul-blok textarea, .formul-blok input { width: 100%; box-sizing: border-box; margin-top: 6px; }
+
+/* ek 9: ekip sohbeti */
+.ust-ad { flex: 1; min-width: 0; }
+.sohbet-dugme { position: relative; background: none; border: 1px solid var(--cizgi); border-radius: 12px; font-size: 1.25rem; padding: 6px 10px; cursor: pointer; color: inherit; }
+.sohbet-rozet { position: absolute; top: -4px; right: -4px; color: #ff4d4d; font-size: .8rem; line-height: 1; }
+.sohbet-rozet[hidden] { display: none; }
+.sohbet-liste { max-height: 55vh; min-height: 30vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+.sohbet-gun { text-align: center; font-size: .75rem; color: var(--soluk); margin: 8px 0 2px; }
+.sohbet-mesaj { max-width: 85%; align-self: flex-start; background: var(--kart, #1b2238); border: 1px solid var(--cizgi); border-radius: 12px; padding: 6px 10px; }
+.sohbet-mesaj.benim { align-self: flex-end; margin-left: auto; background: rgba(110, 120, 255, .22); }
+.sohbet-ad { font-size: .75rem; font-weight: 600; color: var(--soluk); }
+.sohbet-metin { white-space: pre-wrap; word-break: break-word; }
+.sohbet-alt { font-size: .7rem; color: var(--soluk); text-align: right; }
+.sohbet-sil { background: none; border: 0; cursor: pointer; font-size: .8rem; margin-left: 6px; }
+.sohbet-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.sohbet-giris { width: 100%; box-sizing: border-box; font: inherit; }
+
+/* 6. teslim: stok */
+.sekme-cubugu.dort { grid-template-columns: repeat(4, 1fr); margin-bottom: 14px; }
+.sekme-cubugu.dort button { padding: 10px 4px; font-size: .9rem; }
+.stok-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.urun-kart { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
+.onay-satir { display: flex; align-items: center; gap: 8px; }
+.onay-satir input { width: auto; }

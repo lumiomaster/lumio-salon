@@ -3,10 +3,11 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisan
 import { S } from '../durum.js';
 import { randevuYazarMi, odemeYazarMi } from '../roller.js';
 import { odemeFormu } from './odeme-formu.js';
-import { formulFormu, formulYazabilir, formulOkur } from './islem.js';
+import { formulFormu, formulYazabilir, formulOkur, formulUrunleri, urunYazisi } from './islem.js';
 import { ilaveHizmetFormu } from './ilave.js';
 import { mesajYap, waAc, waLink, hitap, tarihTR } from '../mesaj.js';
 import { mesajGonder, gonderimVarMi, gonderilmisYazi } from '../mesaj-kayit.js';
+import { formulStokYaz } from '../stok-yaz.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, musteriGeriGetir, islemleriYukle } from '../veri.js';
 import {
@@ -202,6 +203,7 @@ function ayrinti(r, ctx, yazar, yenile) {
         const yaz = formulYazabilir(k) && lisansDurumu(S.salon).aktif;
         doldur(kutu,
           kayitli && kayitli.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), kayitli.formul) : null,
+          kayitli && urunYazisi(kayitli) ? h('div', { class: 'formul-yazi' }, h('b', null, t('Ürünler: ')), urunYazisi(kayitli)) : null,
           kayitli && kayitli.not ? h('div', { class: 'kucuk' }, t('Not: ') + kayitli.not) : null,
           yaz ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { p.kapat(); formulFormu(r, i, kayitli || null, yenile); } }, kayitli ? t('Formül / notu düzenle') : t('Formül / not ekle')) : null);
       });
@@ -272,7 +274,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
     } catch (e) { console.error(e); }
   });
   if (mevcut && formulOkur()) islemleriYukle('rid', mevcut.id).then(l => {
-    l.forEach(x => { const i = Number(String(x.id).split('_').pop()); if (satirlar[i] && !satirlar[i].fVar) { Object.assign(satirlar[i], { formul: x.formul || '', fnot: x.not || '', f0: x.formul || '', n0: x.not || '', fVar: x }); } });
+    l.forEach(x => { const i = Number(String(x.id).split('_').pop()); if (satirlar[i] && !satirlar[i].fVar) { Object.assign(satirlar[i], { formul: x.formul || '', fnot: x.not || '', f0: x.formul || '', n0: x.not || '', fVar: x }); (satirlar[i].fu = satirlar[i].fu || formulUrunleri([])).ata(x.urunler || []); } });
     ciz();
   }).catch(e => console.error(e));
   musterileriYukle().then(l => { kayitli = l; doldur(musteriListe, l.map(m => h('option', { value: etiket(m) }))); }).catch(e => console.error(e));
@@ -366,9 +368,10 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
           onchange: (e) => { const v = metinDk(e.target.value); if (Number.isFinite(v)) { s.bas = v; s.elle = true; ciz(); } } })) : null,
         h('label', null, t('Usta'), ustaSec),
         // Formül / not: usta (kendi hizmeti), yönetici, kıdemli, ortak yazar; sekreter görmez
-        r.hz && r.secili && formulYazabilir({ ustaUid: r.secili.u.id }) ? h('details', { class: 'formul-blok', open: !!(s.formul || s.fnot || s.acik), ontoggle: (e) => { s.acik = e.target.open; } },
+        r.hz && r.secili && formulYazabilir({ ustaUid: r.secili.u.id }) ? h('details', { class: 'formul-blok', open: !!(s.formul || s.fnot || s.acik || (s.fu && s.fu.oku().urunler && s.fu.oku().urunler.length)), ontoggle: (e) => { s.acik = e.target.open; } },
           h('summary', null, t('Formül / not ekle') + (s.formul || s.fnot ? ' ✓' : '')),
           h('textarea', { rows: 3, maxlength: 500, class: 'liste-metin', placeholder: t('örn. 6.0 boya 40 gr + 9% oksidan 60 ml'), oninput: (e) => { s.formul = e.target.value; } }, s.formul),
+          h('div', { class: 'kucuk' }, t('Kullanılan ürünler (stoktan düşer)')), (s.fu = s.fu || formulUrunleri([])).el,
           h('input', { type: 'text', maxlength: 300, value: s.fnot, placeholder: t('Not (örn. 20 dk bekledi)'), oninput: (e) => { s.fnot = e.target.value; } })) : null,
         r.hz && r.bit != null ? h('div', { class: 'kucuk' }, dkMetin(r.bas) + '–' + dkMetin(r.bit) + ' · ' + r.hz.sure + ' ' + t('dk') + (r.hz.fiyat > 0 ? ' · ' + para(r.hz.fiyat) : '')) : null,
         notlar);
@@ -468,15 +471,22 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
           eski.forEach(k => { if (!yeniSet.has(k)) b.delete(kilitDoc(k)); });
           kilitler.forEach(k => { if (!eski.has(k)) b.set(kilitDoc(k), { rid, ustaUid: k.split('_')[0], tarih }); });
         }
-        // Formül / not: hizmetle birlikte kaydedilir (değişmeyen ve boş olanlar yazılmaz)
-        sonuc.forEach((r, i) => {
-          const s2 = r.s, kalem = kalemler[i];
-          if (!formulOkur() || !formulYazabilir(kalem)) return;
+        // Formül / not / kullanılan ürünler: hizmetle birlikte kaydedilir (değişmeyen ve boş olanlar yazılmaz); ürünler stoktan düşer
+        const stokKalemleri = [];
+        for (let i = 0; i < sonuc.length; i++) {
+          const s2 = sonuc[i].s, kalem = kalemler[i];
+          if (!formulOkur() || !formulYazabilir(kalem)) continue;
           const f = (s2.formul || '').trim(), n = (s2.fnot || '').trim();
-          if ((!f && !n) || (f === (s2.f0 || '').trim() && n === (s2.n0 || '').trim())) return;
-          if (s2.fVar && s2.fVar.ustaUid !== kalem.ustaUid) return;
-          b.set(doc(db, 'salons', S.salon.id, 'islemler', rid + '_' + i), { musteriId: mid, ustaUid: kalem.ustaUid, rid, tarih, hizmet: kalem.ad, formul: f, not: n, guncelleme: serverTimestamp() });
-        });
+          const fo = s2.fu ? s2.fu.oku() : { urunler: [] };
+          if (fo.hata) { hata.textContent = fo.hata; return; }
+          const eskiU = (s2.fVar && s2.fVar.urunler) || [];
+          const degisti = f !== (s2.f0 || '').trim() || n !== (s2.n0 || '').trim() || JSON.stringify(fo.urunler) !== JSON.stringify(eskiU.map(x => ({ urunId: x.urunId, ad: x.ad, miktar: x.miktar, birim: x.birim })));
+          if ((!f && !n && !fo.urunler.length && !s2.fVar) || !degisti) continue;
+          if (s2.fVar && s2.fVar.ustaUid !== kalem.ustaUid) continue;
+          b.set(doc(db, 'salons', S.salon.id, 'islemler', rid + '_' + i), { musteriId: mid, ustaUid: kalem.ustaUid, rid, tarih, hizmet: kalem.ad, formul: f, not: n, urunler: fo.urunler, guncelleme: serverTimestamp() });
+          stokKalemleri.push({ islemId: rid + '_' + i, eski: eskiU, yeni: fo.urunler, ad: kalem.ad });
+        }
+        if (stokKalemleri.length) formulStokYaz(b, stokKalemleri);
         kayit(b, (yeni ? 'Randevu: ' : 'Randevu değişti: ') + ad + ' ' + tarih + ' ' + dkMetin(bas));
         try { await b.commit(); }
         catch (err) {

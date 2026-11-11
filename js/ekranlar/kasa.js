@@ -9,6 +9,7 @@ import { gunOzeti } from '../kasa-mantik.js';
 import { goster } from '../main.js';
 import { odemeFormu } from './odeme-formu.js';
 import { kalemDetay } from './kalem-detay.js';
+import { satisStokYaz } from '../stok-yaz.js';
 import { hizmetDuzeltmesi } from './duzeltme.js';
 import { iptalFormu } from './takvim.js';
 import { hesapEkrani } from './hesap.js';
@@ -124,6 +125,7 @@ function odemeIptal(o, yenile) {
           const b = writeBatch(db);
           b.update(doc(db, 'salons', S.salon.id, 'odemeler', o.id), { durum: 'iptal', iptalNedeni: neden.value.trim() });
           (await odemeSatirlariniYukle(o.id)).forEach(x => b.update(doc(db, 'salons', S.salon.id, 'ustaSatirlari', x.id), { durum: 'iptal' }));
+          satisStokYaz(b, o.id, o.kalemler, true);
           if (o.rid && !o.duzeltmeOf) b.update(doc(db, 'salons', S.salon.id, 'randevular', o.rid), { durum: 'bekliyor', odemeId: '', guncelleme: serverTimestamp() });
           b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_iptal', hedef: o.id, ayrinti: o.toplam + ' ₺: ' + neden.value.trim(), zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Ödeme iptal edildi.')); yenile();

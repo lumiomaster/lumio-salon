@@ -224,3 +224,18 @@ export async function tumRandevulariYukle() {
   const sn = await getDocs(yol('randevular'));
   return sn.docs.map(d => ({ id: d.id, ...d.data() }));
 }
+
+// ---- Stok (6. teslim) ----
+// Ürün kartları + (yetkisi olana) fiyatları. Fiyat okunamazsa (usta) alis/satis boş kalır.
+export async function urunleriYukle() {
+  kontrol();
+  const [us, fs] = await Promise.all([getDocs(yol('urunler')), getDocs(yol('urunFiyat')).catch(() => null)]);
+  const f = {}; if (fs) fs.docs.forEach(d => { f[d.id] = d.data(); });
+  return us.docs.map(d => ({ id: d.id, ...d.data(), alis: f[d.id] ? f[d.id].alis : null, satis: f[d.id] ? f[d.id].satis : null }))
+    .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+}
+export async function stokAyariYukle() {
+  kontrol();
+  const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'stok'));
+  return d.exists() ? d.data() : { sonSayim: '', tedarikciTel: '' };
+}

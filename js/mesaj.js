@@ -31,7 +31,8 @@ export function mesajYap(tur, vars) {
 // LUMIO'daki gibi api.whatsapp.com bağlantısı: wa.me yönlendirmesi emojileri bozabiliyordu (� işareti).
 // Telefonda aynı sekmede açılır (WhatsApp uygulaması devralır), bilgisayarda yeni sekmede.
 export function waLink(tel, metin) {
-  return 'https://api.whatsapp.com/send/?phone=' + String(tel).replace(/\D/g, '') + (metin ? '&text=' + encodeURIComponent(metin) : '');
+  const d = String(tel || '').replace(/\D/g, '');
+  return 'https://api.whatsapp.com/send/?' + (d ? 'phone=' + d : '') + (metin ? (d ? '&' : '') + 'text=' + encodeURIComponent(metin) : '');
 }
 export function waAc(tel, metin) {
   const u = waLink(tel, metin);

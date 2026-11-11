@@ -7,7 +7,7 @@ import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyele
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
 import { mesajGonder, gonderilmisYazi, mesajAnahtar, gonderimleriYukle } from '../mesaj-kayit.js';
 import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle } from '../mesaj.js';
-import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYazarMi, elleIslemFormu } from './islem.js';
+import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYaz, urunYazisi, islemYazarMi, elleIslemFormu } from './islem.js';
 import { randevuFormu, takvimCtx } from './takvim.js';
 
 const M = { ara: '' };
@@ -111,7 +111,7 @@ function yeniMusteri(yenile, uyeler) {
             b.set(ref, { ad: a, tel: d, not: not.value.trim(), dogum: dg, sonraki: iv ? iv.sonraki : '', sonZiyaret: iv ? iv.tarih : '', ustalar, olusturan: auth.currentUser.uid, olusturma: serverTimestamp(), guncelleme: serverTimestamp() });
           }
           // Randevusuz yapılmış işlem varsa aynı anda deftere yazılır
-          if (iv) b.set(doc(collection(db, 'salons', S.salon.id, 'islemler')), islemBelgesi(mid, iv));
+          if (iv) islemYaz(b, doc(collection(db, 'salons', S.salon.id, 'islemler')), islemBelgesi(mid, iv));
           kayit(b, 'musteri_ekle', d || '-', a);
           await b.commit(); p.kapat(); bildir(t('Müşteri kaydedildi')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
@@ -183,6 +183,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
       h('div', { class: 'hesap-satir' }, h('span', null, tarihTR(x.tarih)), h('span', { class: 'kucuk' }, ad(x.ustaUid))),
       h('div', { class: 'gecmis-kalem' }, h('div', null, h('b', null, x.hizmet)),
         x.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), x.formul) : null,
+        urunYazisi(x) ? h('div', { class: 'formul-yazi' }, h('b', null, t('Ürünler: ')), urunYazisi(x)) : null,
         x.not ? h('div', { class: 'kucuk' }, t('Not: ') + x.not) : null))),
     g.randevular.length === 0 && !islemler.some(x => !x.rid) ? h('p', { class: 'soluk kucuk' }, t('Kayıtlı randevu yok.')) : null,
     g.randevular.map(r => h('div', { class: 'gecmis-satir' },
@@ -194,6 +195,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
         return h('div', { class: 'gecmis-kalem' },
           h('div', null, h('b', null, k.ad), rol === 'usta' ? '' : ' · ' + ad(k.ustaUid), k.fiyat > 0 && rol !== 'usta' ? ' · ' + para(k.fiyat) : ''),
           x && x.formul ? h('div', { class: 'formul-yazi' }, h('b', null, t('Formül: ')), x.formul) : null,
+          x && urunYazisi(x) ? h('div', { class: 'formul-yazi' }, h('b', null, t('Ürünler: ')), urunYazisi(x)) : null,
           x && x.not ? h('div', { class: 'kucuk' }, t('Not: ') + x.not) : null,
           formulYazabilir(k) && lisansDurumu(S.salon).aktif ? h('button', { class: 'baglanti kucuk', type: 'button', onclick: () => { p.kapat(); formulFormu(r, i, x || null, () => { bildir(t('Müşteri ayrıntısını yeniden açın.')); }); } }, x ? t('Formül / notu düzenle') : t('Formül / not ekle')) : null);
       }))),
