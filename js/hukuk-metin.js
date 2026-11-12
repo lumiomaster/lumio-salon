@@ -21,7 +21,8 @@ export const HUKUK_METIN = {
       ['5. Saklama', 'Veriler hizmet süresince ve yasal saklama süreleri boyunca tutulur; süre sonunda silinir, yok edilir veya anonim hale getirilir.'],
       ['6. Haklarınız', 'Verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltme, silme, itiraz etme ve zararın giderilmesini isteme haklarına sahipsiniz. Başvuru: {I}.'],
       ['7. Güvenlik', 'Veriler şifreli bağlantı (HTTPS) üzerinden iletilir; erişim rol bazlı yetkilendirme ile sınırlandırılır.'],
-      ['8. Danışman soruları', 'Usta Danışman\'a sorulan ve SSS\'de karşılığı bulunmayan sorular, hizmeti geliştirmek için kimlik, salon veya kullanıcı bilgisi olmadan (yalnız soru metni ve dil) saklanabilir. Bu kayıtlara kişisel veri yazmayınız.']
+      ['8. Danışman soruları', 'Usta Danışman\'a sorulan ve SSS\'de karşılığı bulunmayan sorular, hizmeti geliştirmek için kimlik, salon veya kullanıcı bilgisi olmadan (yalnız soru metni ve dil) saklanabilir. Bu kayıtlara kişisel veri yazmayınız.'],
+      ['9. Fotoğraf analizi', 'Satış ve analiz paketi açık salonlarda, müşterinin onayıyla çekilen fotoğraf yalnız analiz için yapay zekâ hizmet sağlayıcısına (Google ve/veya Anthropic; yurt dışında bulunabilir) gönderilir; uygulamada ve sunucuda saklanmaz. Saklanan bilgiler: analiz tarihi, türü, önerilen ürünler ve müşterinin onay verdiği bilgisi. Bu onayı müşteriden almak salonun sorumluluğundadır. Öneriler kozmetik niteliktedir, tıbbi teşhis değildir. Satın alma bağlantılarındaki ürün ve satıcılardan salon sorumludur.']
     ] },
     musteri: { ad: 'Müşteri aydınlatma metni (salonunuz için şablon)', metin: [
       ['Veri sorumlusu', '{SALON} (adres: [SALON ADRESİ], telefon: [SALON TELEFONU]).'],
@@ -53,7 +54,8 @@ export const HUKUK_METIN = {
       ['5. Хранение', 'Данные хранятся в течение срока оказания услуг и сроков, установленных законом; затем удаляются, уничтожаются или обезличиваются.'],
       ['6. Ваши права', 'Вы вправе узнать, обрабатываются ли ваши данные, запросить информацию, потребовать исправления или удаления, возразить против обработки и требовать возмещения вреда. Обращение: {I}.'],
       ['7. Безопасность', 'Данные передаются по защищённому соединению (HTTPS); доступ ограничен ролевой авторизацией.'],
-      ['8. Вопросы Консультанту', 'Вопросы к Консультанту, на которые нет ответа в FAQ, могут сохраняться для улучшения сервиса без сведений о личности, салоне или пользователе (только текст вопроса и язык). Не вносите в такие вопросы персональные данные.']
+      ['8. Вопросы Консультанту', 'Вопросы к Консультанту, на которые нет ответа в FAQ, могут сохраняться для улучшения сервиса без сведений о личности, салоне или пользователе (только текст вопроса и язык). Не вносите в такие вопросы персональные данные.'],
+      ['9. Анализ по фото', 'В салонах с пакетом «Продажи и анализ» фото, сделанное с согласия клиента, отправляется только для анализа поставщику ИИ-услуг (Google и/или Anthropic, возможно за рубежом); оно не хранится ни в приложении, ни на сервере. Хранятся: дата и вид анализа, рекомендованные товары и факт согласия клиента. Получать это согласие обязан салон. Рекомендации носят косметический характер и не являются медицинским диагнозом. За товары и продавцов по ссылкам для покупки отвечает салон.']
     ] },
     musteri: { ad: 'Уведомление клиента об обработке данных (шаблон для вашего салона)', metin: [
       ['Оператор данных', '{SALON} (адрес: [АДРЕС САЛОНА], телефон: [ТЕЛЕФОН САЛОНА]).'],
@@ -85,7 +87,8 @@ export const HUKUK_METIN = {
       ['5. Сақтау', 'Деректер қызмет көрсету мерзімі мен заңда белгіленген мерзімдер бойы сақталады; кейін жойылады, жойып жіберіледі немесе иесіздендіріледі.'],
       ['6. Сіздің құқықтарыңыз', 'Деректеріңіздің өңделіп-өңделмегенін білуге, ақпарат сұрауға, түзетуді немесе жоюды талап етуге, өңдеуге қарсылық білдіруге және зиянның өтелуін сұрауға құқығыңыз бар. Өтініш: {I}.'],
       ['7. Қауіпсіздік', 'Деректер қорғалған байланыс (HTTPS) арқылы беріледі; қолжетімділік рөлдік рұқсат арқылы шектеледі.'],
-      ['8. Кеңесшіге қойылған сұрақтар', 'Кеңесшіге қойылған және FAQ-та жауабы жоқ сұрақтар қызметті жақсарту үшін жеке тұлға, салон немесе пайдаланушы мәліметінсіз (тек сұрақ мәтіні және тіл) сақталуы мүмкін. Мұндай сұрақтарға дербес деректерді жазбаңыз.']
+      ['8. Кеңесшіге қойылған сұрақтар', 'Кеңесшіге қойылған және FAQ-та жауабы жоқ сұрақтар қызметті жақсарту үшін жеке тұлға, салон немесе пайдаланушы мәліметінсіз (тек сұрақ мәтіні және тіл) сақталуы мүмкін. Мұндай сұрақтарға дербес деректерді жазбаңыз.'],
+      ['9. Фототалдау', 'Сату және талдау пакеті қосылған салондарда клиенттің келісімімен түсірілген фото тек талдау үшін ЖИ қызмет көрсетушіге (Google және/немесе Anthropic, шетелде болуы мүмкін) жіберіледі; қолданбада да, серверде де сақталмайды. Сақталатыны: талдау күні, түрі, ұсынылған тауарлар және клиенттің келісім бергені. Бұл келісімді алуға салон жауапты. Ұсыныстар косметикалық сипатта, медициналық диагноз емес. Сатып алу сілтемелеріндегі тауарлар мен сатушылар үшін салон жауапты.']
     ] },
     musteri: { ad: 'Клиентті деректерді өңдеу туралы хабардар ету мәтіні (салоныңызға арналған үлгі)', metin: [
       ['Деректер операторы', '{SALON} (мекенжайы: [САЛОН МЕКЕНЖАЙЫ], телефоны: [САЛОН ТЕЛЕФОНЫ]).'],
@@ -117,7 +120,8 @@ export const HUKUK_METIN = {
       ['5. Speicherung', 'Daten werden während der Leistungsdauer und der gesetzlichen Aufbewahrungsfristen gespeichert; danach werden sie gelöscht, vernichtet oder anonymisiert.'],
       ['6. Ihre Rechte', 'Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Widerspruch und Schadensersatz. Anfragen: {I}.'],
       ['7. Sicherheit', 'Die Daten werden über eine verschlüsselte Verbindung (HTTPS) übertragen; der Zugriff ist durch rollenbasierte Berechtigungen beschränkt.'],
-      ['8. Fragen an den Berater', 'Fragen an den Berater, für die es in den FAQ keine Antwort gibt, können zur Verbesserung des Dienstes ohne Angaben zu Person, Salon oder Nutzer (nur Fragetext und Sprache) gespeichert werden. Bitte tragen Sie in solche Fragen keine personenbezogenen Daten ein.']
+      ['8. Fragen an den Berater', 'Fragen an den Berater, für die es in den FAQ keine Antwort gibt, können zur Verbesserung des Dienstes ohne Angaben zu Person, Salon oder Nutzer (nur Fragetext und Sprache) gespeichert werden. Bitte tragen Sie in solche Fragen keine personenbezogenen Daten ein.'],
+      ['9. Fotoanalyse', 'In Salons mit dem Verkaufs- und Analysepaket wird ein mit Zustimmung der Kundin/des Kunden aufgenommenes Foto ausschließlich für die Analyse an den KI-Dienstleister (Google und/oder Anthropic, ggf. im Ausland) gesendet; es wird weder in der App noch auf dem Server gespeichert. Gespeichert werden: Datum und Art der Analyse, empfohlene Produkte und die Tatsache der Zustimmung. Der Salon ist für die Einholung dieser Zustimmung verantwortlich. Empfehlungen sind kosmetisch, keine medizinische Diagnose. Für Produkte und Verkäufer hinter Kauflinks ist der Salon verantwortlich.']
     ] },
     musteri: { ad: 'Informationen für Kunden zur Datenverarbeitung (Vorlage für Ihren Salon)', metin: [
       ['Verantwortlicher', '{SALON} (Adresse: [SALONADRESSE], Telefon: [SALONTELEFON]).'],
@@ -149,7 +153,8 @@ export const HUKUK_METIN = {
       ['5. Retention', 'Data is kept for the duration of the service and the statutory retention periods; afterwards it is deleted, destroyed or anonymised.'],
       ['6. Your rights', 'You have the right to know whether your data is processed, to request information, correction or deletion, to object, and to claim compensation for damage. Requests: {I}.'],
       ['7. Security', 'Data is transmitted over an encrypted connection (HTTPS); access is restricted by role-based permissions.'],
-      ['8. Advisor questions', 'Questions asked to the Advisor that have no answer in the FAQ may be stored to improve the service without any identity, salon or user information (question text and language only). Please do not put personal data in such questions.']
+      ['8. Advisor questions', 'Questions asked to the Advisor that have no answer in the FAQ may be stored to improve the service without any identity, salon or user information (question text and language only). Please do not put personal data in such questions.'],
+      ['9. Photo analysis', 'In salons with the Sales and Analysis package, a photo taken with the client\'s consent is sent only for analysis to the AI service provider (Google and/or Anthropic, which may be located abroad); it is not stored in the app or on the server. What is stored: the analysis date, type, recommended products and the fact that the client gave consent. The salon is responsible for obtaining this consent. Suggestions are cosmetic, not a medical diagnosis. The salon is responsible for the products and sellers behind purchase links.']
     ] },
     musteri: { ad: 'Customer data notice (template for your salon)', metin: [
       ['Data controller', '{SALON} (address: [SALON ADDRESS], phone: [SALON PHONE]).'],

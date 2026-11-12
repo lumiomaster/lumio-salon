@@ -293,3 +293,14 @@ export async function ikramiyeleriYukle(ay, uid) {
     : query(yol('ikramiyeler'), where('ay', '==', ay));
   return liste(await getDocs(q));
 }
+
+// ---- Satış ve analiz paketi (16. teslim) ----
+export const satisAcikMi = () => !!(S.salon && S.salon.satis === true);
+export async function satisUrunleriYukle() {
+  kontrol();
+  return (await getDocs(yol('satisUrunler'))).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
+}
+export async function analizleriYukle(musteriId) {
+  kontrol();
+  return (await getDocs(query(yol('analizler'), where('musteriId', '==', musteriId)))).docs.map(d => ({ id: d.id, ...d.data() }));
+}

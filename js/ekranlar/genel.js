@@ -7,6 +7,7 @@ import { ayariYukle, musterileriYukle, tumRandevulariYukle, eskiRandevulariYukle
 import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 import { tesvikAyari } from '../tesvik.js';
 import { sadakatAyari } from '../sadakat-ayar.js';
+import { satisUrunleri } from './satis-urunler.js';
 import { baglantiAyarla } from '../mesaj.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
@@ -72,6 +73,7 @@ function ciz(kutu, ayar) {
     yetkili ? null : h('p', { class: 'kucuk' }, t('Bu ayarları yönetici ya da kıdemli yetkili değiştirir.'))),
     yetkili && !kapali ? tesvikKarti() : null,
     yetkili && !kapali ? sadakatKarti() : null,
+    yetkili && !kapali && S.salon.satis === true ? satisKarti() : null,
     yetkili && !kapali ? bakimKarti() : null);
 }
 
@@ -87,6 +89,13 @@ function sadakatKarti() {
   return h('div', { class: 'kart' }, h('h2', { class: 'ilk' }, t('Sadakat ödülü')),
     h('p', { class: 'kucuk' }, t('Müşterilerinizi ziyaret sayısına ya da harcamasına göre ödüllendirin: ör. her 10 ziyarette %10 indirim.')),
     h('button', { class: 'dugme ikincil', type: 'button', onclick: () => sadakatAyari() }, t('Ayarla')));
+}
+
+// Satış ve analiz paketi (yalnız platform yöneticisinin açtığı salonlarda görünür)
+function satisKarti() {
+  return h('div', { class: 'kart' }, h('h2', { class: 'ilk' }, t('Satış ürünleri')),
+    h('p', { class: 'kucuk' }, t('Fotoğraf analizinde müşteriye önerilecek kendi ürünlerinizi, kullanım talimatlarını ve satın alma bağlantılarını buradan yönetin.')),
+    h('button', { class: 'dugme ikincil', type: 'button', onclick: () => satisUrunleri() }, t('Ürünleri yönet')));
 }
 
 // Eski (usta alanı eklenmeden önce alınmış) randevuları yeni düzene çevirir: ustalar kendi randevularını görebilsin.

@@ -11,6 +11,6 @@ export const SSS_YAPI = [
   ['genel', 'salon', 'yet'], ['hizmet', 'salon', 'yet'], ['oran', 'salon', 'yet'], ['ustaayar', 'salon', 'yet'], ['stok', 'salon', 'yet'], ['malkabul', 'salon', 'yet'], ['sayim', 'salon', 'yet'], ['azalan', 'salon', 'yet'], ['sadakat', 'salon', 'yet'],
   ['mesajgonder', 'mesaj', 'ofis'], ['sablon', 'mesaj', 'yet'], ['mesajdil', 'mesaj', 'ofis'], ['yarin', 'mesaj', 'ofis'],
   ['bildirimac', 'bildirim', 'tum'], ['bildirimyok', 'bildirim', 'tum'],
-  ['lisans', 'lisans', 'yet'], ['yasal', 'lisans', 'tum'], ['danisman', 'lisans', 'tum']
+  ['satispaketi', 'salon', 'yet'], ['satisurun', 'salon', 'yet'], ['fotoanaliz', 'musteri', 'tum'], ['lisans', 'lisans', 'yet'], ['yasal', 'lisans', 'tum'], ['danisman', 'lisans', 'tum']
 ].map(([id, k, r]) => ({ id, k, r }));
 export const SSS_ROL = { tum: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'], yet: ['yonetici', 'kidemli', 'ortak'], ofis: ['yonetici', 'kidemli', 'ortak', 'sekreter'], usta: ['usta'], yetusta: ['yonetici', 'kidemli', 'ortak', 'usta'] };

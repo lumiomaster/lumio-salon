@@ -3,13 +3,14 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisan
 import { S } from '../durum.js';
 import { randevuYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
-import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle, sadakatAyariYukle } from '../veri.js';
+import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle, sadakatAyariYukle, satisAcikMi } from '../veri.js';
 import { ilerleme, odulYazi } from '../sadakat-mantik.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
 import { mesajGonder, gonderilmisYazi, mesajAnahtar, gonderimleriYukle } from '../mesaj-kayit.js';
 import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle, baglantilar } from '../mesaj.js';
 import { formulFormu, formulYazabilir, formulOkur, islemAlanlari, islemBelgesi, islemYaz, urunYazisi, islemYazarMi, elleIslemFormu } from './islem.js';
 import { randevuFormu, takvimCtx } from './takvim.js';
+import { analizAc } from './analiz.js';
 
 const M = { ara: '' };
 
@@ -179,6 +180,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
       h('div', { class: 'hesap-satir' }, h('span', null, t('Tamamlanan ziyaret')), h('strong', null, ziyaret)),
       m.sonZiyaret ? h('div', { class: 'hesap-satir' }, h('span', null, t('Son ziyaret')), h('strong', null, tarihTR(m.sonZiyaret))) : null,
       h('div', { class: 'hesap-satir' }, h('span', null, t('Toplam harcama')), h('strong', null, para(harcama)))),
+    satisAcikMi() && duzenle ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { p.kapat(); analizAc(m); } }, '📷 ' + t('Fotoğraf analizi'))) : null,
     rol !== 'usta' && sad && sad.acik ? sadakatKutusu(m, sad, g.odemeler) : null,
     yetkiliMi(rol) && m.ustalar.length ? h('p', { class: 'kucuk' }, t('Hizmet veren ustalar: ') + m.ustalar.map(ad).join(', ')) : null,
     h('h3', null, t('İşlem geçmişi')),

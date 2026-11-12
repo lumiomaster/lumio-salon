@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (15. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (16. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -61,6 +61,11 @@ service cloud.firestore {
         || (s.durum == 'DENEME' && !('bitisMs' in s) && request.time < s.olusturma + duration.value(14, 'd'));
     }
 
+
+    // Satış ve analiz paketi: salon belgesindeki "satis" bayrağını YALNIZ platform yöneticisi açar
+    function satisAcik(salonId) {
+      return get(salonYolu(salonId)).data.get('satis', false) == true;
+    }
 
     // Ülke ve para birimi: ikisi birlikte yazılır, listedeki değerlerden biri olmalı
     function ulkeParaGecerli(d) {
@@ -277,7 +282,8 @@ service cloud.firestore {
 
       // Platform yöneticisi lisansı yönetir: durum, bitiş tarihi, ad, not. Salonun kendi yetkilisi yalnız salon adını değiştirebilir.
       allow update: if (yoneticiMi()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel', 'ulke', 'para', 'ulkeKayit'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel', 'ulke', 'para', 'ulkeKayit', 'satis'])
+          && (!('satis' in request.resource.data) || request.resource.data.satis is bool)
           && ulkeParaGecerli(request.resource.data)
           && request.resource.data.durum in ['DENEME', 'AKTIF', 'PASIF']
           && request.resource.data.bitisMs is number
@@ -640,13 +646,46 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ---- Satış ve analiz paketi (16. teslim): paket yalnız platform yöneticisinin açtığı salonlarda çalışır ----
+      // Salonun kendi ürün listesi (ad, hangi konuda yardımcı olduğu, kullanım, serbest satın alma bağlantısı)
+      match /satisUrunler/{sid} {
+        allow read: if uyeMi(salonId) && satisAcik(salonId);
+        allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId) && satisAcik(salonId)
+          && request.resource.data.keys().hasOnly(['ad', 'turler', 'etiketler', 'kullanim', 'link', 'aktif', 'guncelleme'])
+          && request.resource.data.ad is string && request.resource.data.ad.size() >= 2 && request.resource.data.ad.size() <= 80
+          && request.resource.data.turler is list && request.resource.data.turler.size() >= 1 && request.resource.data.turler.size() <= 4
+          && request.resource.data.turler.hasOnly(['sac', 'tirnak', 'kas', 'cilt'])
+          && request.resource.data.etiketler is list && request.resource.data.etiketler.size() <= 12
+          && request.resource.data.kullanim is string && request.resource.data.kullanim.size() <= 600
+          && request.resource.data.link is string && request.resource.data.link.size() <= 500
+          && request.resource.data.link.matches('^$|^https://[^ ]+$')
+          && request.resource.data.aktif is bool
+          && request.resource.data.guncelleme == request.time;
+        allow delete: if false;
+      }
+
+      // Fotoğraf analizi kaydı: FOTOĞRAF SAKLANMAZ; yalnız kim, hangi müşteri, ne zaman, hangi ürünler ve müşterinin onay verdiği kaydedilir
+      match /analizler/{aid} {
+        allow read: if gorenMi(salonId) && satisAcik(salonId);
+        allow create: if uyeMi(salonId) && lisansAktif(salonId) && satisAcik(salonId)
+          && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'urunler', 'alan', 'onay', 'dil', 'zaman'])
+          && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0 && request.resource.data.musteriId.size() <= 40
+          && request.resource.data.tur in ['sac', 'tirnak', 'kas', 'cilt']
+          && request.resource.data.urunler is list && request.resource.data.urunler.size() <= 5
+          && request.resource.data.alan == request.auth.uid
+          && request.resource.data.onay == true
+          && request.resource.data.dil in ['tr', 'ru', 'kk', 'de', 'en']
+          && request.resource.data.zaman == request.time;
+        allow update, delete: if false;
+      }
+
       // ---- Müşteriye gönderilen mesajların kaydı (aynı mesaj iki kez gitmesin; yalnız eklenir) ----
       match /mesajlar/{kid} {
         allow read: if uyeMi(salonId);
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'anahtar', 'gonderen', 'gun', 'zaman'])
           && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0
-          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'odul', 'puan', 'memnuniyet', 'instagram', 'iban']
+          && request.resource.data.tur in ['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'odul', 'analiz', 'puan', 'memnuniyet', 'instagram', 'iban']
           && request.resource.data.anahtar is string && request.resource.data.anahtar.size() <= 40
           && kid == request.resource.data.musteriId + '_' + request.resource.data.tur + '_' + request.resource.data.anahtar
           && request.resource.data.gonderen == request.auth.uid

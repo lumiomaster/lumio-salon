@@ -170,6 +170,7 @@ function salonKarti(s) {
     h('div', { class: 'uye-alt' },
       s.sahipAd ? h('span', null, s.sahipAd) : null,
       s.sahipTel ? h('a', { href: 'tel:+' + s.sahipTel }, telGoster(s.sahipTel)) : h('span', { class: 'soluk' }, t('Telefon kayıtlı değil')),
+      s.satis === true ? h('span', { class: 'rozet' }, t('Satış paketi açık')) : null,
       bitisYazi ? h('span', { class: b.yaklasan ? 'rozet yaklasan' : 'soluk' }, bitisYazi) : null,
       s.ownerUid ? (s.kabul ? h('span', { class: 'rozet kabul-tamam' }, t('Kabul etti: {t}', { t: kabulTarih(s.kabul) })) : h('span', { class: 'rozet kabul-bekle' }, t('Kabul bekliyor'))) : null,
       h('span', { class: 'soluk' }, (s.ulke || s.ulkeKayit) && ULKELER[s.ulke || s.ulkeKayit] ? t(ULKELER[s.ulke || s.ulkeKayit].ad) + (PARALAR[s.para] ? ' · ' + PARALAR[s.para].sembol : ' · ' + t('para birimi seçilmedi')) : t('Ülke seçilmedi'))),
@@ -243,6 +244,7 @@ function duzenleFormu(s) {
   const notlar = h('input', { type: 'text', value: s.notlar || '', maxlength: 300, placeholder: t('Not (örn. ödeme şekli, anlaşma)') });
   const durum = h('select', null, [['DENEME', 'Deneme'], ['AKTIF', 'Aktif'], ['PASIF', 'Pasif']].map(([v, a]) => h('option', { value: v, selected: s.durum === v }, t(a))));
   const ulkeS = h('select', null, h('option', { value: '' }, t('Seçilmedi (sahibi seçsin)')), Object.entries(ULKELER).map(([k, u]) => h('option', { value: k, selected: (s.ulke || s.ulkeKayit) === k }, t(u.ad))));
+  const satis = h('input', { type: 'checkbox', checked: s.satis === true });
   const dt = new Date(b.l.bitis || Date.now());
   const bitis = h('input', { type: 'date', value: dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0') });
   const hataKutu = h('div', { class: 'hata', role: 'alert' });
@@ -260,7 +262,7 @@ function duzenleFormu(s) {
       const [y, m, g] = bitis.value.split('-').map(Number);
       const bitisMs = new Date(y, m - 1, g, 23, 59, 0).getTime();
       kilitli(dugme, async () => {
-        try { const v = { ad: adT, sahipAd: sahip.value.trim(), sahipTel: telD, notlar: notlar.value.trim(), durum: durum.value, bitisMs }; if (ulkeS.value && !s.para) v.ulkeKayit = ulkeS.value; await guncelle(s, v); p.kapat(); }
+        try { const v = { ad: adT, sahipAd: sahip.value.trim(), sahipTel: telD, notlar: notlar.value.trim(), durum: durum.value, bitisMs, satis: satis.checked }; if (ulkeS.value && !s.para) v.ulkeKayit = ulkeS.value; await guncelle(s, v); p.kapat(); }
         catch (err) { console.error(err); hataKutu.textContent = hataMetni(err); }
       });
     } },
@@ -271,6 +273,8 @@ function duzenleFormu(s) {
     h('label', null, t('Salonun ülkesi'), ulkeS),
     h('label', null, t('Durum'), durum),
     h('label', null, t('Bitiş tarihi'), bitis),
+    h('label', { class: 'onay-satir' }, satis, ' ', t('Satış ve analiz paketi (ek ücretli)')),
+    h('p', { class: 'kucuk' }, t('Açıksa salon kendi ürün listesini yönetir ve fotoğraf analizi yapabilir. Yalnız platform yöneticisi açıp kapatır.')),
     hataKutu, dugme));
 }
 

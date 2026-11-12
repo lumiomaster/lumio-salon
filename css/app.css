@@ -259,3 +259,13 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .sadakat-cubuk span { display: block; height: 100%; background: linear-gradient(90deg, #6d7cff, #b06dff); }
 .sadakat-kutu.hazir { border-color: #6d7cff; }
 .sadakat-satir { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-weight: 600; }
+
+/* Satış ve analiz paketi (16. teslim) */
+.chip-satir { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.foto-serit { display: flex; gap: 8px; margin: 8px 0; }
+.foto-kare { position: relative; width: 84px; height: 84px; }
+.foto-kare img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; border: 1px solid var(--cizgi); }
+.foto-kare button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--cizgi); background: var(--kart2); color: var(--yazi); font-size: 11px; line-height: 1; cursor: pointer; }
+.gizli { display: none; }
+.analiz-onay { font-size: 13px; line-height: 1.4; }
+textarea { width: 100%; font: inherit; color: inherit; background: var(--kart2); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px; box-sizing: border-box; }

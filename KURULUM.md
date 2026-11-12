@@ -1,3 +1,31 @@
+# Teslim 16 (1.6.0) — kurulum sırası
+Bu zip, 14. ve 15. teslimlerin TÜMÜNÜ de içerir (ayrıca yüklemenize gerek yok).
+
+## Yenilikler: Satış ve analiz paketi (ek ücretli)
+1. **Paket salon başına açılır:** Yönetici paneli > salon kartı > **Düzenle** > "Satış ve analiz paketi (ek ücretli)" kutusu. Yalnız platform yöneticisi açıp kapatır (Firebase kuralları salonun kendi kendine açmasını engeller). Açık salonda kartta "Satış paketi açık" rozeti görünür. Kapalıyken ilgili kartlar ve düğmeler hiç görünmez.
+2. **Salonun kendi ürün listesi:** Salon > Genel > **Satış ürünleri**. Her ürün: ad, hangi analizde (saç / tırnak / kaş / cilt) ve hangi konuda yardımcı olduğu, kullanım talimatı, **serbest satın alma bağlantısı** (kendi mağazası, pazaryeri ya da toptancısı; yalnız https). Katalog ya da toptancı sizde değil, salonun kendisinde.
+3. **Fotoğraf analizi:** Müşteri kartı > **Fotoğraf analizi**. Tür seç, 1-2 fotoğraf çek (telefonda küçültülür), müşteri **onay kutusu** işaretlenmeden "Analiz et" açılmaz. Yapay zekâ kozmetik gözlem yapar ve **yalnız salonun listesinden** ürün seçer.
+4. **WhatsApp:** "WhatsApp ile müşteriye gönder" gözlemi, ürün gerekçesini, kullanım talimatını ve satın alma bağlantısını müşterinin seçilen dilinde (TR/RU/KK/DE/EN) yollar. Mesajın sonunda "tıbbi değerlendirme değildir" cümlesi vardır.
+5. **Fotoğraf saklanmaz:** ne uygulamada ne sunucuda. Yalnız analiz kaydı tutulur (kim, hangi müşteri, ne zaman, tür, önerilen ürünler, müşterinin onay verdiği). Testte veritabanında fotoğraf verisi bulunmadığı denetlendi.
+6. **Güvenlik/limit:** Worker, salonun paketi açık olup olmadığını kendisi doğrular (istemci sahte bayrak gönderse reddeder); müşteri onayı olmayan istek reddedilir; kişi başı günde 40, salon başı günde 200 fotoğraf analizi (Cloudflare değişkenleri `FOTO_KISI_GUNLUK`, `FOTO_SALON_GUNLUK` ile değişir).
+7. **Gizlilik metnine** 5 dilde "Fotoğraf analizi" maddesi eklendi (yasal sürüm **v5**): bütün salon sahipleri bir sonraki girişte metni yeniden kabul eder.
+8. **SSS:** 3 yeni madde (toplam 66, 5 dilde).
+
+## Kurulum sırası
+A. Zip'i ayıkla > GitHub **Add file > Upload files** > içindekilerin **hepsini** sürükle > **Commit changes** > yeşil tik > **Ctrl+Shift+R** (Ayarlar'da sürüm **1.6.0** yazmalı).
+B. Zip yayında olduktan SONRA Firebase > Firestore > **Rules** > `firestore.rules` içeriğinin tamamını yapıştır > **Publish**. **ZORUNLUDUR** (yeni: `satisUrunler`, `analizler`, salonda `satis` bayrağı, mesaj türü `analiz`).
+C. Cloudflare > lumio-salon-ai > Edit code > `worker.js` içeriğini yapıştır > **Deploy** (yeni uç nokta `/foto-analiz`). Fotoğraf için **GEMINI_API_KEY** (mevcut) yeterlidir; `ANTHROPIC_API_KEY` eklenirse Claude önce kullanılır. Fotoğraf analizi ücretli API kullanır: Google tarafında faturalandırma açık olmalı.
+D. Bir salonda denemek için: Yönetici paneli > o salon > Düzenle > paketi aç > salon sahibi çıkış-giriş yapsın.
+
+## Dürüst notlar
+- Fotoğraf yurt dışındaki yapay zekâ servisine (Google/Anthropic) gider. Kazakistan/Özbekistan veri yerelleştirme ve müşteri onayı sorumluluğu avukata danışılacak konular listesinde (satıştan önce).
+- Öneriler kozmetik gözlemdir; yapay zekâ tıbbi teşhis koymayacak şekilde yönlendirilir, şüpheli görünümde doktora yönlendirme uyarısı ekler. Yine de kesin sonuç gibi sunulmamalı.
+- Satın alma bağlantısındaki ürün ve satıcıdan salon sorumludur (gizlilik metninde yazılı).
+- Fiyatlandırma henüz belirlenmedi; paket sadece açıp kapatma bayrağıdır, otomatik ücret tahsil etmez.
+- Yeni metinler (RU/KK/DE/EN) yapay zekâ çevirisidir; ana dili konuşan biri okumalı.
+
+---
+
 # Teslim 15 (1.5.0) — kurulum sırası
 Bu zip, 14. teslimin TÜMÜNÜ de içerir (14'ü ayrıca yüklemenize gerek yok).
 
