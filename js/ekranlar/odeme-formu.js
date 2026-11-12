@@ -7,6 +7,7 @@ import { satisStokYaz } from '../stok-yaz.js';
 import { paketBoyu, birimAdi, stokYazi } from '../stok-mantik.js';
 import { tarihMetin, dkMetin } from '../takvim-mantik.js';
 import { yuvarla, urunKari } from '../kasa-mantik.js';
+import { sembol } from '../ulke.js';
 
 // Ödeme alma formu. randevu verilirse kalemleri hazır gelir; verilmezse "ürün satışı" olur.
 // bitti(): ödeme yazılınca ekranı yenilemek için çağrılır.
@@ -172,7 +173,7 @@ export async function odemeFormu(randevu, bitti) {
         if (randevu && randevu.musteriId) b.update(doc(db, 'salons', S.salon.id, 'musteriler', randevu.musteriId), { sonZiyaret: tarihMetin(new Date()), sonraki: sonraki.value || '', guncelleme: serverTimestamp() });
         if (randevu) b.update(doc(db, 'salons', S.salon.id, 'randevular', randevu.id), { durum: 'odendi', odemeId: ref.id, guncelleme: serverTimestamp() });
         b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {
-          uid: auth.currentUser.uid, islem: 'odeme', hedef: ref.id, ayrinti: (randevu ? 'Randevu ödemesi ' : 'Satış ') + toplam + ' ₺ ' + yontem, zaman: serverTimestamp()
+          uid: auth.currentUser.uid, islem: 'odeme', hedef: ref.id, ayrinti: (randevu ? 'Randevu ödemesi ' : 'Satış ') + toplam + ' ' + sembol() + ' ' + yontem, zaman: serverTimestamp()
         });
         await b.commit(); pencere.kapat(); bildir(t('Ödeme kaydedildi')); bitti();
       } catch (err) { console.error(err); hata.textContent = hataMetni(err); }

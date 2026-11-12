@@ -5,6 +5,7 @@ import { yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { hizmetleriYukle, oranAyariYukle } from '../veri.js';
 import { oranKaydet, grupAdi, yeniGrupId } from '../oran-ayar.js';
+import { sembol } from '../ulke.js';
 
 // Hazır hizmet paketleri: fiyatlar 0 gelir, salon kendi fiyatını yazar.
 const B = (ad, tur, sure) => ({ ad, tur, sure });
@@ -155,7 +156,7 @@ function hizmetFormu(x, yenile, oran) {
           const ref = x ? doc(db, 'salons', S.salon.id, 'hizmetler', x.id) : doc(collection(db, 'salons', S.salon.id, 'hizmetler'));
           const b = writeBatch(db);
           b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), guncelleme: serverTimestamp() });
-          kayit(b, (yeni ? 'Eklendi: ' : 'Değişti: ') + adT + ' ' + f + ' ₺, ' + s + ' dk');
+          kayit(b, (yeni ? 'Eklendi: ' : 'Değişti: ') + adT + ' ' + f + ' ' + sembol() + ', ' + s + ' dk');
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });

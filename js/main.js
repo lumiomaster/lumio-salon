@@ -9,7 +9,7 @@ import { anaEkrani } from './ekranlar/ana.js';
 import { ekipEkrani } from './ekranlar/ekip.js';
 import { ayarlarEkrani } from './ekranlar/ayarlar.js';
 import { salonEkrani } from './ekranlar/salon.js';
-import { takvimEkrani } from './ekranlar/takvim.js';
+import { takvimEkrani, randevuyaGit } from './ekranlar/takvim.js';
 import { kasaEkrani } from './ekranlar/kasa.js';
 import { musterilerEkrani } from './ekranlar/musteriler.js';
 import { veriSifirla } from './veri.js';
@@ -19,12 +19,14 @@ import { ekipYenile } from './ekranlar/ekip.js';
 import { geriTusunuBaslat, sekmeDegisti } from './geri.js';
 import { sohbetDugmesi, sohbetKontrolBaslat, sohbetKontrolDurdur } from './ekranlar/sohbet.js';
 import { yoneticiEkrani, yaklasanSay } from './ekranlar/yonetici.js';
+import { ulkeSecilmeli, ulkeSecEkrani } from './ekranlar/ulke-sec.js';
+import { salonAyarla } from './ulke.js';
 
 const kok = document.getElementById('uygulama');
 
 export async function oturumuYukle() {
   const u = auth.currentUser;
-  if (!u) { S.profil = null; S.salon = null; S.yonetici = null; sablonOzelAyarla({}); veriSifirla(); ekipYenile(); sohbetKontrolDurdur(); return goster(); }
+  if (!u) { S.profil = null; S.salon = null; S.yonetici = null; salonAyarla(null); sablonOzelAyarla({}); veriSifirla(); ekipYenile(); sohbetKontrolDurdur(); return goster(); }
   try {
     // Platform yöneticisi mi? (yoneticiler/{uid} belgesi olan ve aktif kişi)
     S.yonetici = null;
@@ -37,10 +39,12 @@ export async function oturumuYukle() {
     const ss = await getDoc(doc(db, 'salons', p.salonId));
     S.profil = p;
     S.salon = ss.exists() ? { id: ss.id, ...ss.data() } : null;
+    salonAyarla(S.salon);
     if (!sekmelerim(p.rol, !!S.yonetici).some(x => x.id === S.sekme)) S.sekme = 'ana';
     if (S.yonetici) yoneticiUyari();
     S.mesaj = '';
     if (S.salon) { sohbetKontrolBaslat(); sablonlariYukle(); bildirimTazele(); }
+    gitUygula();
   } catch (e) {
     console.error(e);
     S.mesaj = t('Bilgiler yüklenemedi. İnternetinizi kontrol edip sayfayı yenileyin.');
@@ -66,6 +70,7 @@ export function goster() {
     return;
   }
   if (!auth.currentUser || !S.profil) { kok.append(girisEkrani()); return; }
+  if (ulkeSecilmeli()) { kok.append(ulkeSecEkrani()); return; }
   const sekmeler = sekmelerim(S.profil.rol, !!S.yonetici);
   const ekran = { yonetici: yoneticiEkrani, ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
@@ -88,6 +93,18 @@ function cevrimiciGuncelle() {
 window.addEventListener('online', cevrimiciGuncelle);
 window.addEventListener('offline', cevrimiciGuncelle);
 cevrimiciGuncelle();
+
+// Bildirime tıklanınca ilgili randevuyu aç ("randevu:YYYY-MM-DD:id")
+let bekleyenGit = null;
+function gitUygula() {
+  if (!bekleyenGit || !S.profil || !S.salon) return;
+  const m = /^randevu:(\d{4}-\d{2}-\d{2}):([A-Za-z0-9]+)$/.exec(bekleyenGit); bekleyenGit = null;
+  if (!m || !sekmelerim(S.profil.rol, !!S.yonetici).some(x => x.id === 'takvim')) return;
+  randevuyaGit(m[1], m[2]); S.sekme = 'takvim'; sekmeDegisti('takvim'); goster();
+}
+export function gitAyarla(g) { bekleyenGit = g; gitUygula(); }
+try { const q = new URLSearchParams(location.search).get('git'); if (q) { bekleyenGit = q; history.replaceState(null, '', location.pathname); } } catch (e) { /* yok */ }
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.tur === 'git') gitAyarla(e.data.git); });
 
 geriTusunuBaslat(() => { S.sekme = 'ana'; goster(); });
 

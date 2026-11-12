@@ -4,6 +4,7 @@ import { h, doldur, hataMetni, bildir, kilitli, sayi, pencereAc } from './util.j
 import { oranAyariYukle } from './veri.js';
 import { oranKaydet } from './oran-ayar.js';
 import { OLCU_AD, hedefYazisi } from './hedef-mantik.js';
+import { sembol } from './ulke.js';
 
 const MAX_HEDEF = 12;
 
@@ -67,4 +68,4 @@ export async function tesvikAyari(sonra) {
     liste, ekle, hata, dugme);
 }
 
-export const hedefOzeti = (hedefler) => hedefler.map(x => t(OLCU_AD[x.olcu]) + ' ' + String(x.esik).replace('.', ',') + ' ₺ → ' + hedefYazisi(x)).join(' · ');
+export const hedefOzeti = (hedefler) => hedefler.map(x => t(OLCU_AD[x.olcu]) + ' ' + String(x.esik).replace('.', ',') + ' ' + sembol() + ' → ' + hedefYazisi(x)).join(' · ');

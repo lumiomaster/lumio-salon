@@ -9,9 +9,11 @@ import {
 } from '../fb.js';
 import { goster } from '../main.js';
 import { uyelerGecersiz } from '../veri.js';
+import { sunucuHazir, sunucuyaSor } from '../sunucu.js';
+import { onayIste } from '../util.js';
 
 const SIRA = { yonetici: 0, kidemli: 1, ortak: 2, sekreter: 3, usta: 4 };
-let liste = null, listeSalon = null, yukleniyor = false, hata = '';
+let liste = null, listeSalon = null, yukleniyor = false, hata = '', eskiGoster = false;
 
 async function yukle() {
   yukleniyor = true; hata = '';
@@ -43,7 +45,11 @@ export function ekipEkrani() {
       yetkili ? h('button', { class: 'dugme kucuk-dugme', type: 'button', disabled: !lisansOk, onclick: () => ekleFormu() }, t('+ Kişi ekle')) : null),
     hata ? h('div', { class: 'uyari' }, hata, ' ', h('button', { class: 'baglanti', type: 'button', onclick: () => { liste = null; goster(); } }, t('Tekrar dene'))) : null,
     liste === null ? h('p', { class: 'soluk' }, t('Yükleniyor…')) :
-      h('div', { class: 'liste' }, liste.map(k => uyeKarti(k, benRol, lisansOk))));
+      h('div', null,
+        h('div', { class: 'liste' }, liste.filter(k => !k.silindi).map(k => uyeKarti(k, benRol, lisansOk))),
+        liste.some(k => k.silindi) ? h('div', null,
+          h('button', { class: 'baglanti', type: 'button', onclick: () => { eskiGoster = !eskiGoster; goster(); } }, (eskiGoster ? t('Eski çalışanları gizle') : t('Eski çalışanlar')) + ' (' + liste.filter(k => k.silindi).length + ')'),
+          eskiGoster ? h('div', { class: 'liste' }, liste.filter(k => k.silindi).map(k => uyeKarti(k, benRol, lisansOk))) : null) : null));
 }
 
 function uyeKarti(k, benRol, lisansOk) {
@@ -54,8 +60,8 @@ function uyeKarti(k, benRol, lisansOk) {
       h('span', { class: 'rozet rol-' + k.rol }, t(ROLLER[k.rol] || k.rol))),
     h('div', { class: 'uye-alt' },
       h('a', { href: 'tel:+' + k.telefon }, telGoster(k.telefon)),
-      k.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif'))),
-    duzenlenebilir ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(k) }, t('Düzenle')) : null);
+      k.silindi ? h('span', { class: 'rozet pasif-rozet' }, t('Silindi')) : (k.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')))),
+    duzenlenebilir && !k.silindi ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(k) }, t('Düzenle')) : null);
 }
 
 function rolSecimi(roller, secili) {
@@ -158,7 +164,37 @@ function duzenleFormu(k) {
     h('label', null, t('Adı soyadı'), ad),
     h('label', null, t('Görevi'), rol),
     h('label', { class: 'onay', for: 'uye-aktif' }, aktif, h('span', null, t('Aktif (pasif yapılırsa uygulamaya giremez)'))),
-    hataKutu, dugme));
+    hataKutu, dugme),
+    sunucuHazir() ? h('div', { class: 'tehlike-kutu' },
+      h('p', { class: 'kucuk' }, t('Şifresini unuttuysa yeni bir geçici şifre verebilir, işten ayrıldıysa ekipten silebilirsiniz. Silinen kişi giriş yapamaz ve telefon numarası serbest kalır; geçmiş randevu ve kasa kayıtları durur.')),
+      h('div', { class: 'dugme-satir sol' },
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sifreSifirla(k, pencere) }, t('Şifreyi sıfırla')),
+        h('button', { class: 'dugme ikincil kucuk-dugme tehlike', type: 'button', onclick: () => uyeSil(k, pencere) }, t('Ekipten sil')))) : null);
+}
+
+async function uyeSil(k, pencere) {
+  if (!(await onayIste(t('{ad} ekipten silinsin mi? Hesabı kapanır, giriş yapamaz ve telefon numarası serbest kalır. Geçmiş randevu ve kasa kayıtları durur. Bu işlem geri alınamaz.', { ad: k.ad }), t('Evet, sil')))) return;
+  try {
+    await sunucuyaSor('/hesap-sil', { uid: k.id });
+    pencere.kapat(); liste = null; uyelerGecersiz(); bildir(t('{ad} ekipten silindi.', { ad: k.ad })); goster();
+  } catch (e) { console.error(e); bildir(e.message || hataMetni(e), 'hata'); }
+}
+
+async function sifreSifirla(k, pencere) {
+  if (!(await onayIste(t('{ad} için yeni bir geçici şifre oluşturulsun mu? Eski şifresi geçersiz olur.', { ad: k.ad }), t('Evet, sıfırla')))) return;
+  try {
+    const r = await sunucuyaSor('/sifre-sifirla', { uid: k.id });
+    pencere.kapat();
+    const metin = r.ad + '\n' + t('Telefon') + ': ' + telGoster(r.telefon) + '\n' + t('Geçici şifre') + ': ' + r.sifre;
+    const icerik = h('div', null);
+    const p = pencereAc(t('Yeni şifre'), icerik);
+    icerik.append(
+      h('div', { class: 'kart bilgi' }, h('strong', null, r.ad), h('p', null, t('Telefon') + ': ' + telGoster(r.telefon)), h('p', null, t('Geçici şifre') + ': ' + r.sifre)),
+      h('p', { class: 'kucuk' }, t('Bu şifreyi kişiye iletin. Bir daha gösterilmez.')),
+      h('div', { class: 'dugme-satir' },
+        h('button', { class: 'dugme ikincil', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(metin); bildir(t('Kopyalandı')); } catch (_) { bildir(t('Kopyalanamadı, elle yazın.'), 'hata'); } } }, t('Kopyala')),
+        h('button', { class: 'dugme', type: 'button', onclick: p.kapat }, t('Tamam'))));
+  } catch (e) { console.error(e); bildir(e.message || hataMetni(e), 'hata'); }
 }
 
 // Başka ekrandan dönünce liste yenilensin

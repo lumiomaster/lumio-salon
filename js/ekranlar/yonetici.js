@@ -2,7 +2,7 @@
 // Güvenliği asıl sağlayan firestore.rules'tur (yoneticiler/{uid} belgesi olmayan bu işlemleri yapamaz).
 import { t } from '../i18n.js';
 import { UYGULAMA, YASAL_SURUM } from '../config.js';
-import { h, telNormalize, telGoster, eposta, hataMetni, bildir, pencereAc, kilitli, rastgeleSifre, lisansDurumu, onayIste } from '../util.js';
+import { h, telGoster, eposta, hataMetni, bildir, pencereAc, kilitli, rastgeleSifre, lisansDurumu, onayIste } from '../util.js';
 import { S } from '../durum.js';
 import {
   auth, auth2, db, createUserWithEmailAndPassword, signOut,
@@ -10,6 +10,8 @@ import {
 } from '../fb.js';
 import { goster } from '../main.js';
 import { sifreKarti } from './ayarlar.js';
+import { sunucuyaSor } from '../sunucu.js';
+import { ULKELER, PARALAR, telNormalize as telNorm, telGirdi } from '../ulke.js';
 
 const GUN = 864e5;
 let alt = 'salonlar', suzgec = 'hepsi';
@@ -118,7 +120,8 @@ function salonKarti(s) {
     h('div', { class: 'uye-alt' },
       s.sahipAd ? h('span', null, s.sahipAd) : null,
       s.sahipTel ? h('a', { href: 'tel:+' + s.sahipTel }, telGoster(s.sahipTel)) : h('span', { class: 'soluk' }, t('Telefon kayıtlı değil')),
-      bitisYazi ? h('span', { class: b.yaklasan ? 'rozet yaklasan' : 'soluk' }, bitisYazi) : null),
+      bitisYazi ? h('span', { class: b.yaklasan ? 'rozet yaklasan' : 'soluk' }, bitisYazi) : null,
+      h('span', { class: 'soluk' }, s.ulke && ULKELER[s.ulke] ? t(ULKELER[s.ulke].ad) + ' · ' + (PARALAR[s.para] ? PARALAR[s.para].sembol : '') : t('Ülke seçilmedi'))),
     s.notlar ? h('p', { class: 'kucuk' }, s.notlar) : null,
     h('div', { class: 'dugme-satir sol' },
       h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => uzatFormu(s) }, t('Süre ekle')),
@@ -126,6 +129,7 @@ function salonKarti(s) {
         ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'AKTIF') }, t('Aktif yap'))
         : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'PASIF') }, t('Pasif yap')),
       s.sahipTel ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => whatsapp(s.sahipTel, hatirlatMesaji(s)) }, t('WhatsApp hatırlat')) : null,
+      s.ownerUid ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sahipSifreSifirla(s) }, t('Sahibin şifresini sıfırla')) : null,
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(s) }, t('Düzenle'))));
 }
 
@@ -184,9 +188,12 @@ function duzenleFormu(s) {
   const b = bilgi(s);
   const ad = h('input', { type: 'text', value: s.ad, required: true, maxlength: 80 });
   const sahip = h('input', { type: 'text', value: s.sahipAd || '', maxlength: 60 });
-  const tel = h('input', { type: 'tel', inputmode: 'tel', value: s.sahipTel ? '0' + s.sahipTel.replace(/^90/, '') : '', placeholder: '05xx xxx xx xx' });
+  const tel = h('input', { type: 'tel', inputmode: 'tel', value: telGirdi(s.sahipTel), placeholder: '05xx xxx xx xx' });
   const notlar = h('input', { type: 'text', value: s.notlar || '', maxlength: 300, placeholder: t('Not (örn. ödeme şekli, anlaşma)') });
   const durum = h('select', null, [['DENEME', 'Deneme'], ['AKTIF', 'Aktif'], ['PASIF', 'Pasif']].map(([v, a]) => h('option', { value: v, selected: s.durum === v }, t(a))));
+  const ulkeS = h('select', null, h('option', { value: '' }, t('Seçilmedi (sahibi seçsin)')), Object.entries(ULKELER).map(([k, u]) => h('option', { value: k, selected: s.ulke === k }, t(u.ad))));
+  const paraS = h('select', null, Object.entries(PARALAR).map(([k, p]) => h('option', { value: k, selected: s.para === k }, p.sembol + ' · ' + t(p.ad))));
+  ulkeS.addEventListener('change', () => { if (ulkeS.value) paraS.value = ULKELER[ulkeS.value].para; });
   const dt = new Date(b.l.bitis || Date.now());
   const bitis = h('input', { type: 'date', value: dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0') });
   const hataKutu = h('div', { class: 'hata', role: 'alert' });
@@ -199,12 +206,12 @@ function duzenleFormu(s) {
       const adT = ad.value.trim();
       if (adT.length < 2) { hataKutu.textContent = t('Salon adını yazın.'); return; }
       let telD = '';
-      if (tel.value.trim()) { telD = telNormalize(tel.value); if (!telD) { hataKutu.textContent = t('Geçerli bir telefon numarası yazın.'); return; } }
+      if (tel.value.trim()) { telD = telNorm(tel.value, ulkeS.value || s.ulke); if (!telD) { hataKutu.textContent = t('Geçerli bir telefon numarası yazın.'); return; } }
       if (!bitis.value) { hataKutu.textContent = t('Bitiş tarihini seçin.'); return; }
       const [y, m, g] = bitis.value.split('-').map(Number);
       const bitisMs = new Date(y, m - 1, g, 23, 59, 0).getTime();
       kilitli(dugme, async () => {
-        try { await guncelle(s, { ad: adT, sahipAd: sahip.value.trim(), sahipTel: telD, notlar: notlar.value.trim(), durum: durum.value, bitisMs }); p.kapat(); }
+        try { const v = { ad: adT, sahipAd: sahip.value.trim(), sahipTel: telD, notlar: notlar.value.trim(), durum: durum.value, bitisMs }; if (ulkeS.value) { v.ulke = ulkeS.value; v.para = paraS.value; } await guncelle(s, v); p.kapat(); }
         catch (err) { console.error(err); hataKutu.textContent = hataMetni(err); }
       });
     } },
@@ -212,12 +219,38 @@ function duzenleFormu(s) {
     h('label', null, t('Sahibinin adı'), sahip),
     h('label', null, t('Sahibinin telefonu'), tel),
     h('label', null, t('Not'), notlar),
+    h('label', null, t('Ülke'), ulkeS), h('label', null, t('Para birimi'), paraS),
     h('label', null, t('Durum'), durum),
     h('label', null, t('Bitiş tarihi'), bitis),
     hataKutu, dugme));
 }
 
 // ---------- yeni salon ----------
+// "Bu numara zaten kayıtlı" hatasında: eski hesabı sunucuya sildirip numarayı serbest bırakır
+function hataGoster(hataKutu, err, d) {
+  hataKutu.textContent = hataMetni(err);
+  if (!(err && err.code === 'auth/email-already-in-use')) return;
+  hataKutu.append(' ', h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => serbestBirak(hataKutu, d) }, t('Bu numarayı serbest bırak')));
+}
+async function serbestBirak(hataKutu, d) {
+  try {
+    const o = await sunucuyaSor('/hesap-sil', { tel: d, onizle: true });
+    const kim = o.ad + (o.rol ? ' (' + o.rol + ')' : '') + (o.salonAd ? ' · ' + o.salonAd : '');
+    if (!(await onayIste(t('Bu numara şu hesaba ait: {kim}. Hesap silinsin ve numara serbest kalsın mı? Bu işlem geri alınamaz.', { kim }), t('Evet, serbest bırak')))) return;
+    await sunucuyaSor('/hesap-sil', { tel: d });
+    hataKutu.textContent = t('Numara serbest bırakıldı. Şimdi düğmeye tekrar basın.');
+    bildir(t('Numara serbest bırakıldı'));
+  } catch (e) { console.error(e); hataKutu.textContent = e.message || hataMetni(e); }
+}
+async function sahipSifreSifirla(s) {
+  if (!s.ownerUid) return;
+  if (!(await onayIste(t('{ad} için yeni bir geçici şifre oluşturulsun mu? Eski şifresi geçersiz olur.', { ad: s.sahipAd || s.ad }), t('Evet, sıfırla')))) return;
+  try {
+    const r = await sunucuyaSor('/sifre-sifirla', { uid: s.ownerUid });
+    sonucPenceresi(s.ad, r.telefon, r.sifre, t('Yeni şifre'));
+  } catch (e) { console.error(e); bildir(e.message || hataMetni(e), 'hata'); }
+}
+
 function yeniSalonFormu() {
   const salonAdi = h('input', { type: 'text', placeholder: t('Salonun adı'), required: true, maxlength: 80 });
   const sahip = h('input', { type: 'text', placeholder: t('Salon sahibinin adı soyadı'), required: true, maxlength: 60 });
@@ -226,6 +259,9 @@ function yeniSalonFormu() {
   const tur = h('select', null, h('option', { value: 'DENEME' }, t('Deneme')), h('option', { value: 'AKTIF' }, t('Ödemeli lisans (Aktif)')));
   const gun = h('input', { type: 'number', min: 1, max: 3650, value: 14, required: true });
   tur.addEventListener('change', () => { gun.value = tur.value === 'DENEME' ? 14 : 365; });
+  const ulkeY = h('select', null, h('option', { value: '' }, t('Salon sahibi ilk girişte seçsin')), Object.entries(ULKELER).map(([k, u]) => h('option', { value: k }, t(u.ad))));
+  const paraY = h('select', null, Object.entries(PARALAR).map(([k, p]) => h('option', { value: k }, p.sembol + ' · ' + t(p.ad))));
+  ulkeY.addEventListener('change', () => { if (ulkeY.value) paraY.value = ULKELER[ulkeY.value].para; });
   const notlar = h('input', { type: 'text', maxlength: 300, placeholder: t('Not (isteğe bağlı)') });
   const onay = h('input', { type: 'checkbox', id: 'yon-onay' });
   const hataKutu = h('div', { class: 'hata', role: 'alert' });
@@ -233,7 +269,7 @@ function yeniSalonFormu() {
   return h('form', { class: 'form', novalidate: true,
     onsubmit: (e) => {
       e.preventDefault(); hataKutu.textContent = '';
-      const d = telNormalize(tel.value), adT = salonAdi.value.trim(), sahipT = sahip.value.trim(), g = Math.floor(Number(gun.value));
+      const d = telNorm(tel.value, ulkeY.value || undefined), adT = salonAdi.value.trim(), sahipT = sahip.value.trim(), g = Math.floor(Number(gun.value));
       if (adT.length < 2) { hataKutu.textContent = t('Salonun adını yazın.'); return; }
       if (sahipT.length < 2) { hataKutu.textContent = t('Salon sahibinin adını yazın.'); return; }
       if (!d) { hataKutu.textContent = t('Geçerli bir telefon numarası yazın.'); return; }
@@ -247,6 +283,7 @@ function yeniSalonFormu() {
           const sahipUid = cred.user.uid;
           const salonRef = doc(collection(db, 'salons'));
           const veri = { ad: adT, ownerUid: sahipUid, durum: tur.value, paket: 'salon', olusturma: serverTimestamp(), bitisMs: Date.now() + g * GUN, sahipAd: sahipT, sahipTel: d };
+          if (ulkeY.value) { veri.ulke = ulkeY.value; veri.para = paraY.value; }
           if (notlar.value.trim()) veri.notlar = notlar.value.trim();
           const b = writeBatch(db);
           b.set(salonRef, veri);
@@ -263,7 +300,7 @@ function yeniSalonFormu() {
           console.error(err);
           if (cred && cred.user) { try { await cred.user.delete(); } catch (_) {} }
           try { await signOut(auth2); } catch (_) {}
-          hataKutu.textContent = hataMetni(err);
+          hataGoster(hataKutu, err, d);
         }
       });
     } },
@@ -272,6 +309,7 @@ function yeniSalonFormu() {
     h('label', null, t('Salon sahibinin adı soyadı'), sahip),
     h('label', null, t('Salon sahibinin telefonu (giriş için)'), tel),
     h('label', null, t('Geçici şifre'), sifre),
+    h('label', null, t('Ülke (telefon biçimi için)'), ulkeY), h('label', null, t('Para birimi'), paraY),
     h('label', null, t('Lisans türü'), tur),
     h('label', null, t('Süre (gün)'), gun),
     h('label', null, t('Not'), notlar),
@@ -279,10 +317,10 @@ function yeniSalonFormu() {
     hataKutu, dugme);
 }
 
-function sonucPenceresi(salonAdi, tel, sifre) {
+function sonucPenceresi(salonAdi, tel, sifre, baslik) {
   const metin = girisMesaji(salonAdi, tel, sifre);
   const icerik = h('div', null);
-  const p = pencereAc(t('Salon oluşturuldu'), icerik);
+  const p = pencereAc(baslik || t('Salon oluşturuldu'), icerik);
   icerik.append(
     h('div', { class: 'kart bilgi' }, h('strong', null, salonAdi),
       h('p', null, t('Telefon') + ': ' + telGoster(tel)), h('p', null, t('Geçici şifre') + ': ' + sifre)),
@@ -327,7 +365,7 @@ function yoneticiEkleFormu() {
   icerik.append(h('form', { class: 'form', novalidate: true,
     onsubmit: (e) => {
       e.preventDefault(); hataKutu.textContent = '';
-      const d = telNormalize(tel.value), adT = ad.value.trim();
+      const d = telNorm(tel.value), adT = ad.value.trim();
       if (adT.length < 2) { hataKutu.textContent = t('Adını yazın.'); return; }
       if (!d) { hataKutu.textContent = t('Geçerli bir telefon numarası yazın.'); return; }
       if (sifre.value.length < 6) { hataKutu.textContent = t('Şifre en az 6 karakter olmalı.'); return; }
@@ -351,7 +389,7 @@ function yoneticiEkleFormu() {
           console.error(err);
           if (cred && cred.user) { try { await cred.user.delete(); } catch (_) {} }
           try { await signOut(auth2); } catch (_) {}
-          hataKutu.textContent = hataMetni(err);
+          hataGoster(hataKutu, err, d);
         }
       });
     } },

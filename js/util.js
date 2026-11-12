@@ -1,4 +1,5 @@
 import { ALIAS_ALAN, DENEME_GUN } from './config.js';
+import { paraBilgi } from './ulke.js';
 import { t } from './i18n.js';
 
 // Küçük yardımcı: h('div', {class:'x', onclick: fn}, 'metin', başkaDüğüm)
@@ -20,19 +21,7 @@ export function h(tag, props, ...kids) {
   return el;
 }
 
-// Telefonu rakamlara çevirir. Türkiye numaraları 90 ile başlayacak biçime getirilir.
-export function telNormalize(giris) {
-  let d = String(giris || '').replace(/\D/g, '');
-  if (d.startsWith('00')) d = d.slice(2);
-  if (d.length === 11 && d.startsWith('0')) d = '90' + d.slice(1);
-  else if (d.length === 10 && d.startsWith('5')) d = '90' + d;
-  if (d.length < 10 || d.length > 15) return '';
-  return d;
-}
-export function telGoster(d) {
-  if (/^90\d{10}$/.test(d)) return '0' + d.slice(2, 5) + ' ' + d.slice(5, 8) + ' ' + d.slice(8, 10) + ' ' + d.slice(10);
-  return '+' + d;
-}
+export { telNormalize, telGoster } from './ulke.js';
 export function eposta(tel) { return tel + '@' + ALIAS_ALAN; }
 
 export function hataMetni(e) {
@@ -132,7 +121,7 @@ export function rastgeleSifre() {
   return String(100000 + (a[0] % 900000));
 }
 
-export function para(n) { return (Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + ' ₺'; }
+export function para(n) { const p = paraBilgi(); return (Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: p.ondalik }) + ' ' + p.sembol; }
 // "12,5" ve "12.5" ikisini de sayıya çevirir; geçersizse NaN
 export function sayi(v) { const s = String(v == null ? '' : v).trim().replace(',', '.'); return s === '' ? NaN : Number(s); }
 

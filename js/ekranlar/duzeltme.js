@@ -5,6 +5,7 @@ import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js
 import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle, hizmetleriYukle } from '../veri.js';
 import { yuvarla } from '../kasa-mantik.js';
 import { tarihYazi } from '../takvim-mantik.js';
+import { sembol } from '../ulke.js';
 
 // Alınmış bir ödemeye sonradan unutulan hizmeti ekler ("düzeltme ödemesi").
 // Eski ödeme değişmez; aynı gün ve aynı müşteri için yeni bir ödeme belgesi eklenir, usta hesabına ve mutabakata yansır.
@@ -49,7 +50,7 @@ export async function hizmetDuzeltmesi(o, bitti) {
           b.set(ref, { rid: o.rid || '', musteriId: o.musteriId || '', tarih, donem, yontem, musteriAd: o.musteriAd || '', kalemler: [kalem], ustalar: [kalem.ustaUid],
             toplam: top, komisyonOrani: oran, komisyon: kom, durum: 'gecerli', alan: auth.currentUser.uid, zaman: serverTimestamp(), duzeltmeOf: o.id });
           b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: kalem.ustaUid, odemeId: ref.id, tarih, donem, musteriAd: o.musteriAd || '', ad: kalem.ad, tutar: top, alis: 0, tur: 'hizmet', ...(kalem.grup ? { grup: kalem.grup } : {}), yontem, komisyonOrani: oran, durum: 'gecerli' });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_duzeltme', hedef: ref.id, ayrinti: (o.musteriAd || '') + ' ' + tarih + ': +' + hz.ad + ' ' + top + ' ₺', zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_duzeltme', hedef: ref.id, ayrinti: (o.musteriAd || '') + ' ' + tarih + ': +' + hz.ad + ' ' + top + ' ' + sembol() + '', zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Hizmet eklendi')); bitti();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });

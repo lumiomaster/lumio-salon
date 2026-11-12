@@ -15,6 +15,7 @@ import { ayOlculeri, ustaAyi } from '../hedef-mantik.js';
 import { tarihMetin, tarihEkle, tarihYazi } from '../takvim-mantik.js';
 import { ustaOzetleri, gunOzeti, odenecek, yuvarla, ustaGunSatirlari, satirDokumu } from '../kasa-mantik.js';
 import { waAc, tarihTR } from '../mesaj.js';
+import { sembol } from '../ulke.js';
 
 const H = { tarih: tarihMetin(new Date()) };
 let F = null; // yalnız bu ustalar gösterilsin (Ana ekrandan "onaylamayanları aç")
@@ -120,7 +121,7 @@ function ikramiyeKarti(D, yenile) {
           const b = writeBatch(db);
           b.set(doc(db, 'salons', S.salon.id, 'ikramiyeler', uid + '_' + D.ikr.ay), { ustaUid: uid, ay: D.ikr.ay, tutar: a.ikramiye, veren: auth.currentUser.uid, zaman: serverTimestamp() });
           b.set(doc(collection(db, 'salons', S.salon.id, 'avanslar')), { ustaUid: uid, tutar: -a.ikramiye, tarih: tarihMetin(new Date()), donem: D.donem, not: ('İkramiye ' + D.ikr.ay).slice(0, 100), veren: auth.currentUser.uid, zaman: serverTimestamp() });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'ikramiye', hedef: uid, ayrinti: ad(uid) + ' ' + D.ikr.ay + ': ' + a.ikramiye + ' ₺', zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'ikramiye', hedef: uid, ayrinti: ad(uid) + ' ' + D.ikr.ay + ': ' + a.ikramiye + ' ' + sembol() + '', zaman: serverTimestamp() });
           await b.commit(); bildir(t('İkramiye hesaba eklendi')); yenile();
         } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
       }));
@@ -272,7 +273,7 @@ async function yoneticiOnayi(s, D, yenile) {
   try {
     const b = writeBatch(db);
     b.set(doc(db, 'salons', S.salon.id, 'mutabakat', s.uid + '_' + H.tarih), { ustaUid: s.uid, tarih: H.tarih, durum: 'onay', not: '', tutar: g.pay, onaylayan: auth.currentUser.uid, guncelleme: serverTimestamp() });
-    b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'mutabakat_sozlu', hedef: s.uid, ayrinti: s.ad + ' ' + H.tarih + ': ' + g.pay + ' ₺', zaman: serverTimestamp() });
+    b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'mutabakat_sozlu', hedef: s.uid, ayrinti: s.ad + ' ' + H.tarih + ': ' + g.pay + ' ' + sembol() + '', zaman: serverTimestamp() });
     await b.commit(); bildir(t('Onay kaydedildi')); yenile();
   } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
 }
@@ -293,7 +294,7 @@ function avansFormu(s, D, yenile) {
         try {
           const b = writeBatch(db);
           b.set(doc(collection(db, 'salons', S.salon.id, 'avanslar')), { ustaUid: s.uid, tutar: yuvarla(v), tarih: tarihMetin(new Date()), donem: D.donem, not: not.value.trim(), veren: auth.currentUser.uid, zaman: serverTimestamp() });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'avans', hedef: s.uid, ayrinti: s.ad + ': ' + v + ' ₺', zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'avans', hedef: s.uid, ayrinti: s.ad + ': ' + v + ' ' + sembol() + '', zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Avans kaydedildi')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
@@ -321,7 +322,7 @@ function kapatOnay(D, satirlar, toplam, yenile) {
       b.set(doc(collection(db, 'salons', S.salon.id, 'donemler')), { donem: D.donem, ustalar, toplam, kapatan: auth.currentUser.uid, zaman: serverTimestamp() });
       b.set(doc(db, 'salons', S.salon.id, 'ayarlar', 'kapanis'), { donem: D.donem + 1, guncelleme: serverTimestamp() });
       ustalar.forEach(x => b.set(doc(db, 'salons', S.salon.id, 'ustaDevir', x.uid), { devir: x.yeniDevir, guncelleme: serverTimestamp() }));
-      b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'donem_kapat', hedef: String(D.donem), ayrinti: 'Ciro ' + toplam.brut + ' ₺, salonda kalan ' + toplam.salon + ' ₺', zaman: serverTimestamp() });
+      b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'donem_kapat', hedef: String(D.donem), ayrinti: 'Ciro ' + toplam.brut + ' ' + sembol() + ', salonda kalan ' + toplam.salon + ' ' + sembol() + '', zaman: serverTimestamp() });
       await b.commit(); p.kapat(); bildir(t('Hesap kapatıldı. Yeni dönem başladı.')); yenile();
     } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
   }));

@@ -4,6 +4,7 @@
 //   olcu 'capraz' : ustanın o ay çapraz sattığı hizmetlerin toplam tutarı
 //   ödül          : sabit tutar ya da ölçünün yüzdesi. Aynı ölçüde birden fazla basamak varsa ulaşılan EN YÜKSEK basamak geçerlidir (toplanmaz).
 import { yuvarla, caprazListesi } from './kasa-mantik.js';
+import { sembol } from './ulke.js';
 
 export const OLCU_AD = { urun: 'Ürün satışı', capraz: 'Çapraz satış' };
 
@@ -35,4 +36,4 @@ export function ustaAyi(olc, hedefler) {
   return { urun, capraz, ikramiye: yuvarla(urun.ikramiye + capraz.ikramiye) };
 }
 
-export const hedefYazisi = (h) => (h.tur === 'yuzde' ? '%' + String(h.deger).replace('.', ',') : String(h.deger).replace('.', ',') + ' ₺');
+export const hedefYazisi = (h) => (h.tur === 'yuzde' ? '%' + String(h.deger).replace('.', ',') : String(h.deger).replace('.', ',') + ' ' + sembol() + '');

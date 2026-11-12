@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (10. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (11. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -61,6 +61,14 @@ service cloud.firestore {
         || (s.durum == 'DENEME' && !('bitisMs' in s) && request.time < s.olusturma + duration.value(14, 'd'));
     }
 
+
+    // Ülke ve para birimi: ikisi birlikte yazılır, listedeki değerlerden biri olmalı
+    function ulkeParaGecerli(d) {
+      return (!('ulke' in d) && !('para' in d))
+        || (('ulke' in d) && ('para' in d)
+          && d.ulke in ['TR', 'KZ', 'UZ', 'KG', 'AZ', 'DE', 'RU', 'DIGER']
+          && d.para in ['TRY', 'KZT', 'UZS', 'KGS', 'AZN', 'EUR', 'USD', 'RUB']);
+    }
 
     // Bu kişi (uid) aynı salonun üyesi mi?
     function uyeSalonda(salonId, uid) {
@@ -234,7 +242,8 @@ service cloud.firestore {
 
       // Salonu yalnızca platform yöneticisi açar; salonun ilk yöneticisinin üyelik belgesiyle AYNI işlemde (boş salon yığılmasın)
       allow create: if yoneticiMi()
-        && request.resource.data.keys().hasOnly(['ad', 'ownerUid', 'durum', 'paket', 'olusturma', 'bitisMs', 'sahipAd', 'sahipTel', 'notlar'])
+        && request.resource.data.keys().hasOnly(['ad', 'ownerUid', 'durum', 'paket', 'olusturma', 'bitisMs', 'sahipAd', 'sahipTel', 'notlar', 'ulke', 'para'])
+        && ulkeParaGecerli(request.resource.data)
         && request.resource.data.ownerUid is string
         && request.resource.data.ownerUid != request.auth.uid
         && request.resource.data.durum in ['DENEME', 'AKTIF']
@@ -255,7 +264,8 @@ service cloud.firestore {
 
       // Platform yöneticisi lisansı yönetir: durum, bitiş tarihi, ad, not. Salonun kendi yetkilisi yalnız salon adını değiştirebilir.
       allow update: if (yoneticiMi()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel', 'ulke', 'para'])
+          && ulkeParaGecerli(request.resource.data)
           && request.resource.data.durum in ['DENEME', 'AKTIF', 'PASIF']
           && request.resource.data.bitisMs is number
           && request.resource.data.bitisMs < request.time.toMillis() + 3700 * 86400000
@@ -268,7 +278,14 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad'])
           && request.resource.data.ad is string
           && request.resource.data.ad.size() >= 2
-          && request.resource.data.ad.size() <= 80);
+          && request.resource.data.ad.size() <= 80)
+        // Salonun yetkilisi ülke ve para birimini yalnız BİR KEZ (henüz seçilmemişse) seçebilir
+        || (yetkiliMi(salonId)
+          && lisansAktif(salonId)
+          && !('para' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ulke', 'para'])
+          && ('ulke' in request.resource.data) && ('para' in request.resource.data)
+          && ulkeParaGecerli(request.resource.data));
 
       allow delete: if false;
 

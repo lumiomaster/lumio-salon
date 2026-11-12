@@ -11,6 +11,7 @@ import { tarihTR } from '../mesaj.js';
 import { yuvarla } from '../kasa-mantik.js';
 import { stokYazi } from '../stok-mantik.js';
 import { karHesapla, hizmetKarliligi, ayAralik, ayEkle, ayYazi } from '../kar-mantik.js';
+import { sembol } from '../ulke.js';
 
 const bugun = () => tarihMetin(new Date());
 const K = { ay: bugun().slice(0, 7), alt: 'ozet' };
@@ -122,7 +123,7 @@ function giderFormu(yenile) {
         try {
           const b = writeBatch(db);
           b.set(doc(collection(db, 'salons', S.salon.id, 'giderler')), { tarih: tarih.value, kategori, tutar: yuvarla(v), not: not.value.trim(), aylik: aylik.checked, uid: auth.currentUser.uid, zaman: serverTimestamp() });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'gider', hedef: S.salon.id, ayrinti: kategori + ' ' + v + ' ₺', zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'gider', hedef: S.salon.id, ayrinti: kategori + ' ' + v + ' ' + sembol() + '', zaman: serverTimestamp() });
           await b.commit(); K.ay = tarih.value.slice(0, 7) > bugun().slice(0, 7) ? K.ay : tarih.value.slice(0, 7); p.kapat(); bildir(t('Gider kaydedildi')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });

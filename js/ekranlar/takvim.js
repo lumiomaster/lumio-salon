@@ -17,7 +17,10 @@ import {
 } from '../takvim-mantik.js';
 
 // Ekranın hatırladığı seçimler (sekme değişince kaybolmasın)
-const T = { tarih: tarihMetin(new Date()), usta: '', iptaller: false };
+const T = { tarih: tarihMetin(new Date()), usta: '', iptaller: false, ac: '' };
+
+// Bildirimden gelince: o günü göster, randevu ayrıntısını aç
+export function randevuyaGit(tarih, rid) { if (/^\d{4}-\d{2}-\d{2}$/.test(tarih)) { T.tarih = tarih; T.ac = rid || ''; } }
 
 export function takvimEkrani() {
   const kutu = h('div', { class: 'sayfa' }, h('p', { class: 'soluk' }, t('Yükleniyor…')));
@@ -43,6 +46,7 @@ async function yukle(kutu, yenile) {
       usta ? kilitleriYukle(T.tarih) : Promise.resolve({})
     ]);
     ciz(kutu, ctx, gun, yaklasan, kilit, yenile);
+    if (T.ac) { const r = gun.find(x => x.id === T.ac); T.ac = ''; if (r) ayrinti(r, ctx, randevuYazarMi(S.profil.rol), yenile); }
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -500,7 +504,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
           }
           throw err;
         }
-        if (yeni) { const ben = auth.currentUser.uid; const hedef = [...new Set(kalemler.map(k => k.ustaUid))].filter(u => u !== ben); if (hedef.length) bildirimYolla({ uidler: hedef }, t('Yeni randevu'), tarihTR(tarih) + ' ' + dkMetin(bas) + ' · ' + ad, { etiket: 'randevu' }); }
+        if (yeni) { const ben = auth.currentUser.uid; const hedef = [...new Set(kalemler.map(k => k.ustaUid))].filter(u => u !== ben); if (hedef.length) bildirimYolla({ uidler: hedef }, t('Yeni randevu'), tarihTR(tarih) + ' ' + dkMetin(bas) + ' · ' + ad, { etiket: 'randevu', git: 'randevu:' + tarih + ':' + rid }); }
         tarihGit(tarih);
         pencere.kapat(); bildir(yeni ? t('Randevu kaydedildi') : t('Randevu güncellendi')); yenile();
       } catch (err) { console.error(err); hata.textContent = hataMetni(err); }

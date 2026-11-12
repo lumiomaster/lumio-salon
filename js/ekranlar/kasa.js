@@ -15,6 +15,7 @@ import { iptalFormu } from './takvim.js';
 import { hesapEkrani } from './hesap.js';
 import { kazancimEkrani } from './kazancim.js';
 import { karEkrani } from './kar.js';
+import { sembol } from '../ulke.js';
 
 const K = { tarih: tarihMetin(new Date()) };
 
@@ -128,7 +129,7 @@ function odemeIptal(o, yenile) {
           (await odemeSatirlariniYukle(o.id)).forEach(x => b.update(doc(db, 'salons', S.salon.id, 'ustaSatirlari', x.id), { durum: 'iptal' }));
           satisStokYaz(b, o.id, o.kalemler, true);
           if (o.rid && !o.duzeltmeOf) b.update(doc(db, 'salons', S.salon.id, 'randevular', o.rid), { durum: 'bekliyor', odemeId: '', guncelleme: serverTimestamp() });
-          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_iptal', hedef: o.id, ayrinti: o.toplam + ' ₺: ' + neden.value.trim(), zaman: serverTimestamp() });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'odeme_iptal', hedef: o.id, ayrinti: o.toplam + ' ' + sembol() + ': ' + neden.value.trim(), zaman: serverTimestamp() });
           await b.commit(); p.kapat(); bildir(t('Ödeme iptal edildi.')); yenile();
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
