@@ -1,6 +1,6 @@
 import { ALIAS_ALAN, DENEME_GUN } from './config.js';
 import { paraBilgi } from './ulke.js';
-import { t } from './i18n.js';
+import { t, yerel } from './i18n.js';
 
 // Küçük yardımcı: h('div', {class:'x', onclick: fn}, 'metin', başkaDüğüm)
 export function h(tag, props, ...kids) {
@@ -121,7 +121,7 @@ export function rastgeleSifre() {
   return String(100000 + (a[0] % 900000));
 }
 
-export function para(n) { const p = paraBilgi(); return (Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: p.ondalik }) + ' ' + p.sembol; }
+export function para(n) { const p = paraBilgi(); return (Number(n) || 0).toLocaleString(yerel(), { maximumFractionDigits: p.ondalik }) + ' ' + p.sembol; }
 // "12,5" ve "12.5" ikisini de sayıya çevirir; geçersizse NaN
 export function sayi(v) { const s = String(v == null ? '' : v).trim().replace(',', '.'); return s === '' ? NaN : Number(s); }
 

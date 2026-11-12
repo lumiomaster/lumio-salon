@@ -1,5 +1,5 @@
 // Usta Danışman: Worker üzerinden yapay zekâ ile sohbet. Salon verisinin kısa bir özeti her soruyla birlikte gider.
-import { t } from '../i18n.js';
+import { t, dilKodu } from '../i18n.js';
 import { h, doldur, pencereAc } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
@@ -80,7 +80,7 @@ export function danismanAc() {
     hata.textContent = ''; GECMIS.liste.push({ rol: 'kullanici', metin }); yaz.value = ''; bekliyor = true; gonder.disabled = true; ciz();
     try {
       if (!OZET.v || OZET.uid !== uid || Date.now() - OZET.t > 5 * 60e3) OZET = { t: Date.now(), uid, v: await salonOzeti() };
-      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v });
+      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu() });
       GECMIS.liste.push({ rol: 'asistan', metin: r.cevap });
     } catch (e) {
       GECMIS.liste.pop(); yaz.value = metin;

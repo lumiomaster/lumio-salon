@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, yerel } from '../i18n.js';
 import { ROLLER } from '../config.js';
 import { h, telNormalize, telGoster, eposta, hataMetni, bildir, pencereAc, kilitli, rastgeleSifre, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
@@ -20,7 +20,7 @@ async function yukle() {
   try {
     const sn = await getDocs(query(collection(db, 'kullanicilar'), where('salonId', '==', S.salon.id)));
     liste = sn.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (SIRA[a.rol] - SIRA[b.rol]) || a.ad.localeCompare(b.ad, 'tr'));
+      .sort((a, b) => (SIRA[a.rol] - SIRA[b.rol]) || a.ad.localeCompare(b.ad, yerel()));
     listeSalon = S.salon.id;
   } catch (e) { console.error(e); hata = hataMetni(e); liste = []; listeSalon = S.salon.id; }
   yukleniyor = false;

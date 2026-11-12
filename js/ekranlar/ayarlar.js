@@ -11,6 +11,7 @@ import { goster } from '../main.js';
 import { sablonKarti } from './sablonlar.js';
 import { bildirimDurumu, bildirimAc, bildirimKapat } from '../sunucu.js';
 import { hukukGoster } from '../hukuk.js';
+import { dilKarti } from './dil-sec.js';
 
 export function ayarlarEkrani() {
   const p = S.profil;
@@ -21,6 +22,7 @@ export function ayarlarEkrani() {
       h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol) + ' · ' + telGoster(p.telefon))),
     yetkiliMi(p.rol) ? salonAdiKarti() : null,
     yetkiliMi(p.rol) ? sablonKarti() : null,
+    dilKarti(),
     bildirimKarti(),
     sifreKarti(),
     h('div', { class: 'kart' }, h('strong', null, t('Yasal metinler')),

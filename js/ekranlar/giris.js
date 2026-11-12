@@ -3,11 +3,13 @@ import { UYGULAMA } from '../config.js';
 import { h, telNormalize, eposta, hataMetni, kilitli } from '../util.js';
 import { S } from '../durum.js';
 import { auth, signInWithEmailAndPassword } from '../fb.js';
+import { dilSecici } from './dil-sec.js';
 
 export function girisEkrani() {
   const kutu = h('div', { class: 'giris' });
   const ciz = () => {
     kutu.replaceChildren(...[
+      h('div', { class: 'dil-satir' }, dilSecici()),
       h('img', { src: 'icons/logo.png', alt: UYGULAMA.ad, class: 'giris-logo' }),
       h('h1', null, UYGULAMA.ad),
       S.mesaj ? h('div', { class: 'uyari' }, S.mesaj) : null,

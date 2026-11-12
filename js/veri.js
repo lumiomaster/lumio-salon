@@ -1,3 +1,4 @@
+import { yerel } from './i18n.js';
 // Salon verilerinin yüklenmesi ve önbelleği. Ekranlar buradan okur, değişiklikten sonra zorla yeniler.
 import { S } from './durum.js';
 import { gorenMi } from './roller.js';
@@ -16,7 +17,7 @@ export async function hizmetleriYukle(zorla) {
   if (V.hizmetler && !zorla) return V.hizmetler;
   const sn = await getDocs(yol('hizmetler'));
   V.hizmetler = sn.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (a.kategori || '').localeCompare(b.kategori || '', 'tr') || a.ad.localeCompare(b.ad, 'tr'));
+    .sort((a, b) => (a.kategori || '').localeCompare(b.kategori || '', yerel()) || a.ad.localeCompare(b.ad, yerel()));
   return V.hizmetler;
 }
 
@@ -44,7 +45,7 @@ export async function uyeleriYukle(zorla) {
   kontrol();
   if (V.uyeler && !zorla) return V.uyeler;
   const sn = await getDocs(query(collection(db, 'kullanicilar'), where('salonId', '==', S.salon.id)));
-  V.uyeler = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  V.uyeler = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
   return V.uyeler;
 }
 
@@ -158,7 +159,7 @@ export async function musterileriYukle() {
   kontrol();
   const q = S.profil.rol === 'usta' ? query(yol('musteriler'), where('ustalar', 'array-contains', S.profil.id)) : yol('musteriler');
   const sn = await getDocs(q);
-  return sn.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => !m.silindi).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  return sn.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => !m.silindi).sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
 }
 // Listeden kaldırılmış müşteriyi geri getirir (aynı telefonla yeniden randevu alınınca)
 export async function musteriGeriGetir(id) {
@@ -248,7 +249,7 @@ export async function urunleriYukle() {
   const [us, fs] = await Promise.all([getDocs(yol('urunler')), getDocs(yol('urunFiyat')).catch(() => null)]);
   const f = {}; if (fs) fs.docs.forEach(d => { f[d.id] = d.data(); });
   return us.docs.map(d => ({ id: d.id, ...d.data(), alis: f[d.id] ? f[d.id].alis : null, satis: f[d.id] ? f[d.id].satis : null }))
-    .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    .sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
 }
 export async function stokAyariYukle() {
   kontrol();

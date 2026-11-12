@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, yerel } from '../i18n.js';
 import { mesajYap } from '../mesaj.js';
 import { h, doldur, hataMetni, bildir, kilitli, para, sayi, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
@@ -67,7 +67,7 @@ function hesapla(D) {
     const o = ozet[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0, capraz: 0 };
     const av = yuvarla(avans[uid] || 0), dv = D.devirler[uid] || 0;
     return { uid, ad: (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad, ...o, avans: av, devir: dv, odenecek: odenecek(o.hakedis, av, dv), maliYok: !D.u.mali[uid] };
-  }).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  }).sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
   const gecerli = D.odemeler.filter(o => o.durum === 'gecerli');
   const z = gunOzeti(gecerli);
   const hakedis = yuvarla(satirlar.reduce((a, s) => a + s.hakedis, 0));

@@ -224,3 +224,4 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .rozet.yaklasan { background: rgba(255,149,0,.2); color: #ff9500; }
 .lisans-uyari { text-align: center; padding: 4px 0 10px; } .lisans-ikon { font-size: 3rem; } .lisans-uyari h2 { margin: 6px 0 10px; font-size: 1.3rem; }
 .pencere .dugme.buyuk { width: 100%; padding: 14px; font-size: 1.05rem; margin: 8px 0; } .pencere > .dugme.ikincil, .pencere .dugme.ikincil + .dugme { width: auto; }
+.dil-satir { display: flex; justify-content: flex-end; margin-bottom: 6px; } .dil-sec { width: auto; min-width: 130px; padding: 8px 12px; }

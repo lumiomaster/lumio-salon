@@ -89,12 +89,12 @@ function paketKarti(duzenle, yenile) {
         try {
           const b = writeBatch(db);
           p.hizmetler.forEach(x => b.set(doc(collection(db, 'salons', S.salon.id, 'hizmetler')), {
-            ad: x.ad, kategori: x.kategori, fiyat: 0, sure: x.sure, asamalar: x.asamalar || [], aktif: true, ...(x.kategori === 'Boya' ? { oranGrup: 'malzemeli' } : {}), guncelleme: serverTimestamp()
+            ad: t(x.ad), kategori: t(x.kategori), fiyat: 0, sure: x.sure, asamalar: (x.asamalar || []).map(a => ({ ...a, ad: t(a.ad) })), aktif: true, ...(x.kategori === 'Boya' ? { oranGrup: 'malzemeli' } : {}), guncelleme: serverTimestamp()
           }));
           kayit(b, 'Hazır paket: ' + p.ad);
           await b.commit(); bildir(t('Hizmetler eklendi. Fiyatları girmeyi unutmayın.')); yenile(true);
         } catch (err) { console.error(err); bildir(hataMetni(err), 'hata'); }
-      }) }, p.ad + ' (' + p.hizmetler.length + ')'))));
+      }) }, t(p.ad) + ' (' + p.hizmetler.length + ')'))));
 }
 
 function hizmetFormu(x, yenile, oran) {

@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, yerel } from '../i18n.js';
 import { bildirimYolla } from '../sunucu.js';
 import { h, doldur, hataMetni, bildir, pencereAc, onayIste, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
@@ -67,7 +67,7 @@ export async function sohbetAc() {
     doldur(kutu, liste.length === 0 ? h('p', { class: 'soluk' }, t('Henüz mesaj yok. İlk mesajı siz yazın.')) : liste.map(m => {
       const benim = m.uid === ben;
       const ayirac = m.gun !== gun ? h('div', { class: 'sohbet-gun' }, m.gun === tarihMetin(new Date()) ? t('Bugün') : m.gun.split('-').reverse().join('.')) : null; gun = m.gun;
-      const saat = m.zaman && m.zaman.toMillis ? new Date(m.zaman.toMillis()).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const saat = m.zaman && m.zaman.toMillis ? new Date(m.zaman.toMillis()).toLocaleTimeString(yerel(), { hour: '2-digit', minute: '2-digit' }) : '';
       return h('div', null, ayirac,
         h('div', { class: 'sohbet-mesaj' + (benim ? ' benim' : '') },
           benim ? null : h('div', { class: 'sohbet-ad' }, ad(m.uid)),

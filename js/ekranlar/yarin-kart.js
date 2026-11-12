@@ -24,7 +24,7 @@ export function yarinKarti() {
         const hizmet = x.kalemler.map(k => k.ad).join(' + ');
         const dugme = h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', disabled: !x.musteriTel, onclick: () => mesajGonder({
           musteriId: x.musteriId || '', tel: x.musteriTel, tur: 'hatirlatma', anahtar: x.id, onceki: g,
-          metin: mesajYap('hatirlatma', { MUSTERI_ADI: hitap(x.musteriAd), TARIH: tarihTR(x.tarih), SAAT: dkMetin(x.bas), HIZMET: hizmet, USTA_ADI: usta.includes(',') ? '' : usta }),
+          metin: mesajYap('hatirlatma', { MUSTERI_ADI: hitap(x.musteriAd), TARIH: tarihTR(x.tarih), SAAT: dkMetin(x.bas), HIZMET: hizmet, USTA_ADI: usta.includes(',') ? '' : usta }), yap: (d) => mesajYap('hatirlatma', { MUSTERI_ADI: hitap(x.musteriAd), TARIH: tarihTR(x.tarih), SAAT: dkMetin(x.bas), HIZMET: hizmet, USTA_ADI: usta.includes(',') ? '' : usta }, d),
           yenile: yukle }) }, x.musteriTel ? 'WhatsApp' : t('Telefon yok'));
         return h('div', { class: 'satir yarin-satir' },
           h('div', null, h('strong', null, dkMetin(x.bas) + ' · ' + x.musteriAd), h('div', { class: 'kucuk' }, hizmet + (usta ? ' · ' + usta : '')),

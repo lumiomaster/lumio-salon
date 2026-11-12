@@ -171,8 +171,8 @@ function ayrinti(r, ctx, yazar, yenile) {
   // Onay mesajı: daha önce gönderildiyse uyarı çıkar, kim gönderdi görünür
   let onayOnceki = null;
   const onayDugme = h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mesajGonder({ musteriId: r.musteriId || '', tel: r.musteriTel, tur: 'onay', anahtar: r.id,
-    metin: mesajYap('onay', { MUSTERI_ADI: hitap(r.musteriAd), TARIH: tarihTR(r.tarih), SAAT: dkMetin(r.bas), HIZMET: r.kalemler.map(k => k.ad).join(' + ') }), onceki: onayOnceki, yenile: () => { onayOnceki = { ad: S.profil.ad || '', gun: tarihMetin(new Date()) }; onayDugme.textContent = t('Onay mesajı') + ' ✓'; } }) }, t('Onay mesajı'));
-  if (r.musteriId) gonderimVarMi(r.musteriId, 'onay', r.id).then(g => { if (g) { onayOnceki = g; onayDugme.textContent = t('Onay mesajı') + ' ✓ ' + gonderilmisYazi(g).replace(/^Gönderildi · /, ''); } }).catch(() => {});
+    metin: mesajYap('onay', { MUSTERI_ADI: hitap(r.musteriAd), TARIH: tarihTR(r.tarih), SAAT: dkMetin(r.bas), HIZMET: r.kalemler.map(k => k.ad).join(' + ') }), yap: (d) => mesajYap('onay', { MUSTERI_ADI: hitap(r.musteriAd), TARIH: tarihTR(r.tarih), SAAT: dkMetin(r.bas), HIZMET: r.kalemler.map(k => k.ad).join(' + ') }, d), onceki: onayOnceki, yenile: () => { onayOnceki = { ad: S.profil.ad || '', gun: tarihMetin(new Date()) }; onayDugme.textContent = t('Onay mesajı') + ' ✓'; } }) }, t('Onay mesajı'));
+  if (r.musteriId) gonderimVarMi(r.musteriId, 'onay', r.id).then(g => { if (g) { onayOnceki = g; onayDugme.textContent = t('Onay mesajı') + ' ✓ ' + gonderilmisYazi(g).replace(/^[^·]*· /, ''); } }).catch(() => {});
   doldur(icerik,
     h('div', { class: 'ayrinti' },
       h('div', null, h('strong', null, r.musteriAd), r.durum === 'iptal' ? h('span', { class: 'rozet pasif-rozet' }, t('İptal')) : (r.durum === 'odendi' ? h('span', { class: 'rozet odendi-rozet' }, t('Ödendi')) : null)),

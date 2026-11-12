@@ -2,6 +2,8 @@
 // Zaman "günün dakikası" (0-1440) ve tarih "YYYY-MM-DD" olarak tutulur.
 // Kilit (slot) = bir ustanın bir günde 5 dakikalık bir dilimi. Bir dilimi aynı anda yalnız bir randevu tutabilir.
 
+import { t, dilKodu, yerel } from './i18n.js';
+
 export const DILIM = 5;
 export const GUN_KODU = ['paz', 'pzt', 'sal', 'car', 'per', 'cum', 'cmt'];
 
@@ -29,6 +31,7 @@ const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
 const GUNAD = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 export function tarihYazi(s) {
   const d = metinTarih(s);
+  if (dilKodu() !== 'tr') return d.toLocaleDateString(yerel(), { day: 'numeric', month: 'long', weekday: 'long' });   // Rusça "18 ноября" gibi doğru çekimler
   return d.getDate() + ' ' + AYLAR[d.getMonth()] + ' ' + GUNAD[d.getDay()];
 }
 

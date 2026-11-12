@@ -2,6 +2,7 @@
 // Hazır metinler LUMIO'dakiyle aynı; salon Ayarlar > Mesaj şablonları'ndan değiştirebilir (ayarlar/mesajlar).
 import { S } from './durum.js';
 import { db, doc, getDoc } from './fb.js';
+import { SABLON_DIL, USTA_SATIR_ON } from './sablon-metinler.js';
 
 // "AYŞE yılmaz" -> "Ayşe YILMAZ"
 export function hitap(isim) {
@@ -54,30 +55,44 @@ export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', 
 let BAG = {};
 export const baglantiAyarla = (a) => { BAG = a || {}; };
 export const baglantilar = () => ({ ...BAG });
-export const sablonVarsayilan = (tur) => SABLON[tur];
-
-// Salonun kendi şablonları (ayarlar/mesajlar); yoksa hazır metin kullanılır
-let OZEL = {};
-export const sablonOzel = () => ({ ...OZEL });
-export function sablonOzelAyarla(yeni) { OZEL = {}; Object.keys(SABLON).forEach(k => { if (yeni && typeof yeni[k] === 'string' && yeni[k].trim()) OZEL[k] = yeni[k]; }); }
+// Mesaj dili: salonun varsayılan şablon dili (Mesaj şablonları > Mesaj dili) ve dil başına salona özel metinler
+const DILLER_M = ['tr', 'ru', 'kk', 'de', 'en'];
+export const MESAJ_DILLERI = DILLER_M;
+let SABLON_DILI = 'tr', DIL_SOR = false;
+let OZEL_D = {};   // { dil: { tur: metin } }
+export const sablonDili = () => SABLON_DILI;
+export const dilSorulsun = () => DIL_SOR;
+export const sablonVarsayilan = (tur, dil) => { dil = dil || SABLON_DILI; return dil === 'tr' ? SABLON[tur] : ((SABLON_DIL[dil] && SABLON_DIL[dil][tur]) || SABLON[tur]); };
+export const sablonOzel = (dil) => ({ ...(OZEL_D[dil || SABLON_DILI] || {}) });
+const temizle = (yeni) => { const o = {}; Object.keys(SABLON).forEach(k => { if (yeni && typeof yeni[k] === 'string' && yeni[k].trim()) o[k] = yeni[k]; }); return o; };
+// Türkçe metinler + dil ayarları "mesajlar" belgesindedir; diğer diller "mesajlar_<dil>" belgelerinde
+export function sablonOzelAyarla(yeni, dil) {
+  dil = dil || 'tr';
+  OZEL_D[dil] = temizle(yeni);
+  if (dil === 'tr') { SABLON_DILI = yeni && DILLER_M.includes(yeni.sablonDil) ? yeni.sablonDil : 'tr'; DIL_SOR = !!(yeni && yeni.dilSor === true); }
+}
+export function sablonSifirla() { OZEL_D = {}; SABLON_DILI = 'tr'; DIL_SOR = false; }
 export async function sablonlariYukle() {
-  OZEL = {};
+  sablonSifirla();
   if (!S.salon) return;
-  try {
-    const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'mesajlar'));
-    if (d.exists()) sablonOzelAyarla(d.data());
-  } catch (e) { /* okunamazsa hazır metinler */ }
+  for (const d of DILLER_M) {
+    try {
+      const x = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', d === 'tr' ? 'mesajlar' : 'mesajlar_' + d));
+      if (x.exists()) sablonOzelAyarla(x.data(), d);
+    } catch (e) { /* okunamazsa hazır metinler */ }
+  }
   try {
     const g = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'genel'));
     baglantiAyarla(g.exists() ? g.data() : {});
   } catch (e) { /* bağlantılar boş kalır */ }
 }
 
-export function mesajYap(tur, vars) {
+export function mesajYap(tur, vars, dil) {
+  dil = dil || SABLON_DILI;
   const salon = S.salon ? S.salon.ad : '';
   const v = { SALON_ADI: salon, IMZA: salon, GOOGLE_LINK: BAG.googleLink || '', INSTAGRAM_LINK: BAG.instagram || '', BANKA_ADI: BAG.bankaAdi || '', HESAP_SAHIBI: BAG.hesapSahibi || '', IBAN_NO: BAG.iban || '', ...vars };
-  v.USTA_SATIR = v.USTA_ADI ? '💇 Uzmanımız: ' + v.USTA_ADI + '\n' : '';
-  return (OZEL[tur] || SABLON[tur]).replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+  v.USTA_SATIR = v.USTA_ADI ? (USTA_SATIR_ON[dil] || USTA_SATIR_ON.tr) + v.USTA_ADI + '\n' : '';
+  return ((OZEL_D[dil] && OZEL_D[dil][tur]) || sablonVarsayilan(tur, dil)).replace(/\{([A-Z_]+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
 }
 
 // LUMIO'daki gibi api.whatsapp.com bağlantısı: wa.me yönlendirmesi emojileri bozabiliyordu (� işareti).

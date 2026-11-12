@@ -1,5 +1,6 @@
 // Maliyet ve kâr hesapları (saf fonksiyonlar).
 // Salon kârı = (kart komisyonu düşülmüş ciro − ustaların hakedişi) − satılan ürünlerin alış maliyeti − formülde kullanılan ürünlerin maliyeti − giderler
+import { dilKodu, yerel } from './i18n.js';
 import { yuvarla, ustaOzetleri, gunOzeti, satirNet, satirPayi } from './kasa-mantik.js';
 import { birimMaliyet } from './stok-mantik.js';
 
@@ -9,7 +10,7 @@ const gecerli = (o) => o.durum === 'gecerli';
 export const ayAralik = (ay) => ({ bas: ay + '-01', bit: ay + '-31' });
 export function ayEkle(ay, n) { const [y, m] = ay.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-export const ayYazi = (ay) => { const [y, m] = ay.split('-').map(Number); return AYLAR[m - 1] + ' ' + y; };
+export const ayYazi = (ay) => { const [y, m] = ay.split('-').map(Number); return dilKodu() === 'tr' ? AYLAR[m - 1] + ' ' + y : new Date(y, m - 1, 1).toLocaleDateString(yerel(), { month: 'long', year: 'numeric' }); };
 
 // O aya düşen giderler. Aylık tekrarlayan: başladığı aydan itibaren, bitişine (varsa) kadar her ay bir kez
 export function ayGiderleri(giderler, ay) {

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (11. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (12. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -242,7 +242,7 @@ service cloud.firestore {
 
       // Salonu yalnızca platform yöneticisi açar; salonun ilk yöneticisinin üyelik belgesiyle AYNI işlemde (boş salon yığılmasın)
       allow create: if yoneticiMi()
-        && request.resource.data.keys().hasOnly(['ad', 'ownerUid', 'durum', 'paket', 'olusturma', 'bitisMs', 'sahipAd', 'sahipTel', 'notlar', 'ulke', 'para'])
+        && request.resource.data.keys().hasOnly(['ad', 'ownerUid', 'durum', 'paket', 'olusturma', 'bitisMs', 'sahipAd', 'sahipTel', 'notlar', 'ulke', 'para', 'ulkeKayit'])
         && ulkeParaGecerli(request.resource.data)
         && request.resource.data.ownerUid is string
         && request.resource.data.ownerUid != request.auth.uid
@@ -264,7 +264,7 @@ service cloud.firestore {
 
       // Platform yöneticisi lisansı yönetir: durum, bitiş tarihi, ad, not. Salonun kendi yetkilisi yalnız salon adını değiştirebilir.
       allow update: if (yoneticiMi()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel', 'ulke', 'para'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'bitisMs', 'ad', 'notlar', 'sahipAd', 'sahipTel', 'ulke', 'para', 'ulkeKayit'])
           && ulkeParaGecerli(request.resource.data)
           && request.resource.data.durum in ['DENEME', 'AKTIF', 'PASIF']
           && request.resource.data.bitisMs is number
@@ -330,8 +330,10 @@ service cloud.firestore {
             )
             ||
             (
-              ayarId == 'mesajlar'
-              && request.resource.data.keys().hasOnly(['dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'mutabakatUst', 'tesvik', 'tebrik', 'mutabakatAlt', 'siparis', 'puan', 'memnuniyet', 'instagram', 'iban', 'guncelleme'])
+              ayarId in ['mesajlar', 'mesajlar_ru', 'mesajlar_kk', 'mesajlar_de', 'mesajlar_en']
+              && request.resource.data.keys().hasOnly(['sablonDil', 'dilSor', 'dogum', 'takip', 'davet', 'onay', 'hatirlatma', 'mutabakatUst', 'tesvik', 'tebrik', 'mutabakatAlt', 'siparis', 'puan', 'memnuniyet', 'instagram', 'iban', 'guncelleme'])
+              && (!('sablonDil' in request.resource.data) || request.resource.data.sablonDil in ['tr', 'ru', 'kk', 'de', 'en'])
+              && (!('dilSor' in request.resource.data) || request.resource.data.dilSor is bool)
               && (!('dogum' in request.resource.data) || (request.resource.data.dogum is string && request.resource.data.dogum.size() <= 1000)) && (!('takip' in request.resource.data) || (request.resource.data.takip is string && request.resource.data.takip.size() <= 1000)) && (!('davet' in request.resource.data) || (request.resource.data.davet is string && request.resource.data.davet.size() <= 1000)) && (!('onay' in request.resource.data) || (request.resource.data.onay is string && request.resource.data.onay.size() <= 1000)) && (!('hatirlatma' in request.resource.data) || (request.resource.data.hatirlatma is string && request.resource.data.hatirlatma.size() <= 1000)) && (!('mutabakatUst' in request.resource.data) || (request.resource.data.mutabakatUst is string && request.resource.data.mutabakatUst.size() <= 1000)) && (!('tesvik' in request.resource.data) || (request.resource.data.tesvik is string && request.resource.data.tesvik.size() <= 1000)) && (!('tebrik' in request.resource.data) || (request.resource.data.tebrik is string && request.resource.data.tebrik.size() <= 1000)) && (!('mutabakatAlt' in request.resource.data) || (request.resource.data.mutabakatAlt is string && request.resource.data.mutabakatAlt.size() <= 1000)) && (!('siparis' in request.resource.data) || (request.resource.data.siparis is string && request.resource.data.siparis.size() <= 1000)) && (!('puan' in request.resource.data) || (request.resource.data.puan is string && request.resource.data.puan.size() <= 1000)) && (!('memnuniyet' in request.resource.data) || (request.resource.data.memnuniyet is string && request.resource.data.memnuniyet.size() <= 1000)) && (!('instagram' in request.resource.data) || (request.resource.data.instagram is string && request.resource.data.instagram.size() <= 1000)) && (!('iban' in request.resource.data) || (request.resource.data.iban is string && request.resource.data.iban.size() <= 1000))
               && request.resource.data.guncelleme == request.time
             )

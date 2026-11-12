@@ -235,7 +235,7 @@ async function mesajMenusu(m) {
         const eksik = x.gerek.filter(k => !bag[k]);
         const anahtar = x.anahtar === 'ay' ? bugun.slice(0, 7) : bugun;
         const g = G[mesajAnahtar(m.id, x.tur, anahtar)] || null;
-        return h('button', { class: 'satir tikla', type: 'button', disabled: !m.tel || eksik.length > 0, onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur: x.tur, anahtar, metin: mesajYap(x.tur, { MUSTERI_ADI: hitap(m.ad) }), onceki: g, yenile: ciz }) },
+        return h('button', { class: 'satir tikla', type: 'button', disabled: !m.tel || eksik.length > 0, onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur: x.tur, anahtar, metin: mesajYap(x.tur, { MUSTERI_ADI: hitap(m.ad) }), yap: (d) => mesajYap(x.tur, { MUSTERI_ADI: hitap(m.ad) }, d), onceki: g, yenile: ciz }) },
           h('strong', null, x.ikon + ' ' + t(x.ad)),
           eksik.length ? h('div', { class: 'kucuk uyari-yazi' }, t('Önce Salon > Genel bölümünde {x} yazın.', { x: t(GEREK_AD[eksik[0]]) })) : null,
           g ? h('div', { class: 'kucuk' }, '✓ ' + gonderilmisYazi(g)) : null);
@@ -286,7 +286,7 @@ export function hatirlatmaKarti(liste, ayar, ctxAl, yenile, G) {
     return h('span', { class: 'gonder-kutu' },
       g ? h('span', { class: 'rozet odendi-rozet gonderildi' }, '✓ ' + gonderilmisYazi(g)) : null,
       h('button', { class: 'dugme kucuk-dugme' + (g ? ' ikincil' : ''), type: 'button',
-        onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur, anahtar, metin: mesajYap(tur, { MUSTERI_ADI: hitap(m.ad), ...vars }), onceki: g, yenile }) }, g ? t('Tekrar') : 'WhatsApp'));
+        onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur, anahtar, metin: mesajYap(tur, { MUSTERI_ADI: hitap(m.ad), ...vars }), yap: (d) => mesajYap(tur, { MUSTERI_ADI: hitap(m.ad), ...vars }, d), onceki: g, yenile }) }, g ? t('Tekrar') : 'WhatsApp'));
   };
   const yilDe = (kalan) => String(new Date(Date.now() + kalan * 864e5).getFullYear());
   const satir = (m, alt, dugme) => h('div', { class: 'arama-satir' }, h('div', null, h('strong', null, m.ad), h('div', { class: 'kucuk' }, alt)), h('div', { class: 'arama-dugmeler' }, dugme));
