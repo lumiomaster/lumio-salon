@@ -3,7 +3,8 @@ import { h, doldur, hataMetni, bildir, kilitli, para, pencereAc, onayIste, lisan
 import { S } from '../durum.js';
 import { randevuYazarMi, yetkiliMi } from '../roller.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
-import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle } from '../veri.js';
+import { musterileriYukle, musteriGetir, musteriGeriGetir, musteriGecmisi, uyeleriYukle, ayariYukle, islemleriYukle, sadakatAyariYukle } from '../veri.js';
+import { ilerleme, odulYazi } from '../sadakat-mantik.js';
 import { tarihMetin, tarihEkle, tarihYazi, dkMetin, metinTarih } from '../takvim-mantik.js';
 import { mesajGonder, gonderilmisYazi, mesajAnahtar, gonderimleriYukle } from '../mesaj-kayit.js';
 import { hitap, mesajYap, waAc, waLink, tarihTR, dogumDuzenle, baglantilar } from '../mesaj.js';
@@ -127,9 +128,10 @@ async function ayrinti(m, ctxAl, ad, yenile) {
   const duzenle = randevuYazarMi(rol) && lisansDurumu(S.salon).aktif && (rol !== 'usta' || m.ustalar.includes(uid));
   const icerik = h('div', null, h('p', { class: 'soluk' }, t('Yükleniyor…')));
   const p = pencereAc(m.ad, icerik);
-  let g, islemler = [];
+  let g, islemler = [], sad = null;
   try {
     g = await musteriGecmisi(m.id);
+    if (rol !== 'usta') sad = await sadakatAyariYukle().catch(() => null);
     if (formulOkur()) islemler = await islemleriYukle('musteriId', m.id);
   } catch (e) { console.error(e); doldur(icerik, h('div', { class: 'uyari' }, hataMetni(e))); return; }
   const adK = h('input', { type: 'text', maxlength: 60, value: m.ad, disabled: !duzenle });
@@ -177,6 +179,7 @@ async function ayrinti(m, ctxAl, ad, yenile) {
       h('div', { class: 'hesap-satir' }, h('span', null, t('Tamamlanan ziyaret')), h('strong', null, ziyaret)),
       m.sonZiyaret ? h('div', { class: 'hesap-satir' }, h('span', null, t('Son ziyaret')), h('strong', null, tarihTR(m.sonZiyaret))) : null,
       h('div', { class: 'hesap-satir' }, h('span', null, t('Toplam harcama')), h('strong', null, para(harcama)))),
+    rol !== 'usta' && sad && sad.acik ? sadakatKutusu(m, sad, g.odemeler) : null,
     yetkiliMi(rol) && m.ustalar.length ? h('p', { class: 'kucuk' }, t('Hizmet veren ustalar: ') + m.ustalar.map(ad).join(', ')) : null,
     h('h3', null, t('İşlem geçmişi')),
     duzenle && islemYazarMi() ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: async () => { p.kapat(); elleIslemFormu(m, await uyeleriYukle(), () => { bildir(t('Müşteri ayrıntısını yeniden açın.')); yenile(); }); } }, t('+ İşlem kaydı ekle (randevusuz)'))) : null,
@@ -344,4 +347,23 @@ function ustaListesi(liste, uyeler) {
       h('p', null, t('{ad} için {n} müşteri bulundu.', { ad: u.ad, n: l.length })),
       l.length ? dugme : null, cikti);
   });
+}
+
+// Müşteri kartında sadakat ilerlemesi ve ödül mesajı
+function sadakatKutusu(m, sad, odemeler) {
+  const r = ilerleme(sad, odemeler), a = r.ayar;
+  const bugun = tarihMetin(new Date());
+  const satir = [];
+  if (a.olcu !== 'harcama') satir.push(t('{n}/{m} ziyaret', { n: Math.min(r.ziyaret, a.ziyaret), m: a.ziyaret }));
+  if (a.olcu !== 'ziyaret') satir.push(para(r.harcama) + ' / ' + para(a.harcama));
+  const odul = odulYazi(a, para);
+  return h('div', { class: 'kart sadakat-kutu' + (r.hak ? ' hazir' : '') },
+    h('strong', null, '🎁 ' + t('Sadakat')),
+    h('div', { class: 'sadakat-cubuk', role: 'progressbar', 'aria-valuenow': String(Math.round(r.oran * 100)) }, h('span', { style: 'width:' + Math.round(r.oran * 100) + '%' })),
+    h('div', { class: 'kucuk' }, satir.join(' · ')),
+    r.hak
+      ? h('div', null, h('p', null, t('Ödül hazır: sonraki ödemede {o} indirim uygulanır.', { o: odul })),
+        m.tel ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => mesajGonder({ musteriId: m.id, tel: m.tel, tur: 'odul', anahtar: bugun.slice(0, 7), metin: mesajYap('odul', { MUSTERI_ADI: hitap(m.ad), ODUL: odul }), yap: (d) => mesajYap('odul', { MUSTERI_ADI: hitap(m.ad), ODUL: odul }, d), onceki: null }) }, t('Ödül mesajı gönder')) : null)
+      : h('div', { class: 'kucuk soluk' }, t('Ödül hakkı: {o} indirim', { o: odul })),
+    r.kullanilan ? h('div', { class: 'kucuk soluk' }, t('Kullanılan ödül: {n}', { n: r.kullanilan })) : null);
 }

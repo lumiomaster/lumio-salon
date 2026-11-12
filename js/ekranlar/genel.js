@@ -6,6 +6,7 @@ import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js
 import { ayariYukle, musterileriYukle, tumRandevulariYukle, eskiRandevulariYukle, donemiYukle, donemOdemeleriniYukle, donemUstaSatirBelgeleriniYukle, randevulariYukle, kilitleriYukle } from '../veri.js';
 import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 import { tesvikAyari } from '../tesvik.js';
+import { sadakatAyari } from '../sadakat-ayar.js';
 import { baglantiAyarla } from '../mesaj.js';
 
 const ADIMLAR = [5, 10, 15, 20, 30, 60];
@@ -70,6 +71,7 @@ function ciz(kutu, ayar) {
     hata, kapali ? null : dugme,
     yetkili ? null : h('p', { class: 'kucuk' }, t('Bu ayarları yönetici ya da kıdemli yetkili değiştirir.'))),
     yetkili && !kapali ? tesvikKarti() : null,
+    yetkili && !kapali ? sadakatKarti() : null,
     yetkili && !kapali ? bakimKarti() : null);
 }
 
@@ -78,6 +80,13 @@ function tesvikKarti() {
   return h('div', { class: 'kart' }, h('h2', { class: 'ilk' }, t('Çapraz satış ve hedefler')),
     h('p', { class: 'kucuk' }, t('Müşteri yönlendiren ya da ürün satan ustaları teşvik edin: çapraz satış primi ve aylık hedef ödülleri.')),
     h('button', { class: 'dugme ikincil', type: 'button', onclick: () => tesvikAyari() }, t('Ayarla')));
+}
+
+// Sadakat ödülü: ziyaret sayısı / harcamaya bağlı indirim
+function sadakatKarti() {
+  return h('div', { class: 'kart' }, h('h2', { class: 'ilk' }, t('Sadakat ödülü')),
+    h('p', { class: 'kucuk' }, t('Müşterilerinizi ziyaret sayısına ya da harcamasına göre ödüllendirin: ör. her 10 ziyarette %10 indirim.')),
+    h('button', { class: 'dugme ikincil', type: 'button', onclick: () => sadakatAyari() }, t('Ayarla')));
 }
 
 // Eski (usta alanı eklenmeden önce alınmış) randevuları yeni düzene çevirir: ustalar kendi randevularını görebilsin.
@@ -107,7 +116,7 @@ function bakimKarti() {
       for (const o of eksik) {
         const b = writeBatch(db);
         (o.kalemler || []).filter(k => k.ustaUid).forEach(k => {
-          b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: k.ustaUid, odemeId: o.id, tarih: o.tarih, donem, musteriAd: o.musteriAd || '', ad: k.ad, tutar: k.tutar, alis: k.alis || 0, tur: k.tur === 'urun' ? 'urun' : 'hizmet', yontem: o.yontem, komisyonOrani: o.komisyonOrani || 0, durum: 'gecerli' });
+          b.set(doc(collection(db, 'salons', S.salon.id, 'ustaSatirlari')), { ustaUid: k.ustaUid, odemeId: o.id, tarih: o.tarih, donem, musteriAd: o.musteriAd || '', ad: k.ad, tutar: k.hesap != null ? k.hesap : k.tutar, alis: k.alis || 0, tur: k.tur === 'urun' ? 'urun' : 'hizmet', yontem: o.yontem, komisyonOrani: o.komisyonOrani || 0, durum: 'gecerli' });
           sayac++;
         });
         await b.commit();

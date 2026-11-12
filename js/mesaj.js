@@ -26,6 +26,7 @@ const SABLON = {
   memnuniyet: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\nSon işlemimizden memnun kaldığınızı umuyoruz. Herhangi bir sorunuz ya da bir isteğiniz olursa bu mesaja yazabilirsiniz; görüşleriniz bizim için çok değerli.\n\n📸 Instagram sayfamızı takip etmeyi unutmayın:\n{INSTAGRAM_LINK}\n\n{IMZA}',
   instagram: 'Merhaba Sayın {MUSTERI_ADI}, ✨\n\n🎁 Salonumuzun yeni trendlerinden haberdar olmak, sürpriz çekilişlerimize ve hediyelerimize hak kazanmak için Instagram sayfamızdaki paylaşımlarımızı beğenmeyi, yorum yapmayı ve takip etmeyi unutmayın!\n\n📸 Instagram Profilimiz:\n{INSTAGRAM_LINK}\n\n{IMZA}',
   iban: 'Merhaba Sayın {MUSTERI_ADI}, 🌸\n\nÖdemenizi aşağıdaki banka / transfer hesabımıza güvenle gerçekleştirebilirsiniz:\n\n🏦 Banka: {BANKA_ADI}\n👤 Hesap Sahibi: {HESAP_SAHIBI}\n💳 IBAN / Hesap / Kart No: {IBAN_NO}\n\nÖdeme sonrası bilgi vermenizi rica eder, güzel günler dileriz! ✨\n{IMZA}',
+  odul: 'Merhaba Sayın {MUSTERI_ADI}, 🎁\n\n{SALON_ADI} olarak bizi tercih ettiğiniz için teşekkür ederiz! Sadakatinizin karşılığında bir sonraki ziyaretinizde {ODUL} indirim hakkı kazandınız.\n\nRandevunuzu almak için bu mesaja yazabilirsiniz. Sizi tekrar ağırlamak için sabırsızlanıyoruz 🌸\n\n{IMZA}',
   mutabakatUst: 'Merhaba {USTA_ADI} 👋\n\n📅 {TARIH} günü hesabınız:',
   tesvik: 'Bugün ürün satışınız yok. Her müşteriye bakım sonrası evde kullanacağı bir ürün önermeyi deneyin; küçük bir öneri bile hem müşterinin saçına/cildine hem sizin kazancınıza katkı sağlar 💪',
   tebrik: '🎉 Tebrikler, bugün ürün sattınız!',
@@ -44,13 +45,14 @@ export const SABLON_BILGI = [
   { tur: 'memnuniyet', ad: 'Memnuniyet mesajı', ack: 'İşlemden sonra memnuniyet sorar, Instagram\'a davet eder.', degisken: ['MUSTERI_ADI', 'INSTAGRAM_LINK', 'IMZA'] },
   { tur: 'instagram', ad: 'Instagram daveti', ack: 'Takip, beğeni ve yorum için Instagram\'a davet eder.', degisken: ['MUSTERI_ADI', 'INSTAGRAM_LINK', 'IMZA'] },
   { tur: 'iban', ad: 'IBAN / transfer bilgisi', ack: 'Ödeme için banka bilgilerini gönderir.', degisken: ['MUSTERI_ADI', 'BANKA_ADI', 'HESAP_SAHIBI', 'IBAN_NO', 'IMZA'] },
+  { tur: 'odul', ad: 'Sadakat ödülü', ack: 'Ödül hakkı dolan müşteriye gider (müşteri kartından).', degisken: ['MUSTERI_ADI', 'SALON_ADI', 'ODUL', 'IMZA'] },
   { tur: 'mutabakatUst', ad: 'Usta günlük hesap: başlık', ack: 'Ustaya giden günlük hesap mesajının ilk satırları.', degisken: ['USTA_ADI', 'TARIH'] },
   { tur: 'tesvik', ad: 'Usta: ürün satışı yok (teşvik)', ack: 'Ustanın o gün ürün satışı yoksa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
   { tur: 'tebrik', ad: 'Usta: ürün sattı (tebrik)', ack: 'Ustanın ürün satışı varsa hesap mesajına eklenir.', degisken: ['USTA_ADI'] },
   { tur: 'mutabakatAlt', ad: 'Usta günlük hesap: alt yazı', ack: 'Hesap mesajının son satırları.', degisken: ['USTA_ADI', 'IMZA'] },
   { tur: 'siparis', ad: 'Tedarikçiye sipariş', ack: 'Stok sayfasındaki sipariş listesi mesajı.', degisken: ['SALON_ADI', 'LISTE'] }
 ];
-export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', SAAT: '14:30', HIZMET: 'Dip boya + fön', USTA_ADI: 'Mehmet', LISTE: '• Wella 6.0 boya — 3 tüp\n• Şampuan — 4 adet', GOOGLE_LINK: 'https://g.page/r/ornek', INSTAGRAM_LINK: 'instagram.com/salonunuz', BANKA_ADI: 'Örnek Banka', HESAP_SAHIBI: 'Ayşe Yılmaz', IBAN_NO: 'TR00 0000 0000 0000 0000 0000 00' };
+export const SABLON_ORNEK = { MUSTERI_ADI: 'Ayşe YILMAZ', TARIH: '18.11.2026', SAAT: '14:30', HIZMET: 'Dip boya + fön', ODUL: '%10', USTA_ADI: 'Mehmet', LISTE: '• Wella 6.0 boya — 3 tüp\n• Şampuan — 4 adet', GOOGLE_LINK: 'https://g.page/r/ornek', INSTAGRAM_LINK: 'instagram.com/salonunuz', BANKA_ADI: 'Örnek Banka', HESAP_SAHIBI: 'Ayşe Yılmaz', IBAN_NO: 'TR00 0000 0000 0000 0000 0000 00' };
 // Salonun bağlantı ve banka bilgileri (Salon > Genel): {GOOGLE_LINK}, {INSTAGRAM_LINK}, {BANKA_ADI}, {HESAP_SAHIBI}, {IBAN_NO}
 let BAG = {};
 export const baglantiAyarla = (a) => { BAG = a || {}; };

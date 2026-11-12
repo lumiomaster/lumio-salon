@@ -2,13 +2,14 @@ import { yerel } from './i18n.js';
 // Salon verilerinin yüklenmesi ve önbelleği. Ekranlar buradan okur, değişiklikten sonra zorla yeniler.
 import { S } from './durum.js';
 import { gorenMi } from './roller.js';
+import { sadakatNormalle } from './sadakat-mantik.js';
 import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp } from './fb.js';
 
-const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null };
+const V = { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null, sadakat: null };
 
 function kontrol() {
   const id = S.salon ? S.salon.id : null;
-  if (V.salonId !== id) Object.assign(V, { salonId: id, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null });
+  if (V.salonId !== id) Object.assign(V, { salonId: id, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null, sadakat: null });
 }
 const yol = (...p) => collection(db, 'salons', S.salon.id, ...p);
 
@@ -41,6 +42,21 @@ export async function oranAyariYukle(zorla) {
 }
 export function oranOnbellekSil() { V.oran = null; }
 
+// Sadakat ayarı (ayarlar/sadakat): ölçü, ödül ve indirimi kimin karşıladığı
+export async function sadakatAyariYukle(zorla) {
+  kontrol();
+  if (V.sadakat && !zorla) return V.sadakat;
+  const d = await getDoc(doc(db, 'salons', S.salon.id, 'ayarlar', 'sadakat'));
+  V.sadakat = sadakatNormalle(d.exists() ? d.data() : {});
+  return V.sadakat;
+}
+export function sadakatOnbellekSil() { V.sadakat = null; }
+// Bir müşterinin tüm ödemeleri (ofis rolleri; usta okuyamaz)
+export async function musteriOdemeleriniYukle(id) {
+  kontrol();
+  return (await getDocs(query(yol('odemeler'), where('musteriId', '==', id)))).docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function uyeleriYukle(zorla) {
   kontrol();
   if (V.uyeler && !zorla) return V.uyeler;
@@ -65,7 +81,7 @@ export async function ustalariYukle(zorla) {
 // Ekipte kişi eklenince ya da değişince çağrılır
 export function uyelerGecersiz() { V.uyeler = null; }
 
-export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null }); }
+export function veriSifirla() { Object.assign(V, { salonId: null, hizmetler: null, ustalar: null, ustaMali: null, ayar: undefined, uyeler: null, oran: null, sadakat: null }); }
 
 // ---- Takvim verisi: her seferinde taze okunur (önbellek yok; başkası randevu almış olabilir) ----
 // Tarih aralığındaki randevular (bas ve bit dahil), saate göre sıralı

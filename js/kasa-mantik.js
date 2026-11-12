@@ -8,6 +8,8 @@ const gecerli = (o) => o.durum === 'gecerli';
 
 // Satırın komisyon sonrası tutarı
 export function satirNet(odeme, k) { return k.tutar * (1 - (odeme.komisyonOrani || 0) / 100); }
+// Ustanın yüzdesinin esas aldığı tutar: sadakat indirimini salon karşılıyorsa (k.hesap) liste tutarı, değilse ödenen tutar
+export function hesapNet(odeme, k) { return (k.hesap != null ? k.hesap : k.tutar) * (1 - (odeme.komisyonOrani || 0) / 100); }
 
 // Ürün satışında kâr = satış - kart komisyonu - alış fiyatı (eksiye düşmez)
 export function urunKari(odeme, k) { return Math.max(0, yuvarla(satirNet(odeme, k) - (k.alis || 0))); }
@@ -19,7 +21,7 @@ export function satirPayi(odeme, k, mali) {
   if (k.tur === 'capraz') return yuvarla(k.prim || 0);   // çapraz satış primi mali ayardan bağımsızdır (ödeme anındaki oran kalemde saklıdır)
   if (!k.ustaUid || !mali) return 0;
   if (k.tur === 'urun') return yuvarla(urunKari(odeme, k) * (mali.urunPrimi || 0) / 100);
-  return yuvarla(satirNet(odeme, k) * hizmetYuzdesi(mali, k.grup) / 100);
+  return yuvarla(hesapNet(odeme, k) * hizmetYuzdesi(mali, k.grup) / 100);
 }
 
 // Çapraz satış: ek hizmeti başka ustaya sattıran ustaya, ek hizmet tutarının (komisyon sonrası) kalemde saklı yüzdesi kadar prim.

@@ -1,3 +1,25 @@
+# Teslim 15 (1.5.0) — kurulum sırası
+Bu zip, 14. teslimin TÜMÜNÜ de içerir (14'ü ayrıca yüklemenize gerek yok).
+
+## Yenilikler
+1. **Müşteri sadakat ödülü:** Salon > Genel > **Sadakat ödülü > Ayarla**. Ölçü seçilir: ziyaret sayısı, toplam harcama ya da ikisi (hangisi önce dolarsa). Ödül: yüzde ya da sabit tutar indirim. **İndirimi kim karşılar?** → "Salon ve usta birlikte" (usta yüzdesi indirimli tutar üzerinden) ya da "Yalnız salon" (ustanın payı değişmez).
+2. **Ödeme ekranında "Sadakat ödülünü uygula"** kutusu, müşterinin hakkı dolunca çıkar (yalnız ofis rolleri uygular). İndirim yalnız hizmetlerden düşer, ürün satışına uygulanmaz. Ödeme kaydedilince sayaç yeniden başlar; ödeme iptal edilirse hak geri gelir.
+3. **Müşteri kartında** ilerleme çubuğu, "Ödül hazır" bilgisi ve **Ödül mesajı gönder** (WhatsApp, 5 dilde şablon; Şablonlar'dan düzenlenir).
+4. **SSS:** 2 yeni madde (sadakat kurulumu, ödülü uygulama) — toplam 63, 5 dilde.
+5. **Otomatik kural denetimi (test):** uygulamanın yazdığı her alan, Firebase kurallarındaki izinli alan listesiyle otomatik karşılaştırılır (28 koleksiyon, uyumsuz 0). Usta "yetkiniz yok" hatası gibi alan adı uyuşmazlıkları artık testte yakalanır.
+6. **Hata düzeltmesi (14a'dan):** ustanın "Onaylıyorum", avans, işlem notu, stok hareketi, müşteri, gider ve mal kabul işlemlerinde çıkan "Bu işlem için yetkiniz yok…" uyarısı (kurallarda `notlar`/`not` uyuşmazlığı) giderildi.
+
+## Kurulum sırası
+A. Zip'i ayıkla > GitHub **Add file > Upload files** > içindekilerin **hepsini** sürükle > **Commit changes** > yeşil tik > **Ctrl+Shift+R** (Ayarlar'da sürüm **1.5.0** yazmalı).
+B. Zip yayında olduktan SONRA Firebase > Firestore > **Rules** > `firestore.rules` içeriğinin tamamını yapıştır > **Publish**. **ZORUNLUDUR:** usta hata düzeltmesi, sadakat ayarı, ödül mesajı, `sssEksik` ve yönetici okuması bu kurallara bağlıdır.
+C. Cloudflare > lumio-salon-ai > Edit code > `worker.js` (14. teslimle aynı) yapıştır > **Deploy**. `ANTHROPIC_API_KEY` isteğe bağlıdır, şimdilik beklemede.
+
+## Dürüst notlar
+- Sadakat sayacı müşterinin ödemelerinden hesaplanır (sayaç alanı yok); bu yüzden iptal/düzeltme otomatik doğru çalışır. Telefonsuz/eşleşmeyen müşteride (randevuya bağlı değilse) ödül uygulanmaz.
+- Rusça/Kazakça/Almanca/İngilizce yeni metinler yapay zekâ çevirisidir; satıştan önce ana dili o olan biri okumalıdır.
+
+---
+
 # Teslim 14 (1.4.0) — kurulum sırası
 
 ## Yenilikler
@@ -13,6 +35,9 @@
 A. Zip'i ayıkla > GitHub **Add file > Upload files** > içindekilerin **hepsini** sürükle > **Commit changes** > yeşil tik > **Ctrl+Shift+R** (Ayarlar'da sürüm **1.4.0** yazmalı).
 B. Zip yayında olduktan SONRA Firebase > Firestore > **Rules** > `firestore.rules` içeriğinin tamamını yapıştır > **Publish** (yeni: `sssEksik` koleksiyonu ve yönetici için `kullanicilar` okuma). Yayınlanana kadar personel sayısı "0" ve Sorular boş görünür; uygulama bozulmaz.
 C. Cloudflare > lumio-salon-ai > Edit code > `worker.js` içeriğini yapıştır > **Deploy**. İsteğe bağlı: Settings > Variables and Secrets > `ANTHROPIC_API_KEY` (Secret) ekleyin.
+
+## Düzeltme a
+Firebase kurallarında bazı koleksiyonlarda alan adı uyuşmazlığı vardı (kurallar `notlar`, uygulama `not` yazıyordu): ustanın hesap onayı/itirazı, avans, işlem notu, stok hareketi, müşteri, gider ve mal kabul kayıtları "yetkiniz yok" hatası verebilirdi. Kurallar uygulamayla eşitlendi. **Firestore Rules'u mutlaka yeniden Publish edin.**
 
 ## Dürüst notlar
 - SSS Rusça/Kazakça/Almanca/İngilizce metinleri yapay zekâ ile hazırlandı; satıştan önce ana dili o olan biriyle okutun.

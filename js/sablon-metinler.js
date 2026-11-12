@@ -3,6 +3,7 @@ export const USTA_SATIR_ON = { tr: '💇 Uzmanımız: ', ru: '💇 Ваш мас
 
 export const SABLON_DIL = {
   ru: {
+    odul: "Здравствуйте, {MUSTERI_ADI}! 🎁\n\nСпасибо, что выбираете {SALON_ADI}! За вашу лояльность вы получили скидку {ODUL} на следующий визит.\n\nЧтобы записаться, просто напишите в ответ на это сообщение. Будем рады видеть вас снова 🌸\n\n{IMZA}",
     takip: "📅 Здравствуйте, {MUSTERI_ADI}!\n\nПрошло некоторое время с вашего последнего визита, поэтому мы хотим помочь вам спланировать следующую запись 🌸\n\n⏰ Планируемая дата: {TARIH}\n{USTA_SATIR}\n📞 Чтобы подтвердить запись, достаточно ответить на это сообщение.\n\nПриятных дней! ✨\n{IMZA}",
     dogum: "С днём рождения, {MUSTERI_ADI}! 🎂🎉\n\nОт всей команды {SALON_ADI} желаем вам здоровья, спокойствия и много сияния в новом году жизни. 🌸\n\n🎁 Вас ждёт приятный подарок — особый уход в нашем салоне! Не забудьте записаться.\n\nС теплом,\n{IMZA}",
     davet: "Здравствуйте, {MUSTERI_ADI}! ☕🌸\n\nВ салоне {SALON_ADI} мы уже давно вас не видели и очень скучаем!\n\nЖдём вас, чтобы вернуть вашему образу заслуженное сияние и просто приятно отдохнуть за чашкой горячего кофе. ✨\n\nЧтобы вместе подобрать удобные день и время, достаточно ответить на это сообщение.\n\nКрасоты и тепла вам,\n{IMZA}",
@@ -19,6 +20,7 @@ export const SABLON_DIL = {
     siparis: "Здравствуйте! Мы хотим сделать заказ для {SALON_ADI}:\n\n{LISTE}\n\nСпасибо."
   },
   kk: {
+    odul: "Сәлеметсіз бе, {MUSTERI_ADI}! 🎁\n\n{SALON_ADI} салонын таңдағаныңыз үшін рахмет! Адалдығыңыз үшін келесі келгеніңізде {ODUL} жеңілдік құқығына ие болдыңыз.\n\nЖазылу үшін осы хабарламаға жауап жазыңыз. Сізді қайта көруге қуаныштымыз 🌸\n\n{IMZA}",
     takip: "📅 Сәлеметсіз бе, {MUSTERI_ADI}!\n\nСоңғы келгеніңізге біраз уақыт өтті, келесі жазылу уақытын жоспарлауға көмектескіміз келеді 🌸\n\n⏰ Жоспарланған күн: {TARIH}\n{USTA_SATIR}\n📞 Жазылуды нақтылау үшін осы хабарламаға жауап жазсаңыз жеткілікті.\n\nӘдемі күндер тілейміз! ✨\n{IMZA}",
     dogum: "Туған күніңіз құтты болсын, {MUSTERI_ADI}! 🎂🎉\n\n{SALON_ADI} ұжымы атынан жаңа жасыңыз денсаулық, тыныштық және нұр әкелсін деп тілейміз. 🌸\n\n🎁 Салонымызда сізді туған күніңізге арналған арнайы күтім сыйлығы күтіп тұр! Жазылуды ұмытпаңыз.\n\nІзгі тілекпен,\n{IMZA}",
     davet: "Сәлеметсіз бе, {MUSTERI_ADI}! ☕🌸\n\n{SALON_ADI} салонында сізді көрмегенімізге көп болды, сағындық!\n\nӨзіңізге лайықты нұрды қайтарып, бір кесе ыстық кофе ішіп демалу үшін сізді күтеміз. ✨\n\nЫңғайлы күн мен уақытты бірге таңдау үшін осы хабарламаға жауап жазсаңыз жеткілікті.\n\nСұлулық пен жылулықпен,\n{IMZA}",
@@ -35,6 +37,7 @@ export const SABLON_DIL = {
     siparis: "Сәлеметсіз бе! {SALON_ADI} үшін тапсырыс бергіміз келеді:\n\n{LISTE}\n\nРахмет."
   },
   de: {
+    odul: "Guten Tag {MUSTERI_ADI}! 🎁\n\nVielen Dank, dass Sie sich für {SALON_ADI} entscheiden! Als Dank für Ihre Treue erhalten Sie bei Ihrem nächsten Besuch {ODUL} Rabatt.\n\nFür einen Termin antworten Sie einfach auf diese Nachricht. Wir freuen uns auf Sie 🌸\n\n{IMZA}",
     takip: "📅 Guten Tag {MUSTERI_ADI},\n\nIhr letzter Besuch liegt schon etwas zurück. Gerne helfen wir Ihnen, Ihren nächsten Termin zu planen 🌸\n\n⏰ Geplanter Termin: {TARIH}\n{USTA_SATIR}\n📞 Antworten Sie einfach auf diese Nachricht, um den Termin zu bestätigen.\n\nWir wünschen Ihnen schöne Tage! ✨\n{IMZA}",
     dogum: "Alles Gute zum Geburtstag, {MUSTERI_ADI}! 🎂🎉\n\nIhr Team von {SALON_ADI} wünscht Ihnen Gesundheit, Ruhe und viel Glanz im neuen Lebensjahr. 🌸\n\n🎁 In unserem Salon wartet eine besondere Pflege als Geschenk auf Sie! Vergessen Sie nicht, einen Termin zu vereinbaren.\n\nHerzliche Grüße\n{IMZA}",
     davet: "Guten Tag {MUSTERI_ADI}! ☕🌸\n\nIhr Team von {SALON_ADI} hat Sie lange nicht gesehen und vermisst Sie!\n\nWir freuen uns, Ihnen wieder den verdienten Glanz zu schenken und Ihnen bei einer Tasse Kaffee eine schöne Auszeit zu bieten. ✨\n\nAntworten Sie einfach auf diese Nachricht, dann finden wir gemeinsam Tag und Uhrzeit.\n\nBleiben Sie schön und herzlich gegrüßt\n{IMZA}",
@@ -51,6 +54,7 @@ export const SABLON_DIL = {
     siparis: "Guten Tag, wir möchten für {SALON_ADI} bestellen:\n\n{LISTE}\n\nVielen Dank."
   },
   en: {
+    odul: "Hello {MUSTERI_ADI}! 🎁\n\nThank you for choosing {SALON_ADI}! As a thank-you for your loyalty you have earned {ODUL} off your next visit.\n\nTo book, just reply to this message. We look forward to seeing you again 🌸\n\n{IMZA}",
     takip: "📅 Hello {MUSTERI_ADI},\n\nIt has been a while since your last visit, so we would like to help you plan your next appointment 🌸\n\n⏰ Planned date: {TARIH}\n{USTA_SATIR}\n📞 Just reply to this message to confirm your appointment.\n\nHave a lovely day! ✨\n{IMZA}",
     dogum: "Happy Birthday, {MUSTERI_ADI}! 🎂🎉\n\nEveryone at {SALON_ADI} wishes you health, peace and lots of sparkle in your new year. 🌸\n\n🎁 A special treatment is waiting for you at our salon as a birthday gift! Don't forget to book your appointment.\n\nWarm wishes,\n{IMZA}",
     davet: "Hello {MUSTERI_ADI}! ☕🌸\n\nWe at {SALON_ADI} haven't seen you for a while and we miss you!\n\nCome and enjoy a refreshed look and a relaxing break with a warm coffee. ✨\n\nJust reply to this message and we will find the best day and time together.\n\nStay beautiful,\n{IMZA}",

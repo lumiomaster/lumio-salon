@@ -254,3 +254,8 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .yon-salon .dugme-satir { flex-wrap: nowrap; gap: 6px; }
 .yon-salon .dugme-satir .kucuk-dugme { flex: 1 1 0; min-width: 0; padding: 10px 4px; font-size: .82rem; white-space: nowrap; }
 .dan-balon { white-space: pre-wrap; }
+
+.sadakat-cubuk { height: 8px; border-radius: 99px; background: var(--kart2); overflow: hidden; margin: 8px 0 4px; }
+.sadakat-cubuk span { display: block; height: 100%; background: linear-gradient(90deg, #6d7cff, #b06dff); }
+.sadakat-kutu.hazir { border-color: #6d7cff; }
+.sadakat-satir { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-weight: 600; }
