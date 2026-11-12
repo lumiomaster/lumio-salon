@@ -1025,5 +1025,16 @@ export default {
 "Müşterilere ve ustalara giden mesajların dili. Müşteri başına değiştirmek için aşağıdaki seçeneği açın.": "Sprache der Nachrichten an Kunden und Fachkräfte. Um sie pro Kunde zu ändern, aktivieren Sie die Option unten.",
 "Göndermeden önce dili seçtir": "Sprache vor dem Senden wählen",
 "Düzenlenen dil": "Bearbeitete Sprache",
-"Bu telefon numarası zaten kayıtlı.": "Diese Telefonnummer ist bereits registriert."
+"Bu telefon numarası zaten kayıtlı.": "Diese Telefonnummer ist bereits registriert.",
+"Başlamadan önce": "Bevor es losgeht",
+"Lütfen kullanım şartlarını ve gizlilik metnini okuyun. Devam etmek için kabul etmeniz gerekir.": "Bitte lesen Sie die Nutzungsbedingungen und den Datenschutztext. Um fortzufahren, müssen Sie zustimmen.",
+"Okudum, anladım, kabul ediyorum.": "Gelesen, verstanden, akzeptiert.",
+"Kabul ediyorum ve devam et": "Akzeptieren und fortfahren",
+"Devam etmek için kutuyu işaretleyin.": "Setzen Sie zum Fortfahren das Häkchen.",
+"Kabul etti: {t}": "Akzeptiert: {t}",
+"Kabul bekliyor": "Zustimmung ausstehend",
+"Kabulü hatırlat": "An Zustimmung erinnern",
+"Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "Der Salon-Inhaber liest die Bedingungen bei der ersten Anmeldung in seiner Sprache und akzeptiert sie; das Datum steht auf der Salonkarte.",
+"Kazancım nasıl hesaplanıyor?": "Wie wird mein Verdienst berechnet?",
+"Ödemeyi iptal edersem ne olur?": "Was passiert, wenn ich eine Zahlung storniere?"
 };

@@ -225,3 +225,21 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .lisans-uyari { text-align: center; padding: 4px 0 10px; } .lisans-ikon { font-size: 3rem; } .lisans-uyari h2 { margin: 6px 0 10px; font-size: 1.3rem; }
 .pencere .dugme.buyuk { width: 100%; padding: 14px; font-size: 1.05rem; margin: 8px 0; } .pencere > .dugme.ikincil, .pencere .dugme.ikincil + .dugme { width: auto; }
 .dil-satir { display: flex; justify-content: flex-end; margin-bottom: 6px; } .dil-sec { width: auto; min-width: 130px; padding: 8px 12px; }
+
+.kabul-metin { max-height: 46vh; overflow-y: auto; }
+.kabul-metin h3 { margin: 6px 0 8px; font-size: 1rem; }
+.rozet.kabul-tamam { background: rgba(52,199,89,.2); color: #34c759; }
+
+.yardim-adim { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--cizgi); }
+.yardim-adim p { margin: 2px 0 0; font-size: .92rem; }
+.yardim-ikon { flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--kart2); color: var(--vurgu); display: grid; place-items: center; }
+.yardim-konu summary { cursor: pointer; font-weight: 600; }
+.yardim-konu p { margin: 8px 0; font-size: .92rem; }
+.yardim-neden { border-left: 3px solid var(--vurgu); padding-left: 10px; margin-top: 8px; }
+.yardim-neden p { color: var(--soluk); }
+.sihirbaz-nokta { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+.sihirbaz-nokta span { width: 8px; height: 8px; border-radius: 50%; background: var(--cizgi); }
+.sihirbaz-nokta span.secili { background: var(--vurgu); }
+.iyi-yazi { color: var(--iyi); }
+.sekme-cubugu.iki { display: grid; grid-template-columns: 1fr 1fr; }
+.rozet.kabul-bekle { background: rgba(255,149,0,.2); color: #ff9500; }

@@ -1025,5 +1025,16 @@ export default {
 "Müşterilere ve ustalara giden mesajların dili. Müşteri başına değiştirmek için aşağıdaki seçeneği açın.": "Язык сообщений клиентам и мастерам. Чтобы менять язык для каждого клиента, включите опцию ниже.",
 "Göndermeden önce dili seçtir": "Выбирать язык перед отправкой",
 "Düzenlenen dil": "Редактируемый язык",
-"Bu telefon numarası zaten kayıtlı.": "Этот номер телефона уже зарегистрирован."
+"Bu telefon numarası zaten kayıtlı.": "Этот номер телефона уже зарегистрирован.",
+"Başlamadan önce": "Прежде чем начать",
+"Lütfen kullanım şartlarını ve gizlilik metnini okuyun. Devam etmek için kabul etmeniz gerekir.": "Пожалуйста, прочитайте условия использования и политику конфиденциальности. Чтобы продолжить, нужно их принять.",
+"Okudum, anladım, kabul ediyorum.": "Прочитал(а), понял(а), принимаю.",
+"Kabul ediyorum ve devam et": "Принимаю и продолжить",
+"Devam etmek için kutuyu işaretleyin.": "Чтобы продолжить, отметьте флажок.",
+"Kabul etti: {t}": "Принял(а): {t}",
+"Kabul bekliyor": "Ожидает принятия",
+"Kabulü hatırlat": "Напомнить о принятии",
+"Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "Владелец салона при первом входе читает условия на своём языке и принимает их; дата принятия видна в карточке салона.",
+"Kazancım nasıl hesaplanıyor?": "Как считается мой заработок?",
+"Ödemeyi iptal edersem ne olur?": "Что будет, если я отменю оплату?"
 };

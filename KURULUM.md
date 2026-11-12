@@ -1,19 +1,26 @@
-# Teslim 12 (1.2.0) — Çok dilli uygulama: kurulum sırası
+# Teslim 13 (1.3.0) — kurulum sırası
 
 ## Yenilikler
-1. **5 dil:** Türkçe, Rusça, Kazakça (Kiril), Almanca, İngilizce. Herkes kendi dilini seçer: giriş ekranında ve **Ayarlar > Dil**. Seçim yalnız o telefonu etkiler. Para birimi salon başına tektir (herkes aynı parayı görür).
-2. **Mesaj şablonları dili:** **Ayarlar > Mesaj şablonları > Mesaj dili**. Türkçe kullanan yönetici şablonları Rusça/Kazakça yapabilir. Her dil için ayrı özel metin düzenlenir ("Düzenlenen dil").
-3. **Müşteri başına dil:** "Göndermeden önce dili seçtir" açılırsa her WhatsApp gönderiminde dil seçilir; son seçim o müşteri için hatırlanır.
-4. **Yeni salon formu sadeleşti:** yönetici yalnız ülkeyi (lisans takibi için) seçer; dil ve para birimini salon sahibi ilk girişte kendisi seçer.
-5. **Giriş bilgisini gönder** (WhatsApp), lisans hatırlatma mesajı, bitişe 7 gün kala büyük uyarı penceresi ve destek WhatsApp düğmesi.
-6. **Usta Danışman** kullanıcının uygulama dilinde cevap verir (Worker güncellemesi gerekir).
+1. **Yasal metinler 5 dilde** (Türkçe, Rusça, Kazakça, Almanca, İngilizce): kullanım şartları, gizlilik ve müşteri aydınlatma şablonu kullanıcının dilinde açılır. Taslak uyarısı kaldırıldı.
+2. **Salon sahibi ilk girişte kabul eder:** kendi dilinde şartları okur, kutuyu işaretleyip "Kabul ediyorum ve devam et" der. Kabul; tarih, saat, hesap ve dil ile kayda geçer, sonradan değiştirilemez. Yönetici panelinde her salonda "Kabul etti: tarih" ya da "Kabul bekliyor" görünür; bekleyenlere **"Kabulü hatırlat"** (WhatsApp) düğmesi vardır. Yeni salon formundaki onay kutusu kaldırıldı.
+3. **Yeni giriş mesajı:** adres, telefon, geçici şifre, süre, **iPhone ve Android kurulumu**, **bildirimleri açma**, başlangıç ve kabul bilgisi. Mesaj dilini (Türkçe/Rusça/Kazakça/Almanca/İngilizce) pencerede seçersiniz; ülkeye göre varsayılan gelir ve salon başına hatırlanır. Lisans hatırlatma mesajı da aynı şekilde dil seçmeli.
+4. **Kurulum sihirbazı:** herkes kendi telefonunda ilk girişte 3 adımlı görsel sihirbazı görür (telefona kurulum, bildirim açma, kılavuz). Sonradan **Ayarlar > Yardım ve kurulum**.
+5. **Yardım / kullanım kılavuzu:** uygulama içinde, 5 dilde, role göre (yönetici/sekreter/usta) kısa konular. Her konuda "Neden böyle?" mantık açıklaması vardır.
+6. **Usta Danışman uygulama uzmanı oldu:** "nasıl yapılır / neden böyle" sorularında adımları ve mantığını anlatır, rolün görmediği bilgiyi vermez, kullanıcının dilinde cevap verir. Yeni önerilen sorular: "Kazancım nasıl hesaplanıyor?", "Ödemeyi iptal edersem ne olur?".
 
 ## Kurulum sırası
-A. Zip'i ayıkla > GitHub **Add file > Upload files** > içindekilerin **hepsini** sürükle > **Commit changes** > yeşil tik > **Ctrl+Shift+R** (Ayarlar'da sürüm **1.2.0** yazmalı).
-B. Zip yayında olduktan SONRA Firebase > Firestore > **Rules** > `firestore.rules` içeriğinin tamamını yapıştır > **Publish** (yeni: `ulkeKayit`, `mesajlar_ru/kk/de/en`, `sablonDil`, `dilSor`).
-C. Cloudflare > lumio-salon-ai > Edit code > `worker.js` içeriğini yapıştır > **Deploy** (yalnız Danışman'ın dil desteği için; yapmazsa Danışman Türkçe cevap verir).
+A. Zip'i ayıkla > GitHub **Add file > Upload files** > içindekilerin **hepsini** sürükle > **Commit changes** > yeşil tik > **Ctrl+Shift+R** (Ayarlar'da sürüm **1.3.0** yazmalı).
+B. Zip yayında olduktan SONRA Firebase > Firestore > **Rules** > `firestore.rules` içeriğinin tamamını yapıştır > **Publish** (yeni: salon sahibinin `kabul` alanı).
+C. Cloudflare > lumio-salon-ai > Edit code > `worker.js` içeriğini yapıştır > **Deploy** (Danışman'ın uygulama bilgisi için).
+
+## Mevcut salonlar
+Daha önce açılmış salonların sahipleri bir sonraki girişlerinde kabul ekranını bir kez görür. Yönetici panelinde "Kabul bekliyor" yazar.
+
+## Yasal metinlerde dolduracağınız bilgiler (js/config.js > SIRKET)
+Metinlerde sağlayıcı adı **LUMIO SALON**, iletişim **WhatsApp +90 535 404 93 92** ve veri saklama süresi **12 ay** olarak yazılıdır. Şirket kurulunca unvanı/adresi, saklama süresini ve iade koşullarını `SIRKET` ayarından güncelleyin.
 
 ## Dürüst notlar
-- **Rusça ve Kazakça çeviriler makine destekli taslaktır; satıştan önce ana dili o olan biriyle kontrol ettirin.**
-- Yasal metinler (kullanım şartları, gizlilik, müşteri aydınlatma) hâlâ yalnız Türkçedir; ülke bazlı sürümler avukat onayından sonra eklenecek.
+- Rusça ve Kazakça metinler (arayüz, yasal metin, kılavuz, mesajlar) yapay zekâ ile hazırlandı; satıştan önce ana dili o olan biriyle okutun.
+- Yasal metinler genel bir çerçevedir; Kazakistan/Özbekistan'ın veri yerelleştirme kurallarını avukatınıza danışın.
+- iPhone'da bildirim yalnız uygulama ana ekrana eklenip oradan açılınca çalışır; mesaj ve sihirbaz bunu söyler.
 

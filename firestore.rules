@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (12. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (13. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -279,6 +279,16 @@ service cloud.firestore {
           && request.resource.data.ad is string
           && request.resource.data.ad.size() >= 2
           && request.resource.data.ad.size() <= 80)
+        // Salon sahibi yasal metinleri yalnız BİR KEZ kabul eder (zaman sunucu saatidir, sonradan değiştirilemez)
+        || (request.auth.uid == resource.data.ownerUid
+          && !('kabul' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kabul'])
+          && request.resource.data.kabul.keys().hasOnly(['zaman', 'uid', 'dil', 'surum'])
+          && request.resource.data.kabul.zaman == request.time
+          && request.resource.data.kabul.uid == request.auth.uid
+          && request.resource.data.kabul.dil in ['tr', 'ru', 'kk', 'de', 'en']
+          && request.resource.data.kabul.surum is string
+          && request.resource.data.kabul.surum.size() <= 20)
         // Salonun yetkilisi ülke ve para birimini yalnız BİR KEZ (henüz seçilmemişse) seçebilir
         || (yetkiliMi(salonId)
           && lisansAktif(salonId)

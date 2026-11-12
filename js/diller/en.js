@@ -1025,5 +1025,16 @@ export default {
 "Müşterilere ve ustalara giden mesajların dili. Müşteri başına değiştirmek için aşağıdaki seçeneği açın.": "The language of messages sent to clients and stylists. To change it per client, turn on the option below.",
 "Göndermeden önce dili seçtir": "Choose the language before sending",
 "Düzenlenen dil": "Language being edited",
-"Bu telefon numarası zaten kayıtlı.": "This phone number is already registered."
+"Bu telefon numarası zaten kayıtlı.": "This phone number is already registered.",
+"Başlamadan önce": "Before you start",
+"Lütfen kullanım şartlarını ve gizlilik metnini okuyun. Devam etmek için kabul etmeniz gerekir.": "Please read the terms of use and the privacy text. You need to accept them to continue.",
+"Okudum, anladım, kabul ediyorum.": "I have read, understood and accept.",
+"Kabul ediyorum ve devam et": "Accept and continue",
+"Devam etmek için kutuyu işaretleyin.": "Tick the box to continue.",
+"Kabul etti: {t}": "Accepted: {t}",
+"Kabul bekliyor": "Awaiting acceptance",
+"Kabulü hatırlat": "Remind to accept",
+"Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "On first login the salon owner reads the terms in their own language and accepts them; the date shows on the salon card.",
+"Kazancım nasıl hesaplanıyor?": "How are my earnings calculated?",
+"Ödemeyi iptal edersem ne olur?": "What happens if I cancel a payment?"
 };

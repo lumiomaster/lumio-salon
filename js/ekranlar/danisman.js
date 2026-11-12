@@ -66,7 +66,8 @@ export function danismanAc() {
   let bekliyor = false;
   const balon = (m) => h('div', { class: 'dan-balon ' + (m.rol === 'asistan' ? 'dan-o' : 'dan-ben') }, m.metin);
   const ciz = () => {
-    const oneriler = (yetkiliMi(S.profil.rol) ? [ONERI_MALI] : []).concat(ONERI_ILK).slice(0, 4);
+    const yet = yetkiliMi(S.profil.rol);
+    const oneriler = (yet ? [ONERI_MALI] : []).concat(ONERI_ILK.slice(0, 2), [yet ? 'Ödemeyi iptal edersem ne olur?' : 'Kazancım nasıl hesaplanıyor?'], ONERI_ILK.slice(2)).slice(0, 4);
     doldur(liste,
       GECMIS.liste.length ? GECMIS.liste.map(balon) : [
         h('div', { class: 'dan-balon dan-o' }, t('Hoş geldin, ben Usta Danışman. Salon işi, müşteri, fiyat, ekip, kimyasal… ne varsa dert yanabilirsin; elimden geldiğince tecrübemle yardım ederim.')),

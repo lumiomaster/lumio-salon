@@ -12,6 +12,7 @@ import { sablonKarti } from './sablonlar.js';
 import { bildirimDurumu, bildirimAc, bildirimKapat } from '../sunucu.js';
 import { hukukGoster } from '../hukuk.js';
 import { dilKarti } from './dil-sec.js';
+import { yardimKarti } from './yardim.js';
 
 export function ayarlarEkrani() {
   const p = S.profil;
@@ -23,6 +24,7 @@ export function ayarlarEkrani() {
     yetkiliMi(p.rol) ? salonAdiKarti() : null,
     yetkiliMi(p.rol) ? sablonKarti() : null,
     dilKarti(),
+    yardimKarti(),
     bildirimKarti(),
     sifreKarti(),
     h('div', { class: 'kart' }, h('strong', null, t('Yasal metinler')),

@@ -20,6 +20,8 @@ import { geriTusunuBaslat, sekmeDegisti } from './geri.js';
 import { sohbetDugmesi, sohbetKontrolBaslat, sohbetKontrolDurdur } from './ekranlar/sohbet.js';
 import { yoneticiEkrani, yaklasanSay } from './ekranlar/yonetici.js';
 import { ulkeSecilmeli, ulkeSecEkrani } from './ekranlar/ulke-sec.js';
+import { kabulGerekli, kabulEkrani } from './ekranlar/kabul.js';
+import { sihirbazKontrol } from './ekranlar/yardim.js';
 import { salonAyarla } from './ulke.js';
 
 const kok = document.getElementById('uygulama');
@@ -44,7 +46,7 @@ export async function oturumuYukle() {
     if (S.yonetici) yoneticiUyari();
     S.mesaj = '';
     if (S.salon) { sohbetKontrolBaslat(); sablonlariYukle(); bildirimTazele(); }
-    gitUygula(); lisansUyari();
+    if (!kabulGerekli() && !ulkeSecilmeli()) { gitUygula(); lisansUyari(); sihirbazKontrol(); }
   } catch (e) {
     console.error(e);
     S.mesaj = t('Bilgiler yüklenemedi. İnternetinizi kontrol edip sayfayı yenileyin.');
@@ -89,6 +91,7 @@ export function goster() {
     return;
   }
   if (!auth.currentUser || !S.profil) { kok.append(girisEkrani()); return; }
+  if (kabulGerekli()) { kok.append(kabulEkrani()); return; }
   if (ulkeSecilmeli()) { kok.append(ulkeSecEkrani()); return; }
   const sekmeler = sekmelerim(S.profil.rol, !!S.yonetici);
   const ekran = { yonetici: yoneticiEkrani, ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
