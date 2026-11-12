@@ -189,7 +189,7 @@ export async function musteriGecmisi(id) {
 // Ustanın kendi kazanç satırları (başkasının tutarı içermez). Hesap fonksiyonlarının beklediği "ödeme" biçimine çevrilir.
 // ustaSatirlari belgesi -> ödeme benzeri nesne. "capraz" belgesi ustanın çapraz satış primidir: tutar = satılan hizmet, prim = komisyon sonrası tutarın yuzde'si.
 const satirKalemi = (x) => x.tur === 'capraz'
-  ? { kalemler: [], caprazlar: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, prim: Math.round(x.tutar * (1 - (x.komisyonOrani || 0) / 100) * (x.yuzde || 0)) / 100 }] }
+  ? { kalemler: [], caprazlar: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, prim: Math.round((x.tutar * (1 - (x.komisyonOrani || 0) / 100) * (x.yuzde || 0) / 100) * 100) / 100 }] }
   : { kalemler: [{ ustaUid: x.ustaUid, ad: x.ad, tutar: x.tutar, alis: x.alis || 0, tur: x.tur, ...(x.grup ? { grup: x.grup } : {}) }] };
 export async function ustaSatirlariniYukle(donem, uid) {
   kontrol();

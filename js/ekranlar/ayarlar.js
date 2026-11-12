@@ -102,7 +102,7 @@ export function bildirimKarti() {
     const dugme = d === 'acik'
       ? h('button', { class: 'dugme ikincil', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimKapat(); bildir(t('Bildirimler kapatıldı')); } catch (err) { bildir(hataMetni(err), 'hata'); } ciz(); }) }, t('Bildirimleri kapat'))
       : d === 'kapali'
-        ? h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimAc(); bildir(t('Bildirimler açıldı')); } catch (err) { bildir(err.message === 'İzin verilmedi' ? t('İzin verilmedi') : hataMetni(err), 'hata'); } ciz(); }) }, t('Bildirimleri aç'))
+        ? h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimAc(); bildir(t('Bildirimler açıldı')); } catch (err) { bildir(err.message === 'İzin verilmedi' ? t('İzin verilmedi') : (err.kod || !err.code ? err.message : hataMetni(err)), 'hata'); } ciz(); }) }, t('Bildirimleri aç'))
         : null;
     doldur(kutu, h('strong', null, t('Bildirimler')), h('p', { class: 'soluk' }, yazi), dugme);
   };
