@@ -5,6 +5,8 @@ import { h, doldur, pencereAc, bildir, hataMetni, kilitli } from '../util.js';
 import { S } from '../durum.js';
 import { YARDIM, ROL } from '../yardim-metin.js';
 import { bildirimDurumu, bildirimAc } from '../sunucu.js';
+import { t } from '../i18n.js';
+import { sssAc } from './sss.js';
 
 const Y = () => YARDIM[dilKodu()] || YARDIM.tr;
 const SVG = {
@@ -88,7 +90,7 @@ export function yardimAc(sekme = 0) {
 
 export function yardimKarti() {
   return h('div', { class: 'kart' }, h('strong', null, Y().ui.kart), h('p', { class: 'soluk' }, Y().ui.kartAlt),
-    h('button', { class: 'dugme ikincil', type: 'button', onclick: () => yardimAc(0) }, Y().ui.kart));
+    h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil', type: 'button', onclick: () => yardimAc(0) }, Y().ui.kart), h('button', { class: 'dugme ikincil', type: 'button', onclick: () => sssAc() }, '❓ ' + t('Sık sorulan sorular'))));
 }
 
 // ---- İlk giriş sihirbazı ----

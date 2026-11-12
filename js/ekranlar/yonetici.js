@@ -17,6 +17,7 @@ import { ULKELER, PARALAR, telNormalize as telNorm, telGirdi } from '../ulke.js'
 const GUN = 864e5;
 let alt = 'salonlar', suzgec = 'hepsi';
 let salonlar = null, yoneticiler = null, yukleniyor = false, hata = '';
+let uyeler = null, sorular = null, enCokPersonel = false;
 
 // ---------- veri ----------
 export async function salonlariYukle() {
@@ -29,11 +30,14 @@ async function yukle(zorla) {
   try {
     salonlar = await salonlariYukle();
     yoneticiler = (await getDocs(collection(db, 'yoneticiler'))).docs.map(d => ({ id: d.id, ...d.data() }));
+    // Personel sayıları ve cevapsız sorular: kurallar henüz yayınlanmadıysa panel yine de çalışır
+    try { uyeler = (await getDocs(collection(db, 'kullanicilar'))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (_) { uyeler = []; }
+    try { sorular = (await getDocs(collection(db, 'sssEksik'))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (_) { sorular = []; }
   } catch (e) { console.error(e); hata = hataMetni(e); salonlar = salonlar || []; yoneticiler = yoneticiler || []; }
   yukleniyor = false;
   goster();
 }
-function yenile() { salonlar = null; yoneticiler = null; goster(); }
+function yenile() { salonlar = null; yoneticiler = null; uyeler = null; sorular = null; goster(); }
 
 // ---------- yardımcılar ----------
 const tarihYaz = (ms) => new Date(ms).toLocaleDateString(yerel());
@@ -69,15 +73,15 @@ const kopyala = async (metin) => { try { await navigator.clipboard.writeText(met
 export function yoneticiEkrani() {
   if (salonlar === null && !yukleniyor) yukle();
   const adminSadece = !S.salon;   // yalnız yönetici hesabı (salona bağlı değil)
-  const sekmeler = [['salonlar', 'Salonlar'], ['yeni', 'Yeni salon'], ['yonetici', 'Yöneticiler']];
+  const sekmeler = [['salonlar', 'Salonlar'], ['yeni', 'Yeni salon'], ['yonetici', 'Yöneticiler'], ['sorular', 'Sorular']];
   if (adminSadece) sekmeler.push(['hesap', 'Hesabım']);
   return h('div', { class: 'sayfa' },
     h('div', { class: 'baslik-satir' }, h('h1', null, t('Yönetici paneli')),
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: yenile }, t('Yenile'))),
-    h('div', { class: 'sekme-cubugu ' + (sekmeler.length === 4 ? 'dort' : 'uc') },
+    h('div', { class: 'sekme-cubugu ' + (sekmeler.length === 5 ? 'bes' : 'dort') },
       sekmeler.map(([id, ad]) => h('button', { type: 'button', class: alt === id ? 'secili' : '', onclick: () => { alt = id; goster(); } }, t(ad)))),
     hata ? h('div', { class: 'uyari' }, hata) : null,
-    alt === 'salonlar' ? salonListesi() : alt === 'yeni' ? yeniSalonFormu() : alt === 'yonetici' ? yoneticiListesi() : hesapKarti());
+    alt === 'salonlar' ? salonListesi() : alt === 'yeni' ? yeniSalonFormu() : alt === 'yonetici' ? yoneticiListesi() : alt === 'sorular' ? soruListesi() : hesapKarti());
 }
 
 export function yoneticiCikisKarti() {
@@ -101,14 +105,62 @@ function salonListesi() {
     const b = bilgi(s);
     return suzgec === 'hepsi' || (suzgec === 'yaklasan' && b.yaklasan) || (suzgec === 'bitti' && b.tur === 'BITTI')
       || (suzgec === 'deneme' && b.tur === 'DENEME') || (suzgec === 'aktif' && b.tur === 'AKTIF') || (suzgec === 'pasif' && b.tur === 'PASIF');
-  }).sort(sirala);
+  }).sort(enCokPersonel ? (a, b) => (personelSay(b.id).toplam - personelSay(a.id).toplam) || sirala(a, b) : sirala);
   return h('div', null,
     say.yaklasan + say.bitti > 0 ? h('div', { class: 'kart uyari' }, h('strong', null, t('Yenileme vakti')),
       h('p', null, t('{a} salonun süresi 7 gün içinde bitiyor, {b} salonun süresi dolmuş.', { a: say.yaklasan, b: say.bitti }))) : null,
     h('div', { class: 'yon-suz' }, sUz.map(([id, ad, n]) => h('button', { type: 'button', class: suzgec === id ? 'secili' : '', onclick: () => { suzgec = id; goster(); } }, t(ad) + ' (' + n + ')'))),
+    h('div', { class: 'dugme-satir sol' }, h('button', { type: 'button', class: 'chip' + (enCokPersonel ? ' secili' : ''), onclick: () => { enCokPersonel = !enCokPersonel; goster(); } }, '👥 ' + t('En çok personel önce'))),
     goster2.length ? h('div', { class: 'liste' }, goster2.map(salonKarti)) : h('p', { class: 'soluk' }, t('Bu süzgeçte salon yok.')));
 }
 
+const YET = ['yonetici', 'kidemli', 'ortak'];
+function personelSay(id) {
+  const r = { yet: 0, sek: 0, usta: 0, toplam: 0, eski: 0 };
+  (uyeler || []).forEach(u => {
+    if (u.salonId !== id) return;
+    if (u.silindi) { r.eski++; return; }
+    if (u.aktif === false) return;
+    r.toplam++;
+    if (YET.includes(u.rol)) r.yet++; else if (u.rol === 'sekreter') r.sek++; else r.usta++;
+  });
+  return r;
+}
+function personelSatiri(s) {
+  if (uyeler === null) return null;
+  const c = personelSay(s.id);
+  const parca = [];
+  if (c.yet) parca.push(t('{n} yönetici/ortak', { n: c.yet }));
+  if (c.sek) parca.push(t('{n} sekreter', { n: c.sek }));
+  if (c.usta) parca.push(t('{n} usta', { n: c.usta }));
+  if (c.eski) parca.push(t('{n} eski çalışan', { n: c.eski }));
+  return h('p', { class: 'kucuk yon-personel' }, h('strong', null, '👥 ' + t('{n} personel', { n: c.toplam })), parca.length ? ' · ' + parca.join(' · ') : '');
+}
+function mesajSecimi(s) {
+  const p = pencereAc(t('Mesaj gönder') + ' — ' + s.ad, h('div', { class: 'liste' },
+    h('p', { class: 'kucuk' }, t('Hangi mesajı göndermek istiyorsunuz?')),
+    s.ownerUid ? h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); sahipSifreSifirla(s); } }, t('Giriş bilgisini gönder')) : null,
+    s.sahipTel ? h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); lisansHatirlat(s); } }, t('Lisans hatırlat')) : null,
+    (s.ownerUid && !s.kabul && s.sahipTel) ? h('button', { class: 'dugme ikincil', type: 'button', onclick: () => { p.kapat(); kabulHatirlat(s); } }, t('Kabulü hatırlat')) : null));
+}
+function soruListesi() {
+  if (sorular === null) return h('p', { class: 'soluk' }, t('Yükleniyor…'));
+  const grup = new Map();
+  sorular.forEach(q => {
+    const k = String(q.metin || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim(); if (!k) return;
+    const g = grup.get(k) || { metin: q.metin, dil: q.dil, n: 0, idler: [] };
+    g.n++; g.idler.push(q.id); grup.set(k, g);
+  });
+  const liste = [...grup.values()].sort((a, b) => b.n - a.n);
+  return h('div', null,
+    h('p', { class: 'kucuk' }, t('Danışmana sorulup SSS\'de karşılığı bulunmayan sorular (kimliksiz). En çok sorulanlar üstte; bunlar için yeni SSS maddesi yazabilirsiniz.')),
+    liste.length ? h('div', { class: 'liste' }, liste.map(g => h('div', { class: 'kart uye' },
+      h('div', { class: 'uye-ust' }, h('strong', null, g.metin), h('span', { class: 'rozet' }, '×' + g.n + (g.dil ? ' · ' + g.dil : ''))),
+      h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: async () => {
+        try { const b = writeBatch(db); g.idler.forEach(i => b.delete(doc(db, 'sssEksik', i))); await b.commit(); sorular = sorular.filter(q => !g.idler.includes(q.id)); goster(); }
+        catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); }
+      } }, t('Sil'))))) : h('p', { class: 'soluk' }, t('Cevapsız soru yok.')));
+}
 function salonKarti(s) {
   const b = bilgi(s);
   const bitisYazi = b.tur === 'PASIF' ? '' : (b.l.bitis ? t('Bitiş') + ': ' + tarihYaz(b.l.bitis) + (b.l.aktif ? ' (' + t('{n} gün', { n: b.l.kalan }) + ')' : '') : '');
@@ -121,15 +173,14 @@ function salonKarti(s) {
       bitisYazi ? h('span', { class: b.yaklasan ? 'rozet yaklasan' : 'soluk' }, bitisYazi) : null,
       s.ownerUid ? (s.kabul ? h('span', { class: 'rozet kabul-tamam' }, t('Kabul etti: {t}', { t: kabulTarih(s.kabul) })) : h('span', { class: 'rozet kabul-bekle' }, t('Kabul bekliyor'))) : null,
       h('span', { class: 'soluk' }, (s.ulke || s.ulkeKayit) && ULKELER[s.ulke || s.ulkeKayit] ? t(ULKELER[s.ulke || s.ulkeKayit].ad) + (PARALAR[s.para] ? ' · ' + PARALAR[s.para].sembol : ' · ' + t('para birimi seçilmedi')) : t('Ülke seçilmedi'))),
+    personelSatiri(s),
     s.notlar ? h('p', { class: 'kucuk' }, s.notlar) : null,
     h('div', { class: 'dugme-satir sol' },
       h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => uzatFormu(s) }, t('Süre ekle')),
       b.tur === 'PASIF'
         ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'AKTIF') }, t('Aktif yap'))
         : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'PASIF') }, t('Pasif yap')),
-      s.sahipTel ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => lisansHatirlat(s) }, t('WhatsApp hatırlat')) : null,
-      s.ownerUid ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sahipSifreSifirla(s) }, t('Giriş bilgisini gönder')) : null,
-      (s.ownerUid && !s.kabul && s.sahipTel) ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => kabulHatirlat(s) }, t('Kabulü hatırlat')) : null,
+      (s.sahipTel || s.ownerUid) ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mesajSecimi(s) }, t('Mesaj gönder')) : null,
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(s) }, t('Düzenle'))));
 }
 

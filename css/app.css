@@ -171,6 +171,13 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 
 /* 6. teslim: stok */
 .sekme-cubugu.dort { grid-template-columns: repeat(4, 1fr); margin-bottom: 14px; }
+.sekme-cubugu.bes { grid-template-columns: repeat(5, 1fr); margin-bottom: 14px; }
+.sekme-cubugu.bes button { padding: 10px 2px; font-size: .8rem; }
+.yon-personel { margin: 4px 0; }
+.sss-ara { width: 100%; margin-bottom: 8px; }
+.sss-madde summary { cursor: pointer; font-weight: 600; }
+.sss-madde p { white-space: pre-wrap; margin: 8px 0 0; }
+.chip.secili { background: var(--kart2); border-color: var(--vurgu, #c9a24b); }
 .sekme-cubugu.dort button { padding: 10px 4px; font-size: .9rem; }
 .stok-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
 .urun-kart { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
@@ -243,3 +250,7 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .iyi-yazi { color: var(--iyi); }
 .sekme-cubugu.iki { display: grid; grid-template-columns: 1fr 1fr; }
 .rozet.kabul-bekle { background: rgba(255,149,0,.2); color: #ff9500; }
+
+.yon-salon .dugme-satir { flex-wrap: nowrap; gap: 6px; }
+.yon-salon .dugme-satir .kucuk-dugme { flex: 1 1 0; min-width: 0; padding: 10px 4px; font-size: .82rem; white-space: nowrap; }
+.dan-balon { white-space: pre-wrap; }

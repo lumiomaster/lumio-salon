@@ -1036,5 +1036,19 @@ export default {
 "Kabulü hatırlat": "Remind to accept",
 "Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "On first login the salon owner reads the terms in their own language and accepts them; the date shows on the salon card.",
 "Kazancım nasıl hesaplanıyor?": "How are my earnings calculated?",
-"Ödemeyi iptal edersem ne olur?": "What happens if I cancel a payment?"
+"Ödemeyi iptal edersem ne olur?": "What happens if I cancel a payment?",
+"Sık sorulan sorular": "Frequently asked questions",
+"Uygulamanın her düğmesi ne işe yarar, kısa cevaplarla.": "What every button of the app does, in short answers.",
+"SSS'de aç": "Open in FAQ",
+"En çok personel önce": "Most staff first",
+"{n} yönetici/ortak": "{n} manager/partner",
+"{n} sekreter": "{n} secretary",
+"{n} usta": "{n} master",
+"{n} eski çalışan": "{n} former employee",
+"{n} personel": "{n} staff",
+"Hangi mesajı göndermek istiyorsunuz?": "Which message do you want to send?",
+"Lisans hatırlat": "Remind about license",
+"Sorular": "Questions",
+"Danışmana sorulup SSS'de karşılığı bulunmayan sorular (kimliksiz). En çok sorulanlar üstte; bunlar için yeni SSS maddesi yazabilirsiniz.": "Questions asked to the Advisor with no match in the FAQ (anonymous). Most frequent on top; you can write new FAQ items for them.",
+"Cevapsız soru yok.": "No unanswered questions."
 };

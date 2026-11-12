@@ -1036,5 +1036,19 @@ export default {
 "Kabulü hatırlat": "Қабылдауды еске салу",
 "Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "Салон иесі алғаш кіргенде шарттарды өз тілінде оқып қабылдайды; қабылдау күні салон картасында көрінеді.",
 "Kazancım nasıl hesaplanıyor?": "Менің табысым қалай есептеледі?",
-"Ödemeyi iptal edersem ne olur?": "Төлемнен бас тартсам, не болады?"
+"Ödemeyi iptal edersem ne olur?": "Төлемнен бас тартсам, не болады?",
+"Sık sorulan sorular": "Жиі қойылатын сұрақтар",
+"Uygulamanın her düğmesi ne işe yarar, kısa cevaplarla.": "Қолданбаның әр түймесі не істейді — қысқа жауаптармен.",
+"SSS'de aç": "FAQ-та ашу",
+"En çok personel önce": "Қызметкері көбі алдымен",
+"{n} yönetici/ortak": "{n} басшы/серіктес",
+"{n} sekreter": "{n} әкімші",
+"{n} usta": "{n} шебер",
+"{n} eski çalışan": "{n} бұрынғы қызметкер",
+"{n} personel": "Қызметкер: {n}",
+"Hangi mesajı göndermek istiyorsunuz?": "Қандай хабарлама жіберілсін?",
+"Lisans hatırlat": "Лицензияны еске салу",
+"Sorular": "Сұрақтар",
+"Danışmana sorulup SSS'de karşılığı bulunmayan sorular (kimliksiz). En çok sorulanlar üstte; bunlar için yeni SSS maddesi yazabilirsiniz.": "Кеңесшіге қойылған, бірақ FAQ-та жауабы жоқ сұрақтар (жасырын). Ең жиі қойылғандары жоғарыда; олар үшін жаңа FAQ тармағын жазуға болады.",
+"Cevapsız soru yok.": "Жауапсыз сұрақ жоқ."
 };

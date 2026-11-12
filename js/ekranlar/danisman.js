@@ -11,6 +11,8 @@ import {
 import { karHesapla, hizmetKarliligi, ayAralik, ayEkle } from '../kar-mantik.js';
 import { tarihMetin, tarihEkle } from '../takvim-mantik.js';
 import { azMi } from '../stok-mantik.js';
+import { sssYukle, sssEslestir, eksikKaydet } from '../sss.js';
+import { sssAc } from './sss.js';
 
 let GECMIS = { uid: null, liste: [] };
 let OZET = { t: 0, uid: null, v: null };
@@ -64,7 +66,8 @@ export function danismanAc() {
   const yaz = h('textarea', { class: 'dan-yaz', rows: 2, maxlength: 1000, placeholder: t('Meslektaşına danış… (örn. “dip boya fiyatını ne yapayım?”)') });
   const gonder = h('button', { class: 'dugme', type: 'button' }, t('Gönder'));
   let bekliyor = false;
-  const balon = (m) => h('div', { class: 'dan-balon ' + (m.rol === 'asistan' ? 'dan-o' : 'dan-ben') }, m.metin);
+  const balon = (m) => h('div', { class: 'dan-balon ' + (m.rol === 'asistan' ? 'dan-o' : 'dan-ben') }, m.metin,
+    m.sss ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'chip', type: 'button', onclick: () => sssAc('', m.sss) }, '❓ ' + t('SSS\'de aç'))) : null);
   const ciz = () => {
     const yet = yetkiliMi(S.profil.rol);
     const oneriler = (yet ? [ONERI_MALI] : []).concat(ONERI_ILK.slice(0, 2), [yet ? 'Ödemeyi iptal edersem ne olur?' : 'Kazancım nasıl hesaplanıyor?'], ONERI_ILK.slice(2)).slice(0, 4);
@@ -78,11 +81,21 @@ export function danismanAc() {
   async function sor(metin) {
     metin = String(metin || '').trim();
     if (!metin || bekliyor) return;
-    hata.textContent = ''; GECMIS.liste.push({ rol: 'kullanici', metin }); yaz.value = ''; bekliyor = true; gonder.disabled = true; ciz();
+    hata.textContent = ''; GECMIS.liste.push({ rol: 'kullanici', metin }); yaz.value = '';
+    // Önce SSS: uygulama sorusuysa hazır cevap verilir (yapay zekâya gitmez)
+    try {
+      const d = await sssYukle(dilKodu()), e = sssEslestir(metin, d, S.profil.rol);
+      if (e) {
+        GECMIS.liste.push({ rol: 'asistan', metin: d.m[e.id][0] + '\n\n' + d.m[e.id][1], sss: e.id });
+        ciz(); return;
+      }
+    } catch (_) { /* SSS yoksa yapay zekâya geç */ }
+    bekliyor = true; gonder.disabled = true; ciz();
     try {
       if (!OZET.v || OZET.uid !== uid || Date.now() - OZET.t > 5 * 60e3) OZET = { t: Date.now(), uid, v: await salonOzeti() };
       const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu() });
       GECMIS.liste.push({ rol: 'asistan', metin: r.cevap });
+      if (metin.length >= 8) eksikKaydet(metin);   // SSS'de karşılığı yoktu: kimliksiz kaydedilir
     } catch (e) {
       GECMIS.liste.pop(); yaz.value = metin;
       hata.textContent = e.kod === 429 ? e.message : t('Danışmana ulaşılamadı: {h}', { h: e.message || '' });
@@ -97,8 +110,10 @@ export function danismanAc() {
 }
 
 export function danismanKarti() {
-  if (!danismanVar()) return null;
+  const sssDugme = h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sssAc() }, '❓ ' + t('Sık sorulan sorular'));
+  if (!danismanVar()) return h('div', { class: 'kart bilgi' }, h('strong', null, '❓ ' + t('Sık sorulan sorular')),
+    h('p', { class: 'kucuk' }, t('Uygulamanın her düğmesi ne işe yarar, kısa cevaplarla.')), h('div', { class: 'dugme-satir sol' }, sssDugme));
   return h('div', { class: 'kart bilgi' }, h('strong', null, '🤖 ' + t('Usta Danışman')),
     h('p', { class: 'kucuk' }, t('Fiyat, müşteri, ekip, kimyasal, işletme… meslektaşınla konuşur gibi danış.')),
-    h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: danismanAc }, t('Danışmanla konuş'))));
+    h('div', { class: 'dugme-satir sol' }, h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: danismanAc }, t('Danışmanla konuş')), sssDugme));
 }

@@ -20,7 +20,8 @@ export const HUKUK_METIN = {
       ['4. Aktarım', 'Veriler, hizmetin sunulması amacıyla bulut altyapı sağlayıcılarına (Google Firebase, Cloudflare) aktarılır; bu sağlayıcıların sunucuları yurt dışında olabilir. Uygulamayı kullanarak bu aktarımı kabul etmiş olursunuz.'],
       ['5. Saklama', 'Veriler hizmet süresince ve yasal saklama süreleri boyunca tutulur; süre sonunda silinir, yok edilir veya anonim hale getirilir.'],
       ['6. Haklarınız', 'Verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltme, silme, itiraz etme ve zararın giderilmesini isteme haklarına sahipsiniz. Başvuru: {I}.'],
-      ['7. Güvenlik', 'Veriler şifreli bağlantı (HTTPS) üzerinden iletilir; erişim rol bazlı yetkilendirme ile sınırlandırılır.']
+      ['7. Güvenlik', 'Veriler şifreli bağlantı (HTTPS) üzerinden iletilir; erişim rol bazlı yetkilendirme ile sınırlandırılır.'],
+      ['8. Danışman soruları', 'Usta Danışman\'a sorulan ve SSS\'de karşılığı bulunmayan sorular, hizmeti geliştirmek için kimlik, salon veya kullanıcı bilgisi olmadan (yalnız soru metni ve dil) saklanabilir. Bu kayıtlara kişisel veri yazmayınız.']
     ] },
     musteri: { ad: 'Müşteri aydınlatma metni (salonunuz için şablon)', metin: [
       ['Veri sorumlusu', '{SALON} (adres: [SALON ADRESİ], telefon: [SALON TELEFONU]).'],
@@ -51,7 +52,8 @@ export const HUKUK_METIN = {
       ['4. Передача данных', 'Для предоставления сервиса данные передаются поставщикам облачной инфраструктуры (Google Firebase, Cloudflare); серверы этих поставщиков могут находиться за рубежом. Используя приложение, вы соглашаетесь с такой передачей.'],
       ['5. Хранение', 'Данные хранятся в течение срока оказания услуг и сроков, установленных законом; затем удаляются, уничтожаются или обезличиваются.'],
       ['6. Ваши права', 'Вы вправе узнать, обрабатываются ли ваши данные, запросить информацию, потребовать исправления или удаления, возразить против обработки и требовать возмещения вреда. Обращение: {I}.'],
-      ['7. Безопасность', 'Данные передаются по защищённому соединению (HTTPS); доступ ограничен ролевой авторизацией.']
+      ['7. Безопасность', 'Данные передаются по защищённому соединению (HTTPS); доступ ограничен ролевой авторизацией.'],
+      ['8. Вопросы Консультанту', 'Вопросы к Консультанту, на которые нет ответа в FAQ, могут сохраняться для улучшения сервиса без сведений о личности, салоне или пользователе (только текст вопроса и язык). Не вносите в такие вопросы персональные данные.']
     ] },
     musteri: { ad: 'Уведомление клиента об обработке данных (шаблон для вашего салона)', metin: [
       ['Оператор данных', '{SALON} (адрес: [АДРЕС САЛОНА], телефон: [ТЕЛЕФОН САЛОНА]).'],
@@ -82,7 +84,8 @@ export const HUKUK_METIN = {
       ['4. Беру', 'Қызмет көрсету үшін деректер бұлтты инфрақұрылым провайдерлеріне (Google Firebase, Cloudflare) беріледі; бұл провайдерлердің серверлері шетелде болуы мүмкін. Қолданбаны пайдалану арқылы осы берумен келісесіз.'],
       ['5. Сақтау', 'Деректер қызмет көрсету мерзімі мен заңда белгіленген мерзімдер бойы сақталады; кейін жойылады, жойып жіберіледі немесе иесіздендіріледі.'],
       ['6. Сіздің құқықтарыңыз', 'Деректеріңіздің өңделіп-өңделмегенін білуге, ақпарат сұрауға, түзетуді немесе жоюды талап етуге, өңдеуге қарсылық білдіруге және зиянның өтелуін сұрауға құқығыңыз бар. Өтініш: {I}.'],
-      ['7. Қауіпсіздік', 'Деректер қорғалған байланыс (HTTPS) арқылы беріледі; қолжетімділік рөлдік рұқсат арқылы шектеледі.']
+      ['7. Қауіпсіздік', 'Деректер қорғалған байланыс (HTTPS) арқылы беріледі; қолжетімділік рөлдік рұқсат арқылы шектеледі.'],
+      ['8. Кеңесшіге қойылған сұрақтар', 'Кеңесшіге қойылған және FAQ-та жауабы жоқ сұрақтар қызметті жақсарту үшін жеке тұлға, салон немесе пайдаланушы мәліметінсіз (тек сұрақ мәтіні және тіл) сақталуы мүмкін. Мұндай сұрақтарға дербес деректерді жазбаңыз.']
     ] },
     musteri: { ad: 'Клиентті деректерді өңдеу туралы хабардар ету мәтіні (салоныңызға арналған үлгі)', metin: [
       ['Деректер операторы', '{SALON} (мекенжайы: [САЛОН МЕКЕНЖАЙЫ], телефоны: [САЛОН ТЕЛЕФОНЫ]).'],
@@ -113,7 +116,8 @@ export const HUKUK_METIN = {
       ['4. Übermittlung', 'Zur Bereitstellung des Dienstes werden Daten an Cloud-Anbieter (Google Firebase, Cloudflare) übermittelt; deren Server können sich im Ausland befinden. Mit der Nutzung der Anwendung stimmen Sie dieser Übermittlung zu.'],
       ['5. Speicherung', 'Daten werden während der Leistungsdauer und der gesetzlichen Aufbewahrungsfristen gespeichert; danach werden sie gelöscht, vernichtet oder anonymisiert.'],
       ['6. Ihre Rechte', 'Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Widerspruch und Schadensersatz. Anfragen: {I}.'],
-      ['7. Sicherheit', 'Die Daten werden über eine verschlüsselte Verbindung (HTTPS) übertragen; der Zugriff ist durch rollenbasierte Berechtigungen beschränkt.']
+      ['7. Sicherheit', 'Die Daten werden über eine verschlüsselte Verbindung (HTTPS) übertragen; der Zugriff ist durch rollenbasierte Berechtigungen beschränkt.'],
+      ['8. Fragen an den Berater', 'Fragen an den Berater, für die es in den FAQ keine Antwort gibt, können zur Verbesserung des Dienstes ohne Angaben zu Person, Salon oder Nutzer (nur Fragetext und Sprache) gespeichert werden. Bitte tragen Sie in solche Fragen keine personenbezogenen Daten ein.']
     ] },
     musteri: { ad: 'Informationen für Kunden zur Datenverarbeitung (Vorlage für Ihren Salon)', metin: [
       ['Verantwortlicher', '{SALON} (Adresse: [SALONADRESSE], Telefon: [SALONTELEFON]).'],
@@ -144,7 +148,8 @@ export const HUKUK_METIN = {
       ['4. Transfers', 'To provide the service, data is transferred to cloud infrastructure providers (Google Firebase, Cloudflare); their servers may be located abroad. By using the application you agree to this transfer.'],
       ['5. Retention', 'Data is kept for the duration of the service and the statutory retention periods; afterwards it is deleted, destroyed or anonymised.'],
       ['6. Your rights', 'You have the right to know whether your data is processed, to request information, correction or deletion, to object, and to claim compensation for damage. Requests: {I}.'],
-      ['7. Security', 'Data is transmitted over an encrypted connection (HTTPS); access is restricted by role-based permissions.']
+      ['7. Security', 'Data is transmitted over an encrypted connection (HTTPS); access is restricted by role-based permissions.'],
+      ['8. Advisor questions', 'Questions asked to the Advisor that have no answer in the FAQ may be stored to improve the service without any identity, salon or user information (question text and language only). Please do not put personal data in such questions.']
     ] },
     musteri: { ad: 'Customer data notice (template for your salon)', metin: [
       ['Data controller', '{SALON} (address: [SALON ADDRESS], phone: [SALON PHONE]).'],

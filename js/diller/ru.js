@@ -1036,5 +1036,19 @@ export default {
 "Kabulü hatırlat": "Напомнить о принятии",
 "Salon sahibi ilk girişte kullanım şartlarını kendi dilinde okuyup kabul eder; kabul tarihi salon kartında görünür.": "Владелец салона при первом входе читает условия на своём языке и принимает их; дата принятия видна в карточке салона.",
 "Kazancım nasıl hesaplanıyor?": "Как считается мой заработок?",
-"Ödemeyi iptal edersem ne olur?": "Что будет, если я отменю оплату?"
+"Ödemeyi iptal edersem ne olur?": "Что будет, если я отменю оплату?",
+"Sık sorulan sorular": "Частые вопросы",
+"Uygulamanın her düğmesi ne işe yarar, kısa cevaplarla.": "Что делает каждая кнопка приложения — в коротких ответах.",
+"SSS'de aç": "Открыть в FAQ",
+"En çok personel önce": "Сначала с большим числом сотрудников",
+"{n} yönetici/ortak": "{n} руководитель/партнёр",
+"{n} sekreter": "{n} администратор",
+"{n} usta": "{n} мастер",
+"{n} eski çalışan": "{n} бывший сотрудник",
+"{n} personel": "Сотрудников: {n}",
+"Hangi mesajı göndermek istiyorsunuz?": "Какое сообщение отправить?",
+"Lisans hatırlat": "Напомнить о лицензии",
+"Sorular": "Вопросы",
+"Danışmana sorulup SSS'de karşılığı bulunmayan sorular (kimliksiz). En çok sorulanlar üstte; bunlar için yeni SSS maddesi yazabilirsiniz.": "Вопросы к Консультанту, на которые в FAQ не нашлось ответа (анонимно). Самые частые вверху; по ним можно написать новые пункты FAQ.",
+"Cevapsız soru yok.": "Вопросов без ответа нет."
 };

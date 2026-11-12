@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (13. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (14. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -185,9 +185,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- Cevapsız Danışman soruları (kimliksiz; yalnız metin ve dil) ----
+    match /sssEksik/{id} {
+      allow create: if girisli()
+        && request.resource.data.keys().hasOnly(['metin', 'dil', 'zaman'])
+        && request.resource.data.metin is string
+        && request.resource.data.metin.size() >= 3
+        && request.resource.data.metin.size() <= 200
+        && request.resource.data.dil in ['tr', 'ru', 'kk', 'de', 'en']
+        && request.resource.data.zaman == request.time;
+      allow read, delete: if yoneticiMi();
+      allow update: if false;
+    }
+
     // ---- Üyeler (kullanicilar/{uid}) ----
     match /kullanicilar/{uid} {
-      allow read: if girisli() && (request.auth.uid == uid || uyeMi(resource.data.salonId));
+      allow read: if girisli() && (request.auth.uid == uid || uyeMi(resource.data.salonId) || yoneticiMi());
 
       allow create: if girisli()
         && request.resource.data.keys().hasOnly(['salonId', 'ad', 'telefon', 'rol', 'aktif', 'olusturma', 'ekleyen', 'yasalOnay'])
