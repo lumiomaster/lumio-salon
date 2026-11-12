@@ -35,9 +35,15 @@ export async function bildirimDurumu() {
 }
 export async function bildirimAc(adim) {
   const yaz = (m) => { if (adim) adim(m); };
-  yaz('1/4 · Bildirim izni isteniyor… (izin penceresi çıkarsa "İzin ver" deyin)');
-  const izin = await sureli(Notification.requestPermission(), 60, 'İzin penceresi cevaplanmadı. Tarayıcı adres çubuğundaki kilit simgesinden bildirime izin verip tekrar deneyin.');
-  if (izin !== 'granted') throw new Error('İzin verilmedi');
+  // İzin zaten verilmişse pencere açmaya çalışma (bazı telefonlarda istek sonsuza dek takılıyor)
+  let durum = Notification.permission;
+  yaz('1/4 · Bildirim izni kontrol ediliyor… (' + durum + ')');
+  if (durum === 'denied') throw new Error('Bildirim izni kapalı. Telefon ayarları > Uygulamalar > Chrome (veya bu uygulama) > Bildirimler / Site ayarları bölümünden bu siteye izin verin, sonra tekrar deneyin.');
+  if (durum !== 'granted') {
+    yaz('1/4 · İzin penceresi bekleniyor… "İzin ver" deyin');
+    try { durum = await sureli(new Promise((ok) => { const r = Notification.requestPermission(ok); if (r && r.then) r.then(ok); }), 20, 'x'); } catch (e) { durum = Notification.permission; }
+    if (durum !== 'granted') throw new Error('İzin penceresi çıkmadı ya da cevaplanmadı (durum: ' + Notification.permission + '). Siteyi Chrome\'da açın, adres çubuğundaki kilit/ayar simgesinden Bildirimler\'e "İzin ver" deyin, uygulamayı kapatıp açın ve tekrar deneyin.');
+  }
   yaz('2/4 · Uygulama arka plan servisi hazırlanıyor…');
   const reg = await sureli(navigator.serviceWorker.ready, 10, 'Uygulama arka plan servisi hazır değil. Sayfayı yenileyip (Ctrl+Shift+R) tekrar deneyin.');
   yaz('3/4 · Tarayıcı bildirim servisine bağlanılıyor…');
