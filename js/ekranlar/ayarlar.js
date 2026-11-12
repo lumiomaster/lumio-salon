@@ -102,9 +102,17 @@ export function bildirimKarti() {
     const dugme = d === 'acik'
       ? h('button', { class: 'dugme ikincil', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimKapat(); bildir(t('Bildirimler kapatıldı')); } catch (err) { bildir(hataMetni(err), 'hata'); } ciz(); }) }, t('Bildirimleri kapat'))
       : d === 'kapali'
-        ? h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => { try { await bildirimAc(); bildir(t('Bildirimler açıldı')); } catch (err) { bildir(err.message === 'İzin verilmedi' ? t('İzin verilmedi') : (err.kod || !err.code ? err.message : hataMetni(err)), 'hata'); } ciz(); }) }, t('Bildirimleri aç'))
+        ? h('button', { class: 'dugme', type: 'button', onclick: (e) => kilitli(e.currentTarget, async () => {
+          // Hangi adımda beklediği ve varsa hata ekranda kalıcı yazılır (kısa bildirim kaçırılabiliyor)
+          const durumYazi = kutu.querySelector('.bildirim-durum');
+          const yaz = (m, hata) => { if (durumYazi) { durumYazi.textContent = m; durumYazi.className = 'kucuk bildirim-durum' + (hata ? ' uyari-yazi' : ''); } };
+          try { await bildirimAc(yaz); bildir(t('Bildirimler açıldı')); } catch (err) {
+            const m = err.message === 'İzin verilmedi' ? t('İzin verilmedi. Tarayıcı adres çubuğundaki kilit simgesinden bildirime izin verin.') : (err.kod || !err.code ? err.message : hataMetni(err));
+            yaz(m, true); bildir(m, 'hata'); return;
+          }
+          ciz(); }) }, t('Bildirimleri aç'))
         : null;
-    doldur(kutu, h('strong', null, t('Bildirimler')), h('p', { class: 'soluk' }, yazi), dugme);
+    doldur(kutu, h('strong', null, t('Bildirimler')), h('p', { class: 'soluk' }, yazi), dugme, h('p', { class: 'kucuk bildirim-durum' }));
   };
   ciz();
   return kutu;

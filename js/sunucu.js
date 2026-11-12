@@ -33,12 +33,17 @@ export async function bildirimDurumu() {
   if (Notification.permission !== 'granted') return 'kapali';
   try { const reg = await swHazir(); return (await reg.pushManager.getSubscription()) ? 'acik' : 'kapali'; } catch (e) { return 'kapali'; }
 }
-export async function bildirimAc() {
+export async function bildirimAc(adim) {
+  const yaz = (m) => { if (adim) adim(m); };
+  yaz('1/4 · Bildirim izni isteniyor… (izin penceresi çıkarsa "İzin ver" deyin)');
   const izin = await sureli(Notification.requestPermission(), 60, 'İzin penceresi cevaplanmadı. Tarayıcı adres çubuğundaki kilit simgesinden bildirime izin verip tekrar deneyin.');
   if (izin !== 'granted') throw new Error('İzin verilmedi');
+  yaz('2/4 · Uygulama arka plan servisi hazırlanıyor…');
   const reg = await sureli(navigator.serviceWorker.ready, 10, 'Uygulama arka plan servisi hazır değil. Sayfayı yenileyip (Ctrl+Shift+R) tekrar deneyin.');
+  yaz('3/4 · Tarayıcı bildirim servisine bağlanılıyor…');
   let abone = await reg.pushManager.getSubscription();
   if (!abone) abone = await sureli(reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: anahtarBayt(SUNUCU.vapid) }), 20, 'Bu tarayıcı bildirim servisine bağlanamadı. Chrome (Android/bilgisayar) ya da ana ekrana eklenmiş uygulama ile deneyin; Opera/Brave gibi tarayıcılarda bildirim çalışmayabilir.');
+  yaz('4/4 · Sunucuya kaydediliyor…');
   await sureli(sunucuyaSor('/abone', { abonelik: abone.toJSON() }), 20, 'Sunucuya ulaşılamadı. Biraz sonra tekrar deneyin.');
 }
 export async function bildirimKapat() {
