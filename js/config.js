@@ -1,7 +1,7 @@
 // LUMIO SALON - ayarlar (ad, logo ve bağlantılar tek yerden değişir)
 export const UYGULAMA = {
   ad: 'LUMIO SALON',
-  surum: '0.9.4 (9. teslim ek)',
+  surum: '1.0.0 (10. teslim)',
   logo: 'icons/logo.png'
 };
 
@@ -17,7 +17,8 @@ export const FIREBASE_CONFIG = {
 // Telefon numarasından sahte bir e-posta üretilir (giriş: telefon + şifre).
 export const ALIAS_ALAN = 'uye.lumiosalon.app';
 
-export const DENEME_GUN = 14;          // firestore.rules içindeki 14 ile aynı olmalı
+export const DENEME_GUN = 14;          // Yalnız bitisMs'i olmayan ESKİ deneme salonları için (firestore.rules içindeki 14 ile aynı); yenilerinde süreyi yönetici paneli belirler
+export const DESTEK_TEL = '905354049392';   // Lisans yenileme için salonların WhatsApp'tan yazacağı destek numarası (90 ile başlayan, boşluksuz)
 export const YASAL_SURUM = 'taslak-2';  // avukat onaylı metinler eklenince değişecek
 
 export const ROLLER = {

@@ -18,21 +18,27 @@ import { bildirimTazele } from './sunucu.js';
 import { ekipYenile } from './ekranlar/ekip.js';
 import { geriTusunuBaslat, sekmeDegisti } from './geri.js';
 import { sohbetDugmesi, sohbetKontrolBaslat, sohbetKontrolDurdur } from './ekranlar/sohbet.js';
+import { yoneticiEkrani, yaklasanSay } from './ekranlar/yonetici.js';
 
 const kok = document.getElementById('uygulama');
 
 export async function oturumuYukle() {
   const u = auth.currentUser;
-  if (!u) { S.profil = null; S.salon = null; sablonOzelAyarla({}); veriSifirla(); ekipYenile(); sohbetKontrolDurdur(); return goster(); }
+  if (!u) { S.profil = null; S.salon = null; S.yonetici = null; sablonOzelAyarla({}); veriSifirla(); ekipYenile(); sohbetKontrolDurdur(); return goster(); }
   try {
+    // Platform yöneticisi mi? (yoneticiler/{uid} belgesi olan ve aktif kişi)
+    S.yonetici = null;
+    try { const ys = await getDoc(doc(db, 'yoneticiler', u.uid)); if (ys.exists() && ys.data().aktif) S.yonetici = { id: ys.id, ...ys.data() }; } catch (e) { /* yönetici değil */ }
     const ps = await getDoc(doc(db, 'kullanicilar', u.uid));
+    if (!ps.exists() && S.yonetici) { S.profil = null; S.salon = null; S.mesaj = ''; S.sekme = 'yonetici'; sablonOzelAyarla({}); veriSifirla(); ekipYenile(); sohbetKontrolDurdur(); yoneticiUyari(); return goster(); }
     if (!ps.exists()) { S.profil = null; S.salon = null; S.mesaj = t('Hesabınız bir salona bağlı değil. Yöneticinizle görüşün.'); return goster(); }
     const p = { id: ps.id, ...ps.data() };
     if (!p.aktif) { S.mesaj = t('Hesabınız pasif yapılmış. Yöneticinizle görüşün.'); await signOut(auth); return; }
     const ss = await getDoc(doc(db, 'salons', p.salonId));
     S.profil = p;
     S.salon = ss.exists() ? { id: ss.id, ...ss.data() } : null;
-    if (!sekmelerim(p.rol).some(x => x.id === S.sekme)) S.sekme = 'ana';
+    if (!sekmelerim(p.rol, !!S.yonetici).some(x => x.id === S.sekme)) S.sekme = 'ana';
+    if (S.yonetici) yoneticiUyari();
     S.mesaj = '';
     if (S.salon) { sohbetKontrolBaslat(); sablonlariYukle(); bildirimTazele(); }
   } catch (e) {
@@ -42,11 +48,26 @@ export async function oturumuYukle() {
   goster();
 }
 
+// Yönetici girişinde süresi yaklaşan/dolan salon varsa kısa uyarı
+let uyarildi = null;
+async function yoneticiUyari() {
+  const u = auth.currentUser; if (!u || uyarildi === u.uid) return; uyarildi = u.uid;
+  try { const n = await yaklasanSay(); if (n > 0) bildir(t('{n} salonun lisansı bitiyor ya da bitti. Yönetici panelinden bakın.', { n }), 'hata'); } catch (e) { /* sessiz */ }
+}
+
 export function goster() {
   kok.replaceChildren();
+  // Yalnız yönetici hesabı (salona bağlı değil): sadece yönetici paneli
+  if (auth.currentUser && !S.profil && S.yonetici) {
+    kok.append(
+      h('header', { class: 'ust' }, h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),
+        h('div', { class: 'ust-ad' }, h('strong', null, UYGULAMA.ad), h('small', null, t('Yönetici paneli')))),
+      h('main', { class: 'icerik' }, yoneticiEkrani()));
+    return;
+  }
   if (!auth.currentUser || !S.profil) { kok.append(girisEkrani()); return; }
-  const sekmeler = sekmelerim(S.profil.rol);
-  const ekran = { ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
+  const sekmeler = sekmelerim(S.profil.rol, !!S.yonetici);
+  const ekran = { yonetici: yoneticiEkrani, ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
     h('header', { class: 'ust' },
       h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),

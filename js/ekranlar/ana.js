@@ -1,5 +1,5 @@
 import { t } from '../i18n.js';
-import { ROLLER } from '../config.js';
+import { ROLLER, DESTEK_TEL } from '../config.js';
 import { h, doldur, lisansDurumu } from '../util.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
@@ -22,16 +22,21 @@ const YAKINDA = [
 export function anaEkrani() {
   const p = S.profil, l = lisansDurumu(S.salon);
   let lisansKart;
-  if (l.tur === 'DENEME') {
-    lisansKart = l.aktif
-      ? h('div', { class: 'kart bilgi' }, h('strong', null, t('Deneme sürümü')), h('p', null, t('{n} gün kaldı.', { n: l.kalan })))
-      : h('div', { class: 'kart uyari' }, h('strong', null, t('Deneme süresi bitti')), h('p', null, t('Kayıt yapılamaz. Devam etmek için lisans gerekir.')));
-  } else if (l.tur === 'AKTIF') {
-    lisansKart = l.aktif
-      ? h('div', { class: 'kart bilgi' }, h('strong', null, t('Lisans aktif')), h('p', null, t('{n} gün kaldı.', { n: l.kalan })))
-      : h('div', { class: 'kart uyari' }, h('strong', null, t('Lisans süresi bitti')), h('p', null, t('Kayıt yapılamaz. Yenilemek için bizimle iletişime geçin.')));
+  const iletisim = () => DESTEK_TEL ? h('div', { class: 'dugme-satir sol' },
+    h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => window.open('https://wa.me/' + DESTEK_TEL + '?text=' + encodeURIComponent(t('Merhaba, {salon} için lisans yenilemek istiyorum.', { salon: S.salon ? S.salon.ad : '' })), '_blank', 'noopener') }, t('WhatsApp ile yenile'))) : null;
+  if (l.tur === 'DENEME' || l.tur === 'AKTIF') {
+    const ad = l.tur === 'DENEME' ? t('Deneme sürümü') : t('Lisans aktif');
+    if (!l.aktif) {
+      lisansKart = h('div', { class: 'kart uyari' }, h('strong', null, l.tur === 'DENEME' ? t('Deneme süresi bitti') : t('Lisans süresi bitti')),
+        h('p', null, t('Kayıt yapılamaz. Devam etmek için lisansı yenileyin; verileriniz silinmez.')), yetkiliMi(p.rol) ? iletisim() : null);
+    } else if (l.kalan <= 7) {
+      lisansKart = h('div', { class: 'kart uyari' }, h('strong', null, l.kalan <= 1 ? t('Süreniz yarın ya da bugün doluyor') : t('{n} gün sonra süreniz doluyor', { n: l.kalan })),
+        h('p', null, ad + ' · ' + t('Hizmetin kesilmemesi için lisansı yenileyin.')), yetkiliMi(p.rol) ? iletisim() : null);
+    } else {
+      lisansKart = h('div', { class: 'kart bilgi' }, h('strong', null, ad), h('p', null, t('{n} gün kaldı.', { n: l.kalan })));
+    }
   } else {
-    lisansKart = h('div', { class: 'kart uyari' }, h('strong', null, t('Lisans pasif')), h('p', null, t('Bizimle iletişime geçin.')));
+    lisansKart = h('div', { class: 'kart uyari' }, h('strong', null, t('Lisans pasif')), h('p', null, t('Bizimle iletişime geçin.')), yetkiliMi(p.rol) ? iletisim() : null);
   }
   return h('div', { class: 'sayfa' },
     h('h1', null, t('Merhaba {ad}', { ad: p.ad.split(' ')[0] })),

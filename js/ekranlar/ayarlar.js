@@ -61,7 +61,7 @@ function salonAdiKarti() {
     h('label', null, t('Salonun adı'), ad), hata, dugme);
 }
 
-function sifreKarti() {
+export function sifreKarti() {
   const eski = h('input', { type: 'password', autocomplete: 'current-password', placeholder: t('Şu anki şifre'), required: true });
   const y1 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: t('Yeni şifre (en az 6 karakter)'), required: true });
   const y2 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: t('Yeni şifre tekrar'), required: true });

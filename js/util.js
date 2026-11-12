@@ -59,14 +59,15 @@ export function hataMetni(e) {
 export function lisansDurumu(salon) {
   const simdi = Date.now();
   if (!salon) return { aktif: false, kalan: 0, tur: '' };
-  if (salon.durum === 'AKTIF') {
-    const kalan = Math.ceil(((salon.bitisMs || 0) - simdi) / 864e5);
-    return { aktif: kalan > 0, kalan, tur: 'AKTIF' };
-  }
-  if (salon.durum === 'DENEME') {
-    const bas = salon.olusturma && salon.olusturma.toMillis ? salon.olusturma.toMillis() : simdi;
-    const kalan = Math.ceil((bas + DENEME_GUN * 864e5 - simdi) / 864e5);
-    return { aktif: kalan > 0, kalan, tur: 'DENEME' };
+  if (salon.durum === 'AKTIF' || salon.durum === 'DENEME') {
+    let bitis = salon.bitisMs;
+    if (typeof bitis !== 'number') {
+      // Eski deneme salonları: kuruluştan DENEME_GUN gün
+      const bas = salon.olusturma && salon.olusturma.toMillis ? salon.olusturma.toMillis() : simdi;
+      bitis = salon.durum === 'DENEME' ? bas + DENEME_GUN * 864e5 : 0;
+    }
+    const kalan = Math.ceil((bitis - simdi) / 864e5);
+    return { aktif: kalan > 0, kalan, tur: salon.durum, bitis };
   }
   return { aktif: false, kalan: 0, tur: salon.durum || '' };
 }

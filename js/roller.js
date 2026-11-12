@@ -28,7 +28,9 @@ export const SEKMELER = [
   { id: 'salon', ad: 'Salon', ikon: '💈', roller: ['yonetici', 'kidemli', 'ortak'] },
   { id: 'ayarlar', ad: 'Ayarlar', ikon: '⚙️', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
 ];
-export function sekmelerim(rol) { return SEKMELER.filter(s => s.roller.includes(rol)); }
+// Platform yöneticisi aynı zamanda bir salonun üyesiyse alt menüye "Yönetici" sekmesi eklenir
+const YONETICI_SEKME = { id: 'yonetici', ad: 'Yönetici', ikon: '🛡️', roller: [] };
+export function sekmelerim(rol, yonetici) { return SEKMELER.filter(s => s.roller.includes(rol)).concat(yonetici ? [YONETICI_SEKME] : []); }
 
 // Randevu alabilen, değiştirebilen ve iptal edebilen roller
 export const RANDEVU_YAZAR = ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'];

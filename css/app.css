@@ -209,3 +209,16 @@ button.kalem.tikla { padding: 8px 0; border-bottom: 1px solid var(--cizgi, #e5e5
 .alt-dugmeler .iki-dugme { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .alt-dugmeler .iki-dugme .dugme { width: 100%; }
 .alt-dugmeler:empty { display: none; }
+
+/* Yönetici paneli */
+.yon-ozet { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.yon-ozet .rozet { font-size: .85rem; }
+.yon-suz { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+.yon-suz button { background: var(--kart); border: 1px solid var(--cizgi); color: var(--soluk); padding: 6px 12px; border-radius: 999px; font: inherit; font-size: .88rem; cursor: pointer; }
+.yon-suz button.secili { background: var(--kart2); color: var(--yazi); border-color: var(--vurgu, #6d8cff); }
+.yon-salon .uye-alt { flex-wrap: wrap; gap: 6px 12px; }
+.yon-salon .dugme-satir { flex-wrap: wrap; }
+.rozet.durum-AKTIF { background: rgba(52,199,89,.18); color: #34c759; }
+.rozet.durum-DENEME { background: rgba(255,204,0,.18); color: #ffcc00; }
+.rozet.durum-PASIF, .rozet.durum-BITTI { background: rgba(255,69,58,.18); color: #ff6961; }
+.rozet.yaklasan { background: rgba(255,149,0,.2); color: #ff9500; }
