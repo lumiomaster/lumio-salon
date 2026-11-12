@@ -1,9 +1,9 @@
-import { UYGULAMA } from './config.js';
+import { UYGULAMA, DESTEK_TEL } from './config.js';
 import { t } from './i18n.js';
-import { h, bildir } from './util.js';
+import { h, bildir, pencereAc, lisansDurumu } from './util.js';
 import { S } from './durum.js';
 import { auth, db, onAuthStateChanged, signOut, doc, getDoc } from './fb.js';
-import { sekmelerim } from './roller.js';
+import { sekmelerim, yetkiliMi } from './roller.js';
 import { girisEkrani } from './ekranlar/giris.js';
 import { anaEkrani } from './ekranlar/ana.js';
 import { ekipEkrani } from './ekranlar/ekip.js';
@@ -44,12 +44,31 @@ export async function oturumuYukle() {
     if (S.yonetici) yoneticiUyari();
     S.mesaj = '';
     if (S.salon) { sohbetKontrolBaslat(); sablonlariYukle(); bildirimTazele(); }
-    gitUygula();
+    gitUygula(); lisansUyari();
   } catch (e) {
     console.error(e);
     S.mesaj = t('Bilgiler yüklenemedi. İnternetinizi kontrol edip sayfayı yenileyin.');
   }
   goster();
+}
+
+// Süre bitimine 7 gün ya da daha az kaldıysa günde bir kez büyük uyarı
+function lisansUyari() {
+  if (!S.salon || !S.profil || S.yonetici) return;
+  const l = lisansDurumu(S.salon);
+  if (!(l.tur === 'DENEME' || l.tur === 'AKTIF') || l.kalan > 7) return;
+  const anahtar = 'lisansUyari:' + S.salon.id + ':' + new Date().toISOString().slice(0, 10);
+  try { if (localStorage.getItem(anahtar)) return; localStorage.setItem(anahtar, '1'); } catch (e) { /* kayıt yok */ }
+  const yetkili = yetkiliMi(S.profil.rol);
+  const baslik = l.aktif ? (l.kalan <= 1 ? t('Süreniz yarın ya da bugün doluyor') : t('Süreniz dolmasına {n} gün kaldı', { n: l.kalan })) : t('Kullanım süreniz doldu');
+  const icerik = h('div', { class: 'lisans-uyari' },
+    h('div', { class: 'lisans-ikon' }, '⏰'),
+    h('h2', null, baslik),
+    h('p', null, l.aktif ? t('Hizmetin kesilmemesi için lisansınızı şimdi yenileyin. Verileriniz silinmez.') : t('Kayıt yapabilmek için lisansınızı yenileyin. Verileriniz silinmez.')),
+    yetkili ? h('p', { class: 'kucuk' }, t('Destek ekibimizle iletişime geçin, size hemen yardımcı olalım.')) : h('p', { class: 'kucuk' }, t('Lütfen salon yöneticinize haber verin.')));
+  const p = pencereAc(t('Lisans uyarısı'), icerik);
+  if (yetkili && DESTEK_TEL) icerik.append(h('button', { class: 'dugme buyuk', type: 'button', onclick: () => window.open('https://wa.me/' + DESTEK_TEL + '?text=' + encodeURIComponent(t('Merhaba, {salon} için lisans yenilemek istiyorum.', { salon: S.salon.ad })), '_blank', 'noopener') }, t('Destek ekibine WhatsApp ile yaz')));
+  icerik.append(h('button', { class: 'dugme ikincil', type: 'button', onclick: p.kapat }, t('Sonra hatırlat')));
 }
 
 // Yönetici girişinde süresi yaklaşan/dolan salon varsa kısa uyarı

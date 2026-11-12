@@ -1,7 +1,7 @@
 /* LUMIO SALON - Service Worker (8. teslim)
    Uygulama kabuğu önbelleğe alınır; veri HER ZAMAN internetten gelir (Pro internetle çalışır).
    Her teslimde CACHE sürümünü artırın ki yeni dosyalar hemen gelsin. */
-const CACHE = 'lumio-salon-v1-t11b';
+const CACHE = 'lumio-salon-v1-t11c';
 const KABUK = [
   './', './index.html', './manifest.json', './css/app.css',
   './js/main.js', './js/config.js', './js/i18n.js', './js/util.js', './js/durum.js', './js/fb.js', './js/roller.js',

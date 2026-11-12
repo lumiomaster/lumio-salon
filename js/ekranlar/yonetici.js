@@ -58,8 +58,8 @@ function whatsapp(tel, metin) {
 }
 function hatirlatMesaji(s) {
   const b = bilgi(s);
-  const kalan = b.l.kalan > 0 ? b.l.kalan + ' gün kalmıştır' : 'dolmuştur';
-  return 'Merhaba ' + (s.sahipAd || s.ad) + ',\n\n' + UYGULAMA.ad + ' kullanım sürenizin tamamlanmasına ' + kalan + '. ✨\n\nHizmetinizin kesintiye uğramaması için lisansınızı yenilemenizi rica ederiz. 🙏\n\n' + UYGULAMA.ad + ' LİSANS YÖNETİMİ';
+  const kalan = b.l.kalan > 0 ? 'tamamlanmasına ' + b.l.kalan + ' gün kaldı' : 'sona erdi';
+  return 'Merhaba ' + (s.sahipAd || s.ad) + ',\n\n' + UYGULAMA.ad + ' kullanım süreniz ' + kalan + '. ✨\n\nRandevular, kasa, ekip ve müşteri kayıtlarınız hazır; hiçbir verinizi kaybetmeden kaldığınız yerden devam edebilirsiniz. Lisansınızı şimdi alarak kesintisiz çalışmaya devam edin, size en uygun paketi hemen ayarlayalım. 🙏\n\nBu mesaja "evet" yazmanız yeterli, gerisini biz hallederiz.\n\n' + UYGULAMA.ad + ' LİSANS YÖNETİMİ';
 }
 function girisMesaji(salonAdi, tel, sifre) {
   const adres = location.origin + location.pathname.replace(/[^/]*$/, '');
@@ -129,7 +129,7 @@ function salonKarti(s) {
         ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'AKTIF') }, t('Aktif yap'))
         : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'PASIF') }, t('Pasif yap')),
       s.sahipTel ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => whatsapp(s.sahipTel, hatirlatMesaji(s)) }, t('WhatsApp hatırlat')) : null,
-      s.ownerUid ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sahipSifreSifirla(s) }, t('Sahibin şifresini sıfırla')) : null,
+      s.ownerUid ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => sahipSifreSifirla(s) }, t('Giriş bilgisini gönder')) : null,
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(s) }, t('Düzenle'))));
 }
 
@@ -244,10 +244,10 @@ async function serbestBirak(hataKutu, d) {
 }
 async function sahipSifreSifirla(s) {
   if (!s.ownerUid) return;
-  if (!(await onayIste(t('{ad} için yeni bir geçici şifre oluşturulsun mu? Eski şifresi geçersiz olur.', { ad: s.sahipAd || s.ad }), t('Evet, sıfırla')))) return;
+  if (!(await onayIste(t('{ad} için yeni geçici şifre oluşturulup giriş bilgisi hazırlansın mı? Eski şifresi geçersiz olur.', { ad: s.sahipAd || s.ad }), t('Evet, devam')))) return;
   try {
     const r = await sunucuyaSor('/sifre-sifirla', { uid: s.ownerUid });
-    sonucPenceresi(s.ad, r.telefon, r.sifre, t('Yeni şifre'));
+    sonucPenceresi(s.ad, r.telefon, r.sifre, t('Giriş bilgisi'));
   } catch (e) { console.error(e); bildir(e.message || hataMetni(e), 'hata'); }
 }
 
