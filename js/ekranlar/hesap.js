@@ -8,7 +8,7 @@ import { kalemDetay } from './kalem-detay.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
   uyeleriYukle, ustalariYukle, donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle,
-  gunMutabakatiniYukle, mutabakatlariYukle, donemleriYukle, randevulariYukle, ayariYukle, oranAyariYukle, aralikOdemeleriniYukle, ikramiyeleriYukle
+  gunMutabakatiniYukle, gunOdemeleriniYukle, mutabakatlariYukle, donemleriYukle, randevulariYukle, ayariYukle, oranAyariYukle, aralikOdemeleriniYukle, ikramiyeleriYukle
 } from '../veri.js';
 import { ayAralik, ayEkle, ayYazi } from '../kar-mantik.js';
 import { ayOlculeri, ustaAyi } from '../hedef-mantik.js';
@@ -37,9 +37,10 @@ async function yukle(kutu, yenile) {
   try {
     const bugun = tarihMetin(new Date());
     const donem = await donemiYukle();
-    const [uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, randevular, ayar] = await Promise.all([
+    const [uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, randevular, ayar, gunOdeme] = await Promise.all([
       uyeleriYukle(), ustalariYukle(), donemOdemeleriniYukle(donem), avanslariYukle(donem), devirleriYukle(),
-      gunMutabakatiniYukle(H.tarih), donemleriYukle(), randevulariYukle(tarihEkle(bugun, -30), bugun), ayariYukle()
+      gunMutabakatiniYukle(H.tarih), donemleriYukle(), randevulariYukle(tarihEkle(bugun, -30), bugun), ayariYukle(),
+      gunOdemeleriniYukle(H.tarih)   // seçili günün ödemeleri: dönem kapanmış olsa bile mutabakat için gerekir
     ]);
     const oran = await oranAyariYukle();
     let ikr = null;
@@ -50,7 +51,7 @@ async function yukle(kutu, yenile) {
         ikr = { ay: onceki, olc: ayOlculeri(od, onceki), verilen: iA };
       } catch (e) { console.error(e); }
     }
-    ciz(kutu, { oran, ikr, taban: (ayar && ayar.urunTaban) || 'kar', donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
+    ciz(kutu, { gunOdeme, oran, ikr, taban: (ayar && ayar.urunTaban) || 'kar', donem, uyeler, u, odemeler, avanslar, devirler, mutabakat, donemler, bekleyen: randevular.filter(r => r.durum === 'bekliyor').length }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -162,7 +163,7 @@ function ustaKart(s, m, yetkili, D, yenile) {
 // O günün usta payı (mutabakat günü)
 function gunPayi(s, D) {
   const mali = D.u.mali[s.uid];
-  const satirlar = ustaGunSatirlari(D.odemeler, s.uid, H.tarih, mali, D.taban);
+  const satirlar = ustaGunSatirlari(D.gunOdeme || D.odemeler, s.uid, H.tarih, mali, D.taban);
   return { satirlar, pay: yuvarla(satirlar.reduce((a, x) => a + x.pay, 0)) };
 }
 
