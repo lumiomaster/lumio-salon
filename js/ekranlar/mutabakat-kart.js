@@ -84,7 +84,7 @@ async function yoneticiKarti(kutu) {
     if (!ustalar.length) return null;
     const m = {}; mut.forEach(x => { m[x.ustaUid] = x; });
     return { g, onay: ustalar.filter(u => m[u] && m[u].durum === 'onay'), itiraz: ustalar.filter(u => m[u] && m[u].durum === 'itiraz').map(u => ({ u, not: m[u].not })), bekleyen: ustalar.filter(u => !m[u]) };
-  }).filter(Boolean);
+  }).filter(Boolean).filter(x => x.bekleyen.length || x.itiraz.length);   // herkes onayladıysa kart kalkar
   if (!satirlar.length) return doldur(kutu);
   doldur(kutu, h('div', { class: 'kart bilgi mut-kart' },
     h('strong', null, t('Usta mutabakatları')),

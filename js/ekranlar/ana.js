@@ -14,6 +14,9 @@ import { mutabakatKarti } from './mutabakat-kart.js';
 import { yarinKarti } from './yarin-kart.js';
 import { hedefKarti } from './hedef-kart.js';
 import { danismanKarti, danismanVar } from './danisman.js';
+import { sizintiKarti } from './sizinti-kart.js';
+import { abonelikAc } from './abonelik.js';
+import { degerKarti, bagimlilikKarti } from './deger-kart.js';
 
 const YAKINDA = [
   { ad: 'Yapay zekâ danışman', ikon: '🔔', roller: ['yonetici', 'kidemli', 'ortak', 'sekreter', 'usta'] }
@@ -23,6 +26,7 @@ export function anaEkrani() {
   const p = S.profil, l = lisansDurumu(S.salon);
   let lisansKart;
   const iletisim = () => DESTEK_TEL ? h('div', { class: 'dugme-satir sol' },
+    h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: abonelikAc }, t('Süreyi uzat / öde')),
     h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => window.open('https://wa.me/' + DESTEK_TEL + '?text=' + encodeURIComponent(t('Merhaba, {salon} için lisans yenilemek istiyorum.', { salon: S.salon ? S.salon.ad : '' })), '_blank', 'noopener') }, t('WhatsApp ile yenile'))) : null;
   if (l.tur === 'DENEME' || l.tur === 'AKTIF') {
     const ad = l.tur === 'DENEME' ? t('Deneme sürümü') : t('Lisans aktif');
@@ -42,11 +46,14 @@ export function anaEkrani() {
     h('h1', null, t('Merhaba {ad}', { ad: p.ad.split(' ')[0] })),
     h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol)),
     lisansKart,
+    hatirlatmaKutusu(),
     mutabakatKarti(),
+    yetkiliMi(p.rol) ? sizintiKarti() : null,
+    yetkiliMi(p.rol) ? degerKarti() : null,
+    yetkiliMi(p.rol) ? bagimlilikKarti() : null,
     p.rol !== 'sekreter' ? hedefKarti() : null,
     danismanKarti(),
     p.rol !== 'usta' ? yarinKarti() : null,
-    hatirlatmaKutusu(),
     yetkiliMi(p.rol) ? stokKarti() : null,
     yetkiliMi(p.rol) ? kurulumKarti() : null,
     danismanVar() ? null : h('h2', null, t('Yakında eklenecek')),

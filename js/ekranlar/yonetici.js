@@ -3,22 +3,23 @@
 import { t, yerel } from '../i18n.js';
 import { UYGULAMA } from '../config.js';
 import { girisMesajiYap, kabulMesajiYap, hatirlatMesajiYap, MESAJ_DILLERI, ULKE_DILI } from '../giris-mesaj.js';
-import { h, telGoster, eposta, hataMetni, bildir, pencereAc, kilitli, rastgeleSifre, lisansDurumu, onayIste } from '../util.js';
+import { h, telGoster, eposta, hataMetni, bildir, pencereAc, kilitli, rastgeleSifre, lisansDurumu, onayIste, para } from '../util.js';
 import { S } from '../durum.js';
 import {
   auth, auth2, db, createUserWithEmailAndPassword, signOut,
-  doc, collection, getDocs, writeBatch, serverTimestamp
+  doc, getDoc, collection, getDocs, query, where, writeBatch, serverTimestamp
 } from '../fb.js';
 import { goster } from '../main.js';
 import { sifreKarti, ekDogrulamaKarti } from './ayarlar.js';
 import { sunucuyaSor } from '../sunucu.js';
 import { destekBitis, destekGoruntule } from '../destek.js';
 import { ULKELER, PARALAR, telNormalize as telNorm, telGirdi } from '../ulke.js';
+import { KUR_PARALARI } from '../config.js';
 
 const GUN = 864e5;
 let alt = 'salonlar', suzgec = 'hepsi';
 let salonlar = null, yoneticiler = null, yukleniyor = false, hata = '';
-let uyeler = null, sorular = null, enCokPersonel = false;
+let uyeler = null, sorular = null, enCokPersonel = false, talepler = null, kurlar = null, hesaplar = null;
 
 // ---------- veri ----------
 export async function salonlariYukle() {
@@ -34,11 +35,14 @@ async function yukle(zorla) {
     // Personel sayıları ve cevapsız sorular: kurallar henüz yayınlanmadıysa panel yine de çalışır
     try { uyeler = (await getDocs(collection(db, 'kullanicilar'))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (_) { uyeler = []; }
     try { sorular = (await getDocs(collection(db, 'sssEksik'))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (_) { sorular = []; }
+    try { const kd = await getDoc(doc(db, 'platform', 'kurlar')); kurlar = kd.exists() ? kd.data() : {}; } catch (_) { kurlar = {}; }
+    try { const hd = await getDoc(doc(db, 'platform', 'hesaplar')); hesaplar = hd.exists() ? hd.data() : {}; } catch (_) { hesaplar = {}; }
+    try { talepler = (await getDocs(query(collection(db, 'odemeTalepleri'), where('durum', '==', 'bekliyor')))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (_) { talepler = []; }
   } catch (e) { console.error(e); hata = hataMetni(e); salonlar = salonlar || []; yoneticiler = yoneticiler || []; }
   yukleniyor = false;
   goster();
 }
-function yenile() { salonlar = null; yoneticiler = null; uyeler = null; sorular = null; goster(); }
+function yenile() { salonlar = null; yoneticiler = null; uyeler = null; sorular = null; talepler = null; kurlar = null; hesaplar = null; goster(); }
 
 // ---------- yardımcılar ----------
 const tarihYaz = (ms) => new Date(ms).toLocaleDateString(yerel());
@@ -108,11 +112,13 @@ function salonListesi() {
       || (suzgec === 'deneme' && b.tur === 'DENEME') || (suzgec === 'aktif' && b.tur === 'AKTIF') || (suzgec === 'pasif' && b.tur === 'PASIF');
   }).sort(enCokPersonel ? (a, b) => (personelSay(b.id).toplam - personelSay(a.id).toplam) || sirala(a, b) : sirala);
   return h('div', null,
+    talepKartlari(),
     say.yaklasan + say.bitti > 0 ? h('div', { class: 'kart uyari' }, h('strong', null, t('Yenileme vakti')),
       h('p', null, t('{a} salonun süresi 7 gün içinde bitiyor, {b} salonun süresi dolmuş.', { a: say.yaklasan, b: say.bitti }))) : null,
     h('div', { class: 'yon-suz' }, sUz.map(([id, ad, n]) => h('button', { type: 'button', class: suzgec === id ? 'secili' : '', onclick: () => { suzgec = id; goster(); } }, t(ad) + ' (' + n + ')'))),
     h('div', { class: 'dugme-satir sol' }, h('button', { type: 'button', class: 'chip' + (enCokPersonel ? ' secili' : ''), onclick: () => { enCokPersonel = !enCokPersonel; goster(); } }, '👥 ' + t('En çok personel önce'))),
-    goster2.length ? h('div', { class: 'liste' }, goster2.map(salonKarti)) : h('p', { class: 'soluk' }, t('Bu süzgeçte salon yok.')));
+    goster2.length ? h('div', { class: 'liste' }, goster2.map(salonKarti)) : h('p', { class: 'soluk' }, t('Bu süzgeçte salon yok.')),
+    kurKarti(), hesapKarti2());
 }
 
 const YET = ['yonetici', 'kidemli', 'ortak'];
@@ -472,4 +478,104 @@ function yoneticiEkleFormu() {
     h('label', null, t('Telefon numarası'), tel),
     h('label', null, t('Geçici şifre'), sifre),
     hataKutu, dugme));
+}
+
+// ---------- ödeme talepleri ----------
+function talepKartlari() {
+  const liste = talepler || [];
+  if (!liste.length) return null;
+  return h('div', { class: 'kart uyari' }, h('strong', null, t('Ödeme talepleri') + ' (' + liste.length + ')'),
+    liste.map(x => {
+      const s = (salonlar || []).find(y => y.id === x.salonId);
+      return h('div', { class: 'kart' },
+        h('div', { class: 'uye-ust' }, h('strong', null, x.salonAd || (s && s.ad) || x.salonId), h('strong', null, tutarYaz(x.toplam, x.para))),
+        h('div', { class: 'kucuk soluk' }, x.ay + ' ' + t('ay') + ' · ' + x.personel + ' ' + t('kişi') + (x.satis ? ' · ' + t('Satış ve analiz paketi') : '') + ' · ' + x.referans),
+        x.kdv > 0 ? h('div', { class: 'kucuk soluk' }, t('KDV hariç') + ' ' + tutarYaz(x.kdvHaric, x.para) + ' + ' + t('KDV') + ' ' + tutarYaz(x.kdv, x.para)) : (x.kur ? h('div', { class: 'kucuk soluk' }, t('Kur') + ': 1 USD = ' + x.kur + ' ' + (PARALAR[x.para] ? PARALAR[x.para].sembol : x.para)) : null),
+        h('div', { class: 'dugme-satir sol' },
+          h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => talepOnayla(x, s) }, t('Ödeme geldi, onayla')),
+          h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => talepReddet(x) }, t('Reddet'))));
+    }));
+}
+async function talepOnayla(x, s) {
+  if (!s) { bildir(t('Salon bulunamadı; paneli yenileyin.'), 'hata'); return; }
+  const b = bilgi(s);
+  const taban = b.l.aktif && b.tur !== 'PASIF' ? b.l.bitis : Date.now();
+  const yeni = taban + x.gun * GUN;
+  const paketNot = (s.satis === true) !== (x.satis === true) ? '\n' + (x.satis ? t('Satış ve analiz paketi açılacak.') : t('Satış ve analiz paketi kapanacak.')) : '';
+  if (!(await onayIste(t('{salon}: {tutar} ödeme geldi mi? Onaylarsanız yeni bitiş tarihi {tarih} olur.', { salon: s.ad, tutar: tutarYaz(x.toplam, x.para), tarih: tarihYaz(yeni) }) + paketNot, t('Onayla')))) return;
+  try {
+    const w = writeBatch(db);
+    w.update(doc(db, 'salons', s.id), { durum: 'AKTIF', bitisMs: yeni, satis: x.satis === true });
+    w.update(doc(db, 'odemeTalepleri', x.id), { durum: 'onaylandi', islemMs: Date.now(), islemUid: auth.currentUser.uid });
+    await w.commit();
+    bildir(t('Onaylandı. Yeni bitiş') + ': ' + tarihYaz(yeni)); yenile();
+  } catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); }
+}
+async function talepReddet(x) {
+  if (!(await onayIste(t('Bu talep reddedilsin mi? Salonun süresi değişmez.'), t('Reddet')))) return;
+  try {
+    const w = writeBatch(db);
+    w.update(doc(db, 'odemeTalepleri', x.id), { durum: 'reddedildi', islemMs: Date.now(), islemUid: auth.currentUser.uid });
+    await w.commit();
+    bildir(t('Reddedildi')); yenile();
+  } catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); }
+}
+
+const tutarYaz = (n, kod) => { const p = PARALAR[kod] || PARALAR.TRY; return (Number(n) || 0).toLocaleString(yerel(), { maximumFractionDigits: p.ondalik }) + ' ' + p.sembol; };
+
+// ---------- döviz kuru (tenge vb. fiyatlar dolardan hesaplanır) ----------
+function kurKarti() {
+  if (kurlar === null) return null;
+  return h('div', { class: 'kart' }, h('strong', null, t('Kur ayarı')),
+    h('p', { class: 'kucuk soluk' }, t('Tenge gibi fiyatlar dolar fiyatından hesaplanır. Güncel kuru girin; boş bırakılan para biriminde salonlar ekrandan ödeyemez, WhatsApp görür.')),
+    KUR_PARALARI.map(kod => {
+      const giris = h('input', { type: 'text', inputmode: 'decimal', value: kurlar[kod] ? String(kurlar[kod]).replace('.', ',') : '', placeholder: '520' });
+      const dugme = h('button', { class: 'dugme kucuk-dugme', type: 'button' }, t('Kaydet'));
+      dugme.addEventListener('click', () => kilitli(dugme, async () => {
+        const v = Number(String(giris.value).trim().replace(',', '.'));
+        if (!(v > 0 && v < 100000)) { bildir(t('Geçerli bir kur girin.'), 'hata'); return; }
+        try {
+          const w = writeBatch(db);
+          w.set(doc(db, 'platform', 'kurlar'), { ...kurlar, [kod]: v, guncelleme: serverTimestamp() });
+          await w.commit();
+          bildir(t('Kur kaydedildi.')); kurlar = null; yenile();
+        } catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); }
+      }));
+      const z = kurlar.guncelleme; const ms = z && z.toMillis ? z.toMillis() : (typeof z === 'number' ? z : 0);
+      return h('div', { class: 'kur-satir' }, h('label', null, '1 USD = ' + (PARALAR[kod] ? PARALAR[kod].sembol : kod), giris), dugme,
+        ms ? h('div', { class: 'kucuk soluk' }, t('Son güncelleme') + ': ' + tarihYaz(ms)) : null);
+    }));
+}
+
+// ---------- ödeme hesapları (IBAN) ----------
+const HESAP_ULKELER = ['TR', 'KZ'];
+const ibanTemiz = (v) => String(v || '').replace(/\s+/g, '').toUpperCase();
+const ibanGoster = (v) => ibanTemiz(v).replace(/(.{4})/g, '$1 ').trim();
+function hesapKarti2() {
+  if (hesaplar === null) return null;
+  const girisler = {};
+  const dugme = h('button', { class: 'dugme kucuk-dugme', type: 'button' }, t('Kaydet'));
+  dugme.addEventListener('click', () => kilitli(dugme, async () => {
+    const yeni = {};
+    for (const k of HESAP_ULKELER) {
+      const alici = girisler[k].alici.value.trim(), iban = ibanTemiz(girisler[k].iban.value);
+      if (iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) { bildir(t('Geçerli bir IBAN girin.') + ' (' + k + ')', 'hata'); return; }
+      yeni[k] = { alici, iban };
+    }
+    try {
+      const w = writeBatch(db);
+      w.set(doc(db, 'platform', 'hesaplar'), { ...yeni, guncelleme: serverTimestamp() });
+      await w.commit();
+      bildir(t('Hesap bilgileri kaydedildi.')); hesaplar = null; yenile();
+    } catch (e) { console.error(e); bildir(hataMetni(e), 'hata'); }
+  }));
+  const z = hesaplar.guncelleme; const ms = z && z.toMillis ? z.toMillis() : (typeof z === 'number' ? z : 0);
+  return h('div', { class: 'kart' }, h('strong', null, t('Ödeme hesapları')),
+    h('p', { class: 'kucuk soluk' }, t('Müşteriler abonelik ödemesini bu hesaba gönderir. Değiştirdiğinizde ekranda hemen yeni hesap görünür; zip yüklemek gerekmez.')),
+    HESAP_ULKELER.map(k => {
+      const v = hesaplar[k] || {};
+      girisler[k] = { alici: h('input', { type: 'text', maxlength: 80, value: v.alici || '', placeholder: t('Alıcı adı') }), iban: h('input', { type: 'text', maxlength: 40, value: ibanGoster(v.iban), placeholder: 'IBAN' }) };
+      return h('div', { class: 'form' }, h('strong', { class: 'kucuk' }, t(k === 'TR' ? 'Türkiye' : 'Kazakistan') + (k === 'KZ' ? ' · Kaspi Bank' : '')), girisler[k].alici, girisler[k].iban);
+    }),
+    dugme, ms ? h('div', { class: 'kucuk soluk' }, t('Son güncelleme') + ': ' + tarihYaz(ms)) : null);
 }

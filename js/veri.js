@@ -309,3 +309,9 @@ export async function analizleriYukle(musteriId) {
   kontrol();
   return (await getDocs(query(yol('analizler'), where('musteriId', '==', musteriId)))).docs.map(d => ({ id: d.id, ...d.data() }));
 }
+
+// ---- Değer kartları (17. teslim): geri çağırma ve boş saat mesajlarının kaydı ----
+export async function mesajKayitlariniYukle(bas) {
+  kontrol();
+  return liste(await getDocs(query(yol('mesajlar'), where('gun', '>=', bas))));
+}

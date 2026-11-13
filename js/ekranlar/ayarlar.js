@@ -15,6 +15,7 @@ import { bildirimDurumu, bildirimAc, bildirimKapat } from '../sunucu.js';
 import { hukukGoster } from '../hukuk.js';
 import { dilKarti } from './dil-sec.js';
 import { yardimKarti } from './yardim.js';
+import { abonelikKarti } from './abonelik.js';
 import { temaSecimi, yaziSecimi, temaKaydet, yaziKaydet } from '../tema.js';
 
 export function ayarlarEkrani() {
@@ -25,6 +26,7 @@ export function ayarlarEkrani() {
       h('strong', null, p.ad),
       h('p', { class: 'soluk' }, t(ROLLER[p.rol] || p.rol) + ' · ' + telGoster(p.telefon))),
     yetkiliMi(p.rol) ? salonAdiKarti() : null,
+    yetkiliMi(p.rol) ? abonelikKarti() : null,
     yetkiliMi(p.rol) ? sablonKarti() : null,
     dilKarti(),
     gorunumKarti(),

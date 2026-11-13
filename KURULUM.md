@@ -120,3 +120,19 @@ Metinlerde sağlayıcı adı **LUMIO SALON**, iletişim **WhatsApp +90 535 404 9
 - Yasal metinler genel bir çerçevedir; Kazakistan/Özbekistan'ın veri yerelleştirme kurallarını avukatınıza danışın.
 - iPhone'da bildirim yalnız uygulama ana ekrana eklenip oradan açılınca çalışır; mesaj ve sihirbaz bunu söyler.
 
+
+## T17 son: abonelik ödeme ekranı ve değer kartları
+
+**Firebase kuralları değişti: `firestore.rules` dosyasını tamamen kopyalayıp Rules sayfasına yapıştırın ve Publish edin.** (Dosya yaklaşık 961 satırdır, son satır `}` olmalı.) Cloudflare'de değişiklik yok.
+
+1. **Abonelik ekranı:** Ayarlar > Abonelik > "Süreyi uzat / öde" (ana sayfadaki lisans kartında da var). Süre (1/3/6/12 ay), ek paket (Satış ve analiz) seçilir, KDV dahil tutar çıkar. Ekip kademesi, aktif ekip üyesi sayısından otomatik bulunur.
+2. **Ödeme akışı (ilk sürüm):** müşteri havale/EFT yapar, referans kodunu açıklamaya yazar, "Ödemeyi yaptım" der. Talep Yönetici paneli > Salonlar sekmesinin üstünde "Ödeme talepleri" olarak görünür. **"Ödeme geldi, onayla"** deyince süre uzar (mevcut bitişin üstüne), salon AKTIF olur, Satış ve analiz paketi seçime göre açılır/kapanır. Reddet salonu etkilemez.
+3. **Fiyatları ve hesap bilgisini düzenleyin:** `js/config.js` içinde `FIYAT` (kademeler, ek paket, süre indirimleri, KDV) ve `ODEME_HESAPLARI` (IBAN, alıcı adı). Şimdiki indirim ve ek paket rakamları geçici önerilerdir. IBAN boşsa ekran "WhatsApp ile destek ekibinden alın" yazar.
+4. **Tenge (Kazakistan) fiyatı:** dolar fiyatından hesaplanır (`FIYAT_USD`: 20 / 50 / 70 $, ek paket 25 $; 6 Kasım 2026 kuruyla TL fiyatlarının karşılığı). **Yönetici paneli > Salonlar sayfasının en altındaki "Kur ayarı" kartına güncel `1 USD = ... ₸` kurunu girip Kaydet'e basın.** Kur girilmemişse Kazakistan salonları ekrandan ödeyemez, "WhatsApp ile yaz" görür. Yerel fiyat 500 ₸'nin katına yuvarlanır. KDV Türkiye'ye göre (%20) hesaplanır. Talepte kullanılan kur da kaydedilir. Kuru zaman zaman güncelleyin.
+5. **Ödeme hesapları (IBAN):** Yönetici paneli > Salonlar sayfasının altındaki **"Ödeme hesapları"** kartına Türkiye (TR IBAN) ve Kazakistan (Kaspi Bank IBAN) için alıcı adı ve IBAN'ı girip Kaydet'e basın. İstediğiniz zaman değiştirebilirsiniz, zip yüklemek gerekmez. Girilmezse ekran "WhatsApp ile destek ekibinden alın" yazar. (`config.js` içindeki `ODEME_HESAPLARI` yalnız yedek olarak kalır.)
+6. Kartla otomatik ödeme için bir ödeme sağlayıcısı (şirket gerekir) bağlanmalıdır; bu sürümde yoktur.
+
+**Ana sayfada yeni kartlar (yönetici, kıdemli, ortak):**
+- **Para sızıntısı uyarısı:** salona kalan pay (ödenen − kart komisyonu − usta hakedişi − formülde kullanılan malzeme) %15'in altındaysa, sıfır fiyatlı kalem ve alış fiyatının altında satılan ürün için uyarır. Eşik `js/sizinti-mantik.js` içinde `SIZINTI_ESIK`.
+- **Bu ay uygulama sayesinde:** "Sizi özledik" davetinden sonra 30 gün içinde gelip ödeme yapan müşteriler ve gerçekten ödenen tutar.
+- **Usta bağımlılığı:** son 6 ayda en az 3 kez gelen ve cirosunun %80'inden fazlası tek ustada olan müşteriler. Veri 3 aydan azsa görünmez; günde bir hesaplanır.
