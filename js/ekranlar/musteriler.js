@@ -37,7 +37,7 @@ const sade = (x) => String(x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ')
 function ciz(kutu, liste, uyeler, ayar, yenile, G) {
   const rol = S.profil.rol;
   const yazar = randevuYazarMi(rol) && lisansDurumu(S.salon).aktif;
-  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
   const ara = h('input', { type: 'text', value: M.ara, placeholder: t('Ad ya da telefonla ara'), autocomplete: 'off' });
   const kutuListe = h('div', null);
   const goster = () => {

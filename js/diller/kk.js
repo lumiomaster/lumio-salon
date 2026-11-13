@@ -1295,5 +1295,9 @@ export default {
   "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "Бұл клиенттің фотосы болса, оның келісімін алыңыз. Фото тек осы сұрақ үшін жасанды интеллектке жіберіледі, сақталмайды.",
   "Bu fotoğrafa bakar mısın?": "Осы фотоға қарап беріңізші?",
   "Cevap gecikti. Biraz sonra tekrar deneyin.": "Жауап кешікті. Сәлден кейін қайталап көріңіз.",
-  "Sunucuya ulaşılamadı": "Серверге қосылу мүмкін болмады"
+  "Sunucuya ulaşılamadı": "Серверге қосылу мүмкін болмады",
+  "Eski çalışan": "Бұрынғы қызметкер",
+  "Ekipten ayrıldı; onay beklenmez.": "Командадан кетті; растау қажет емес.",
+  "Formülü düzenle": "Формуланы өзгерту",
+  "+ Formül / ürün ekle": "+ Формула / өнімдер"
 };

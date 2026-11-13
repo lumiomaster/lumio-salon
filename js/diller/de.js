@@ -1295,5 +1295,9 @@ export default {
   "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "Bei einem Kundenfoto holen Sie bitte die Einwilligung ein. Das Foto geht nur für diese Frage an die KI und wird nicht gespeichert.",
   "Bu fotoğrafa bakar mısın?": "Kannst du dir dieses Foto ansehen?",
   "Cevap gecikti. Biraz sonra tekrar deneyin.": "Die Antwort dauert zu lange. Bitte versuchen Sie es gleich noch einmal.",
-  "Sunucuya ulaşılamadı": "Server nicht erreichbar"
+  "Sunucuya ulaşılamadı": "Server nicht erreichbar",
+  "Eski çalışan": "Ehemalige Mitarbeitende",
+  "Ekipten ayrıldı; onay beklenmez.": "Aus dem Team ausgeschieden; keine Bestätigung nötig.",
+  "Formülü düzenle": "Rezeptur bearbeiten",
+  "+ Formül / ürün ekle": "+ Rezeptur / Produkte"
 };

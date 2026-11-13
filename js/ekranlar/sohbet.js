@@ -58,7 +58,7 @@ export async function sohbetAc() {
   const gonder = h('button', { class: 'dugme', type: 'submit' }, t('Gönder'));
   let uyeler = [], sonSayi = -1, zamanlayici = null, kapali = false;
   const ben = auth.currentUser.uid;
-  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
 
   const ciz = (liste) => {
     if (liste.length === sonSayi) return; sonSayi = liste.length;

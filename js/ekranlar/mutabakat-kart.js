@@ -77,9 +77,10 @@ function itirazFormu(uid, tarih, tutar, yenile) {
 async function yoneticiKarti(kutu) {
   const bugun = tarihMetin(new Date());
   const [uyeler, ...gunler] = await Promise.all([uyeleriYukle(), ...[bugun, tarihEkle(bugun, -1)].map(async (g) => ({ g, odemeler: await gunOdemeleriniYukle(g), mut: await gunMutabakatiniYukle(g) }))]);
-  const ad = (u) => ((uyeler.find(x => x.id === u) || { ad: '?' }).ad).split(' ')[0];
+  const ad = (u) => ((uyeler.find(x => x.id === u) || { ad: t('Eski çalışan') }).ad).split(' ')[0];
   const satirlar = gunler.map(({ g, odemeler, mut }) => {
-    const ustalar = [...new Set(odemeler.filter(o => o.durum === 'gecerli').flatMap(o => (o.kalemler || []).map(k => k.ustaUid).filter(Boolean)))];
+    // Yalnız ekipte olan (aktif) kişiler onay verebilir; ayrılanlar beklenmez
+    const ustalar = [...new Set(odemeler.filter(o => o.durum === 'gecerli').flatMap(o => (o.kalemler || []).map(k => k.ustaUid).filter(Boolean)))].filter(u => uyeler.some(x => x.id === u && x.silindi !== true && x.aktif !== false));
     if (!ustalar.length) return null;
     const m = {}; mut.forEach(x => { m[x.ustaUid] = x; });
     return { g, onay: ustalar.filter(u => m[u] && m[u].durum === 'onay'), itiraz: ustalar.filter(u => m[u] && m[u].durum === 'itiraz').map(u => ({ u, not: m[u].not })), bekleyen: ustalar.filter(u => !m[u]) };

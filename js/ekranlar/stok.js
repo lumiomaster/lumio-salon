@@ -152,7 +152,7 @@ async function urunDetay(u, D, yenile) {
     const ms = (z) => (z && z.toMillis ? z.toMillis() : 0);
     const l = sn.docs.map(d => d.data()).sort((a, b) => ms(b.zaman) - ms(a.zaman)).slice(0, 25);
     doldur(gecmis, l.length ? l.map(x => h('div', { class: 'hesap-satir' },
-      h('span', null, tarihTR(x.gun).slice(0, 5) + ' · ' + t(TUR[x.tur] || x.tur) + ' · ' + ((uyeler.find(y => y.id === x.uid) || { ad: '?' }).ad.split(' ')[0]) + (x.not ? ' · ' + x.not : '')),
+      h('span', null, tarihTR(x.gun).slice(0, 5) + ' · ' + t(TUR[x.tur] || x.tur) + ' · ' + ((uyeler.find(y => y.id === x.uid) || { ad: t('Eski çalışan') }).ad.split(' ')[0]) + (x.not ? ' · ' + x.not : '')),
       h('span', { class: x.miktar < 0 ? 'eksi' : '' }, (x.miktar > 0 ? '+' : '') + stokYazi(u, x.miktar)))) : h('p', { class: 'soluk' }, t('Henüz hareket yok.')));
   } catch (e) { doldur(gecmis, h('p', { class: 'kucuk' }, hataMetni(e))); }
 }

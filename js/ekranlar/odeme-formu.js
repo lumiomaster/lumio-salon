@@ -4,7 +4,8 @@ import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import { uyeleriYukle, ustalariYukle, ayariYukle, donemiYukle, hizmetleriYukle, urunleriYukle, oranAyariYukle, sadakatAyariYukle, musteriOdemeleriniYukle } from '../veri.js';
 import { ilerleme, indirimUygula, odulYazi } from '../sadakat-mantik.js';
-import { satisStokYaz } from '../stok-yaz.js';
+import { satisStokYaz, formulStokYaz } from '../stok-yaz.js';
+import { formulUrunleri, formulMetni, formulYazabilir } from './islem.js';
 import { paketBoyu, birimAdi, stokYazi } from '../stok-mantik.js';
 import { tarihMetin, dkMetin } from '../takvim-mantik.js';
 import { yuvarla, urunKari } from '../kasa-mantik.js';
@@ -24,7 +25,7 @@ export async function odemeFormu(randevu, bitti) {
   }
   const onizKalemler = () => satirlar.map(s => ({ tur: s.tur, tutar: Math.max(0, sayi(s.tutar) || 0) }));
   const sadIndirim = () => (sadHak && sadUygula ? indirimUygula(sad, onizKalemler()).indirim : 0);
-  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
   const ustaAday = uyeler.filter(x => x.aktif && u.profil[x.id] && u.profil[x.id].calisir);
 
   const asilUsta = randevu && randevu.kalemler[0] ? (randevu.kalemler[0].ustaUid || '') : '';   // ek hizmeti satan: varsayılan olarak asıl randevuyu alan usta
@@ -72,6 +73,10 @@ export async function odemeFormu(randevu, bitti) {
         h('select', { 'aria-label': t('Satan usta'), onchange: (e) => { s.satanUid = e.target.value; ciz(); } },
           ustaAday.map(x => h('option', { value: x.id, selected: x.id === s.satanUid }, x.ad)),
           h('option', { value: '', selected: !s.satanUid }, t('Yok (prim yok)')))) : null,
+      // Ödemede eklenen hizmete formül / kullanılan ürün (stoktan düşer) eklenebilir
+      s.ek && s.ad && formulYazabilir({ ustaUid: s.ustaUid }) ? h('div', { class: 'formul-ozet' },
+        s.fo && (s.fo.urunler.length || s.fo.not) ? h('div', { class: 'kucuk' }, '🧪 ' + (s.fo.urunler.length ? formulMetni(s.fo.urunler) : '') + (s.fo.not ? ' · ' + s.fo.not : '')) : null,
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => formulPenceresi(s) }, '🧪 ' + (s.fo && (s.fo.urunler.length || s.fo.not) ? t('Formülü düzenle') : t('+ Formül / ürün ekle')))) : null,
       s.ek && oranAy.caprazYuzde > 0 && s.satanUid && s.satanUid !== s.ustaUid ? h('div', { class: 'kucuk' }, t('{ad} için %{o} çapraz satış primi yazılır (salonun payından).', { ad: ad(s.satanUid), o: String(oranAy.caprazYuzde).replace('.', ',') })) : null,
       s.tur === 'urun' ? h('label', null, t('Alış fiyatı (₺)'), h('input', { type: 'text', inputmode: 'decimal', value: s.alis, placeholder: '0',
         oninput: (e) => { s.alis = e.target.value; ozetCiz(); } })) : null,
@@ -138,6 +143,17 @@ export async function odemeFormu(randevu, bitti) {
     hata, dugme));
   ciz();
 
+  function formulPenceresi(s) {
+    const fu = formulUrunleri(s.fo ? s.fo.urunler : []);
+    const not = h('input', { type: 'text', maxlength: 300, value: s.fo ? s.fo.not : '', placeholder: t('Not (örn. 20 dk bekledi, saç dökülmesi şikâyeti)') });
+    const fh = h('div', { class: 'hata', role: 'alert' });
+    const icerik = h('div', null);
+    const p = pencereAc(s.ad + ' · ' + t('Formül'), icerik);
+    icerik.append(h('form', { class: 'form', novalidate: true,
+      onsubmit: (e) => { e.preventDefault(); const fo = fu.oku(); if (fo.hata) { fh.textContent = fo.hata; return; } s.fo = { urunler: fo.urunler, not: not.value.trim() }; p.kapat(); ciz(); } },
+      h('label', null, t('Kullanılan ürünler (stoktan düşer)'), fu.el), h('label', null, t('Not'), not), fh, h('button', { class: 'dugme', type: 'submit' }, t('Tamam'))));
+  }
+
   function kaydet() {
     const kalemler = [];
     for (const s of satirlar) {
@@ -186,6 +202,13 @@ export async function odemeFormu(randevu, bitti) {
           ustaUid: k.satanUid, odemeId: ref.id, tarih: tarihMetin(new Date()), donem, musteriAd: musteri.value.trim(), ad: k.ad, tutar: k.tutar, alis: 0, tur: 'capraz', yuzde: k.caprazYuzde, yontem, komisyonOrani: oranT, durum: 'gecerli'
         }));
         satisStokYaz(b, ref.id, kalemler, false);
+        // Ödemede eklenen hizmetlerin formülü: müşteri defterine işlem olarak yazılır, ürünler stoktan düşer
+        satirlar.forEach((s, i) => {
+          if (!(s.ek && s.ad && s.fo && (s.fo.urunler.length || s.fo.not))) return;
+          const iid = ref.id + '_e' + i;
+          b.set(doc(db, 'salons', S.salon.id, 'islemler', iid), { musteriId: randevu ? (randevu.musteriId || '') : '', ustaUid: s.ustaUid, rid: '', tarih: tarihMetin(new Date()), hizmet: s.ad.slice(0, 60), formul: formulMetni(s.fo.urunler).slice(0, 500), not: s.fo.not, urunler: s.fo.urunler, guncelleme: serverTimestamp() });
+          if (s.fo.urunler.length) formulStokYaz(b, [{ islemId: iid, eski: [], yeni: s.fo.urunler, ad: s.ad }]);
+        });
         if (randevu && randevu.musteriId) b.update(doc(db, 'salons', S.salon.id, 'musteriler', randevu.musteriId), { sonZiyaret: tarihMetin(new Date()), sonraki: sonraki.value || '', guncelleme: serverTimestamp() });
         if (randevu) b.update(doc(db, 'salons', S.salon.id, 'randevular', randevu.id), { durum: 'odendi', odemeId: ref.id, guncelleme: serverTimestamp() });
         b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), {

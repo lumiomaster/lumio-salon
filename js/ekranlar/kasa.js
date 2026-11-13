@@ -57,7 +57,7 @@ const saat = (z) => { if (!z || !z.toMillis) return ''; const d = new Date(z.toM
 function ciz(kutu, uyeler, odemeler, bekleyen, donem, yenile) {
   const rol = S.profil.rol;
   const yazar = odemeYazarMi(rol) && lisansDurumu(S.salon).aktif;
-  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
   const z = gunOzeti(odemeler);
   const bugun = tarihMetin(new Date());
   doldur(kutu,

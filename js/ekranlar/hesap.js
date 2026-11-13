@@ -66,8 +66,12 @@ function hesapla(D) {
   const satirlar = [...idler].map(uid => {
     const o = ozet[uid] || { hizmet: 0, urun: 0, komisyon: 0, hakedis: 0, capraz: 0 };
     const av = yuvarla(avans[uid] || 0), dv = D.devirler[uid] || 0;
-    return { uid, ad: (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad, ...o, avans: av, devir: dv, odenecek: odenecek(o.hakedis, av, dv), maliYok: !D.u.mali[uid] };
-  }).sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
+    const u = D.uyeler.find(x => x.id === uid);
+    // Ekipten ayrılmış (silinmiş) kişi: adı yoksa "Eski çalışan"; onay beklenmez
+    const ayrildi = !u || u.silindi === true || u.aktif === false;
+    return { uid, ad: u ? u.ad : t('Eski çalışan'), ayrildi, ...o, avans: av, devir: dv, odenecek: odenecek(o.hakedis, av, dv), maliYok: !D.u.mali[uid] };
+  }).filter(x => !(x.ayrildi && !x.hakedis && !x.hizmet && !x.urun && !x.capraz && !x.avans && !x.devir))
+    .sort((a, b) => a.ad.localeCompare(b.ad, yerel()));
   const gecerli = D.odemeler.filter(o => o.durum === 'gecerli');
   const z = gunOzeti(gecerli);
   const hakedis = yuvarla(satirlar.reduce((a, s) => a + s.hakedis, 0));
@@ -108,7 +112,7 @@ function ciz(kutu, D, yenile) {
 // Geçen ayın hedef ikramiyeleri: yönetici "Hesaba ekle" der; ustanın bu dönem hesabına ek ödeme (eksi avans) yazılır, aynı ay için bir kez
 function ikramiyeKarti(D, yenile) {
   if (!D.ikr) return null;
-  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
   const verildi = new Set(D.ikr.verilen.map(x => x.ustaUid));
   const l = Object.entries(D.ikr.olc).map(([uid, o]) => ({ uid, a: ustaAyi(o, D.oran.hedefler) })).filter(x => x.a.ikramiye > 0 && D.uyeler.some(u => u.id === x.uid));
   if (!l.length) return null;
@@ -142,17 +146,17 @@ function ustaKart(s, m, yetkili, D, yenile) {
     h('div', { class: 'hesap-satir' }, h('span', null, t('Hakediş (komisyon düşülmüş)')), h('span', null, para(s.hakedis))),
     s.avans !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Verilen avans')), h('span', null, '− ' + para(s.avans))) : null,
     s.devir !== 0 ? h('div', { class: 'hesap-satir' }, h('span', null, t('Önceki dönemden borç')), h('span', null, para(s.devir))) : null,
-    h('div', { class: 'hesap-satir mut' }, h('span', null, t('Mutabakat') + ' (' + tarihYazi(H.tarih).split(' ').slice(0, 2).join(' ') + ')'),
+    s.ayrildi ? h('div', { class: 'kucuk soluk' }, t('Ekipten ayrıldı; onay beklenmez.')) : h('div', { class: 'hesap-satir mut' }, h('span', null, t('Mutabakat') + ' (' + tarihYazi(H.tarih).split(' ').slice(0, 2).join(' ') + ')'),
       m ? h('span', { class: 'rozet ' + (m.durum === 'onay' ? 'odendi-rozet' : 'uyari-rozet') }, m.durum === 'onay' ? t('Onayladı') : t('İtiraz var')) : h('span', { class: 'soluk kucuk' }, t('Bekliyor'))),
-    m && m.durum === 'onay' && m.onaylayan ? h('div', { class: 'kucuk' }, t('Sözlü onay: {ad} işaretledi.', { ad: (D.uyeler.find(x => x.id === m.onaylayan) || { ad: '?' }).ad }) + (m.not ? ' — ' + m.not : '')) : null,
-    m && m.durum === 'itiraz' && m.not ? h('div', { class: 'kucuk uyari-yazi' }, '“' + m.not + '”') : null,
-    !m && yetkili ? h('div', { class: 'dugme-satir sol' },
+    !s.ayrildi && m && m.durum === 'onay' && m.onaylayan ? h('div', { class: 'kucuk' }, t('Sözlü onay: {ad} işaretledi.', { ad: (D.uyeler.find(x => x.id === m.onaylayan) || { ad: t('Eski çalışan') }).ad }) + (m.not ? ' — ' + m.not : '')) : null,
+    !s.ayrildi && m && m.durum === 'itiraz' && m.not ? h('div', { class: 'kucuk uyari-yazi' }, '“' + m.not + '”') : null,
+    !s.ayrildi && !m && yetkili ? h('div', { class: 'dugme-satir sol' },
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mutabakatMesaji(s, D) }, t('WhatsApp ile hatırlat')),
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => yoneticiOnayi(s, D, yenile) }, t('Sözlü onayladı'))) : null,
-    m && m.durum === 'itiraz' && yetkili ? h('div', { class: 'dugme-satir sol' },
+    !s.ayrildi && m && m.durum === 'itiraz' && yetkili ? h('div', { class: 'dugme-satir sol' },
       h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => itirazKapat(s, m, D, yenile) }, t('Sözlü mutabakat sağlandı')),
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mutabakatMesaji(s, D) }, t('WhatsApp ile yaz'))) : null,
-    yetkili ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => avansFormu(s, D, yenile) }, t('Avans ver')) : null);
+    yetkili && !s.ayrildi ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => avansFormu(s, D, yenile) }, t('Avans ver')) : null);
 }
 
 // O günün usta payı (mutabakat günü)
@@ -164,7 +168,7 @@ function gunPayi(s, D) {
 
 // Dönemdeki hizmet ya da ürün kalemlerinin listesi; kaleme dokununca ayrıntı açılır
 function kalemListesi(s, D, tur) {
-  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: '?' }).ad;
+  const ad = (uid) => (D.uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad;
   const mali = D.u.mali[s.uid];
   const satirlar = [];
   D.odemeler.filter(o => o.durum === 'gecerli').forEach(o => (o.kalemler || []).forEach(k => { if (k.ustaUid === s.uid && (k.tur === 'urun') === (tur === 'urun')) satirlar.push({ o, k }); }));
@@ -319,7 +323,7 @@ function kapatOnay(D, satirlar, toplam, yenile) {
       const muts = await mutabakatlariYukle(ilk);
       const tamam = new Set(muts.filter(m => m.durum === 'onay').map(m => m.ustaUid + '_' + m.tarih));
       const eksik = [];
-      satirlar.forEach(s => {
+      satirlar.filter(s => !s.ayrildi).forEach(s => {
         const gunler = [...new Set(gecerli.map(o => o.tarih))].sort().filter(g => !tamam.has(s.uid + '_' + g) && ustaGunSatirlari(D.odemeler, s.uid, g, D.u.mali[s.uid], D.taban).length);
         if (gunler.length) eksik.push({ ad: s.ad, gunler });
       });

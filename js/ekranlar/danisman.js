@@ -110,7 +110,7 @@ export function danismanAc() {
     bekliyor = true; gonder.disabled = true; ciz();
     try {
       if (!OZET.v || OZET.uid !== uid || Date.now() - OZET.t > 5 * 60e3) OZET = { t: Date.now(), uid, v: await salonOzeti() };
-      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu(), ...(fotolar.length ? { resimler: fotolar } : {}) }, fotolar.length ? 70000 : 50000);
+      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu(), ...(fotolar.length ? { resimler: fotolar } : {}) }, fotolar.length ? 75000 : 60000);
       GECMIS.liste.push({ rol: 'asistan', metin: r.cevap });
       resimler = []; seritCiz();
       if (!fotolar.length && metin.length >= 8) eksikKaydet(metin);   // SSS'de karşılığı yoktu: kimliksiz kaydedilir

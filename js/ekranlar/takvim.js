@@ -34,7 +34,7 @@ export function takvimEkrani() {
 // Randevu formunun ve takvimin ihtiyaç duyduğu ortak veriler
 export async function takvimCtx() {
   const [uyeler, u, hizmetler, ayar] = await Promise.all([uyeleriYukle(), ustalariYukle(), hizmetleriYukle(), ayariYukle()]);
-  return { uyeler, profil: u.profil, hizmetler, ayar, ad: (uid) => (uyeler.find(x => x.id === uid) || { ad: '?' }).ad };
+  return { uyeler, profil: u.profil, hizmetler, ayar, ad: (uid) => (uyeler.find(x => x.id === uid) || { ad: t('Eski çalışan') }).ad };
 }
 
 async function yukle(kutu, yenile) {

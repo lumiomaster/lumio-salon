@@ -46,7 +46,7 @@ function yetkiliKart(kutu) {
   const ay = buAy();
   const yenile = () => Promise.all([oranAyariYukle(true), uyeleriYukle(), aralikOdemeleriniYukle(ayAralik(ay).bas, ayAralik(ay).bit)]).then(([oran, uyeler, odemeler]) => {
     const m = ayOlculeri(odemeler, ay);
-    const ad = (uid) => (uyeler.find(u => u.id === uid) || { ad: '?' }).ad;
+    const ad = (uid) => (uyeler.find(u => u.id === uid) || { ad: t('Eski çalışan') }).ad;
     const sirala = (alan) => Object.entries(m).filter(([, v]) => v[alan] > 0).sort((a, b) => b[1][alan] - a[1][alan]).slice(0, 3);
     const urun = sirala('urun'), capraz = sirala('capraz');
     const liste = (baslik, l, alan) => l.length ? h('div', null, h('div', { class: 'kucuk' }, baslik),

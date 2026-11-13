@@ -1295,5 +1295,9 @@ export default {
   "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "If it is a client's photo, get their consent. The photo goes to the AI only for this question and is not saved.",
   "Bu fotoğrafa bakar mısın?": "Can you take a look at this photo?",
   "Cevap gecikti. Biraz sonra tekrar deneyin.": "The answer is taking too long. Please try again shortly.",
-  "Sunucuya ulaşılamadı": "Could not reach the server"
+  "Sunucuya ulaşılamadı": "Could not reach the server",
+  "Eski çalışan": "Former employee",
+  "Ekipten ayrıldı; onay beklenmez.": "Left the team; no confirmation needed.",
+  "Formülü düzenle": "Edit formula",
+  "+ Formül / ürün ekle": "+ Formula / products"
 };
