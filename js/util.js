@@ -65,6 +65,8 @@ export function lisansDurumu(salon) {
 export function bildir(mesaj, tur) {
   let kutu = document.getElementById('bildirimler');
   if (!kutu) { kutu = h('div', { id: 'bildirimler', 'aria-live': 'polite' }); document.body.append(kutu); }
+  // Aynı mesaj ekrandaysa ikincisi eklenmez (çift dokunuşta üst üste iki aynı uyarı çıkmasın)
+  if ([...kutu.children].some(x => x.textContent === String(mesaj))) return;
   const n = h('div', { class: 'bildirim ' + (tur || '') }, mesaj);
   kutu.append(n);
   setTimeout(() => n.remove(), tur === 'hata' ? 6000 : 3000);

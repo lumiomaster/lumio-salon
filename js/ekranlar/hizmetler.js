@@ -96,10 +96,10 @@ function hizmetKarti(x, duzenle, yenile, oran) {
   const bekleme = (x.asamalar || []).some(a => a.tur === 'bekleme');
   return h('div', { class: 'kart hizmet' + (x.aktif ? '' : ' pasif') },
     h('div', { class: 'uye-ust' }, h('strong', null, x.ad), h('span', null, x.fiyat > 0 ? para(x.fiyat) : h('span', { class: 'rozet uyari-rozet' }, t('Fiyat girin')))),
-    h('div', { class: 'uye-alt' },
+    h('div', { class: 'uye-alt hizmet-alt' },
       h('span', { class: 'soluk' }, x.sure + ' ' + t('dk')),
-      h('span', null, bekleme ? h('span', { class: 'rozet' }, t('Bekleme aşamalı')) : null, x.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')), x.oranGrup ? h('span', { class: 'rozet' }, grupAdi(oran.gruplar, x.oranGrup)) : null)),
-    duzenle ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hizmetFormu(x, yenile, oran) }, t('Düzenle')) : null);
+      h('span', { class: 'hizmet-rozetler' }, bekleme ? h('span', { class: 'rozet' }, t('Bekleme aşamalı')) : null, x.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')), x.oranGrup ? h('span', { class: 'rozet' }, grupAdi(oran.gruplar, x.oranGrup)) : null),
+      duzenle ? h('button', { class: 'dugme ikincil kucuk-dugme hizmet-duzenle', type: 'button', onclick: () => hizmetFormu(x, yenile, oran) }, t('Düzenle')) : null));
 }
 
 function paketBolumu(p, x) {

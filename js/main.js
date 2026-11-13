@@ -4,6 +4,7 @@ import { h, bildir, pencereAc, lisansDurumu } from './util.js';
 import { S } from './durum.js';
 import { auth, db, onAuthStateChanged, signOut, doc, getDoc } from './fb.js';
 import { sekmelerim, yetkiliMi } from './roller.js';
+import { ikon } from './ikonlar.js';
 import { girisEkrani } from './ekranlar/giris.js';
 import { anaEkrani } from './ekranlar/ana.js';
 import { ekipEkrani } from './ekranlar/ekip.js';
@@ -98,7 +99,7 @@ export function goster() {
   const sekmeler = sekmelerim(S.profil.rol, !!S.yonetici);
   const ekran = { yonetici: yoneticiEkrani, ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
-    destekSeridi(),
+    destekSeridi() || '',
     h('header', { class: 'ust' },
       h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),
       h('div', { class: 'ust-ad' }, h('strong', null, S.salon ? S.salon.ad : UYGULAMA.ad), h('small', null, UYGULAMA.ad)),
@@ -106,7 +107,7 @@ export function goster() {
     h('main', { class: 'icerik' }, ekran()),
     h('nav', { class: 'alt-menu' }, sekmeler.map(s =>
       h('button', { class: 'sekme' + (s.id === S.sekme ? ' secili' : ''), type: 'button', onclick: () => { S.sekme = s.id; sekmeDegisti(s.id); goster(); } },
-        h('span', { class: 'sekme-ikon' }, s.ikon), h('span', null, t(s.ad))))));
+        h('span', { class: 'sekme-ikon' }, ikon(s.id) || s.ikon), h('span', { class: 'sekme-ad' }, t(s.ad))))));
 }
 
 // İnternet durumu: Pro internetle çalışır

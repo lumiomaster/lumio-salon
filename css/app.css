@@ -332,3 +332,42 @@ textarea { width: 100%; font: inherit; color: inherit; background: var(--kart2);
 .bolum { margin-bottom: 18px; }
 .bolum-baslik { font-size: 1.05rem; margin: 14px 2px 8px; padding-bottom: 4px; border-bottom: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
 .bolum-chip { margin: 8px 0 4px; }
+
+/* ===== Görsel iyileştirme (T17): simgeler, alt menü, rakamlar, bildirim ===== */
+:root { --vurgu-yumusak: rgba(91, 140, 255, .16); --parlak: rgba(155, 107, 255, .35); }
+body { font-feature-settings: 'tnum' 1, 'kern' 1; letter-spacing: .005em; }
+h1, h2, h3 { letter-spacing: -.012em; }
+/* Para ve sayılar aynı genişlikte: sütunlar hizalı okunur */
+.hesap-satir span:last-child, .uye-ust strong:last-child, .nakit-toplam, .odenecek, .gun-pay, .odeme-ozet strong { font-variant-numeric: tabular-nums; }
+
+/* Alt menü: çizgi simgeler, seçili sekmede yumuşak hap ve üstte ince çizgi */
+.alt-menu { background: color-mix(in srgb, var(--kart) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top-color: var(--cizgi); }
+.sekme { position: relative; gap: 3px; font-size: .66rem; letter-spacing: 0; transition: color .15s; min-width: 0; flex: 1 1 0; padding: 0; }
+.sekme-ikon { width: 40px; max-width: 90%; height: 28px; display: grid; place-items: center; border-radius: 14px; font-size: 1.2rem; filter: none; transition: background .18s, transform .18s; }
+.sekme .cizgi-ikon { display: block; }
+.sekme.secili { color: var(--yazi); }
+.sekme.secili .sekme-ikon { background: var(--vurgu-yumusak); color: #a9c1ff; }
+.sekme.secili::before { content: ''; position: absolute; top: 0; left: 50%; width: 22px; height: 3px; margin-left: -11px; border-radius: 0 0 3px 3px; background: linear-gradient(90deg, var(--vurgu), var(--vurgu2)); }
+.sekme:active .sekme-ikon { transform: scale(.92); }
+.sekme:focus-visible { outline: 2px solid var(--vurgu); outline-offset: -3px; border-radius: 10px; }
+.sekme-ad { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+
+/* Bildirim: sol şeritle durum rengi, daha sakin */
+.bildirim { border-radius: 12px; border-width: 1px; border-left-width: 4px; border-left-color: var(--vurgu); font-size: .92rem; backdrop-filter: blur(8px); }
+.bildirim.hata { border-left-color: var(--kotu); }
+:root[data-tema="acik"] .sekme.secili .sekme-ikon { background: #e3ebff; color: #2f5fd6; }
+:root[data-tema="acik"] .alt-menu { background: rgba(255,255,255,.92); }
+@media (prefers-reduced-motion: reduce) { .sekme-ikon, .sekme { transition: none; } .sekme:active .sekme-ikon { transform: none; } }
+
+/* Hizmet satırı: tek kompakt kart */
+.hizmet { padding: 12px 14px; gap: 4px; }
+.hizmet-alt { flex-wrap: wrap; }
+.hizmet-rozetler { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; justify-content: flex-end; }
+.hizmet-duzenle { width: auto; min-width: 0; padding: 4px 14px; margin: 0; }
+.bolum-baslik { font-size: 1rem; }
+/* Usta hesabı: ödenecek tutar öne çıkar, detay satırları sakin */
+.usta-hesap .uye-ust { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--cizgi, rgba(255,255,255,.12)); }
+.usta-hesap .uye-ust strong:last-child { font-size: 1.3rem; }
+.usta-hesap .hesap-satir { font-size: .92rem; }
+.usta-hesap .hesap-satir span:first-child { color: var(--soluk, #8b93a7); }
+.usta-hesap .hesap-satir span:last-child { font-weight: 600; }
