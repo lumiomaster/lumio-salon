@@ -3,7 +3,8 @@ import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential
+  signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential,
+  multiFactor, TotpMultiFactorGenerator, getMultiFactorResolver
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, arrayUnion, increment
@@ -21,5 +22,6 @@ export const auth2 = getAuth(app2);
 export {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential,
+  multiFactor, TotpMultiFactorGenerator, getMultiFactorResolver,
   doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, arrayUnion, increment
 };

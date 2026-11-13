@@ -4,6 +4,8 @@ import { S } from '../durum.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
 import { urunleriYukle } from '../veri.js';
 import { formulStokYaz } from '../stok-yaz.js';
+import { stokYazi } from '../stok-mantik.js';
+import { aramaKutusu, ara, norm } from '../arama.js';
 
 
 // ---- Formülde kullanılan ürünler (stoktan düşer) ----
@@ -11,6 +13,70 @@ import { formulStokYaz } from '../stok-yaz.js';
 export function urunYazisi(kayit) {
   return (kayit && kayit.urunler && kayit.urunler.length) ? kayit.urunler.map(x => x.ad + ' ' + x.miktar + ' ' + (x.birim === 'gram' ? 'gr' : 'adet')).join(' + ') : '';
 }
+// Bu telefonda hangi ürünü ne kadar sık seçtiği (boş aramada en çok kullanılanlar üstte çıksın)
+const kullanimAnahtar = () => 'lumio_urun_kul_' + (S.salon ? S.salon.id : '') + '_' + (auth.currentUser ? auth.currentUser.uid : '');
+function kullanimOku() { try { return JSON.parse(localStorage.getItem(kullanimAnahtar()) || '{}') || {}; } catch (_) { return {}; } }
+function kullanimYaz(id) { try { const k = kullanimOku(); k[id] = (k[id] || 0) + 1; localStorage.setItem(kullanimAnahtar(), JSON.stringify(k)); } catch (_) { /* depolama yok */ } }
+const HIZLI = { gram: [10, 20, 30, 40, 50, 60], adet: [1, 2, 3] };
+
+// Ürün arama penceresi: yazdıkça filtreler, ürüne basınca miktar sorar, arka arkaya ürün eklenebilir.
+// eklendi({urunId, miktar}) her eklemede çağrılır.
+export function urunAramaPenceresi(urunler, mevcutId, eklendi) {
+  const aktifler = (urunler || []).filter(x => x.aktif !== false);
+  const icerik = h('div', { class: 'urun-arama' });
+  const p = pencereAc(t('Ürün ekle'), icerik);
+  const eklenenler = [];
+  const liste = h('div', { class: 'arama-liste' });
+  const durum = h('div', { class: 'kucuk arama-durum' });
+  const kutu = aramaKutusu((q) => listele(q), t('Ürün ara (örn. 6.0, oksidan)'));
+  const alan = (u) => ({ alanlar: [u.ad, u.kategori || '', u.marka || ''] });
+  const stokMetin = (u) => stokYazi(u, u.stok);
+  function listele(q) {
+    const kul = kullanimOku();
+    let l;
+    if (!norm(q)) l = aktifler.slice().sort((a, b) => (kul[b.id] || 0) - (kul[a.id] || 0) || a.ad.localeCompare(b.ad)).slice(0, 12);
+    else l = ara(aktifler, q, alan, 20);
+    doldur(liste,
+      l.map(u => h('button', { type: 'button', class: 'urun-kart' + (Number(u.stok) <= 0 ? ' soluk' : ''), onclick: () => miktarGoster(u) },
+        h('span', { class: 'urun-ad' }, u.ad, !norm(q) && kul[u.id] ? h('span', { class: 'rozet' }, '★') : null),
+        h('span', { class: 'kucuk' }, t('Kalan') + ': ' + stokMetin(u)))),
+      !l.length ? h('p', { class: 'kucuk' }, t('Bulunamadı. Başka bir yazımla deneyin; ürün listede yoksa Salon > Stok bölümünden ekleyin.')) : null);
+    durum.textContent = !norm(q) ? t('En çok kullandıklarınız üstte. Aramak için yazın.') : '';
+  }
+  function miktarGoster(u) {
+    const gram = u.birim === 'gram';
+    const girdi = h('input', { type: 'text', inputmode: 'decimal', placeholder: gram ? t('gram') : t('adet'), 'aria-label': t('Miktar') });
+    const hata = h('div', { class: 'hata', role: 'alert' });
+    const ekle = () => {
+      const m = sayi(girdi.value);
+      if (!(m > 0)) { hata.textContent = t('Miktarı yazın.'); return; }
+      kullanimYaz(u.id);
+      eklendi({ urunId: u.id, miktar: String(Math.round(m * 100) / 100).replace('.', ',') });
+      eklenenler.push(u.ad + ' ' + (Math.round(m * 100) / 100) + ' ' + (gram ? 'gr' : t('adet')));
+      anaGoster();
+    };
+    doldur(icerik,
+      h('div', { class: 'kart' }, h('strong', null, u.ad), h('div', { class: 'kucuk' }, t('Kalan') + ': ' + stokMetin(u))),
+      h('div', { class: 'hizli-miktar' }, (gram ? HIZLI.gram : HIZLI.adet).map(n => h('button', { type: 'button', class: 'dugme ikincil kucuk-dugme', onclick: () => { girdi.value = String(n); ekle(); } }, n + (gram ? ' gr' : '')))),
+      h('label', null, gram ? t('Başka miktar (gram)') : t('Başka miktar (adet)'), girdi),
+      hata,
+      h('div', { class: 'dugme-satir' },
+        h('button', { type: 'button', class: 'dugme ikincil', onclick: anaGoster }, t('Geri')),
+        h('button', { type: 'button', class: 'dugme', onclick: ekle }, t('Ekle'))));
+    setTimeout(() => { try { girdi.focus(); } catch (_) { /* odak yok */ } }, 50);
+  }
+  function anaGoster() {
+    doldur(icerik,
+      kutu,
+      eklenenler.length ? h('div', { class: 'kart bilgi kucuk' }, '✓ ' + eklenenler.join(' · ')) : null,
+      durum, liste,
+      h('div', { class: 'dugme-satir' }, h('button', { type: 'button', class: 'dugme', onclick: p.kapat }, eklenenler.length ? t('Bitti') : t('Kapat'))));
+    kutu.value = ''; listele('');
+    setTimeout(() => { try { kutu.focus(); } catch (_) { /* odak yok */ } }, 50);
+  }
+  anaGoster();
+}
+
 export function formulUrunleri(baslangic) {
   const satirlar = (baslangic || []).map(x => ({ urunId: x.urunId, miktar: String(x.miktar).replace('.', ',') }));
   let urunler = null, yuklendi = false;
@@ -19,14 +85,17 @@ export function formulUrunleri(baslangic) {
   const ciz = () => {
     doldur(kutu,
       satirlar.map((s, i) => { const u = uOf(s.urunId); return h('div', { class: 'formul-urun-satir' },
-        h('select', { 'aria-label': t('Ürün'), onchange: (e) => { s.urunId = e.target.value; ciz(); } },
-          h('option', { value: '' }, t('Ürün seçin…')),
-          (urunler || []).filter(x => x.aktif !== false || x.id === s.urunId).map(x => h('option', { value: x.id, selected: x.id === s.urunId }, x.ad)),
-          s.urunId && !uOf(s.urunId) ? h('option', { value: s.urunId, selected: true }, t('(silinmiş ürün)')) : null),
+        h('span', { class: 'urun-ad' }, u ? u.ad : t('(silinmiş ürün)')),
         h('input', { type: 'text', inputmode: 'decimal', placeholder: u && u.birim === 'gram' ? t('gram') : t('adet'), value: s.miktar, 'aria-label': t('Miktar'), oninput: (e) => { s.miktar = e.target.value; } }),
         h('span', { class: 'kucuk' }, u ? (u.birim === 'gram' ? 'gr' : t('adet')) : ''),
         h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Satırı sil'), onclick: () => { satirlar.splice(i, 1); ciz(); } }, '🗑')); }),
-      urunler && urunler.some(x => x.aktif !== false) ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => { satirlar.push({ urunId: '', miktar: '' }); ciz(); } }, t('+ Stoktan ürün (gramı düşer)')) : (yuklendi ? h('p', { class: 'kucuk' }, t('Stoktan düşmek için önce Salon > Stok bölümüne ürün ekleyin.')) : null));
+      urunler && urunler.some(x => x.aktif !== false) ? h('button', { class: 'dugme ikincil kucuk-dugme arama-dugme', type: 'button',
+        onclick: () => urunAramaPenceresi(urunler, null, (e) => {
+          const var_ = satirlar.find(x => x.urunId === e.urunId);
+          if (var_) var_.miktar = String((sayi(var_.miktar) || 0) + sayi(e.miktar)).replace('.', ',');
+          else satirlar.push({ urunId: e.urunId, miktar: e.miktar });
+          ciz();
+        }) }, '🔍 ' + t('+ Ürün ekle (stoktan)')) : (yuklendi ? h('p', { class: 'kucuk' }, t('Stoktan düşmek için önce Salon > Stok bölümüne ürün ekleyin.')) : null));
   };
   ciz();
   urunleriYukle().then(l => { urunler = l; yuklendi = true; ciz(); }).catch(() => { yuklendi = true; ciz(); });
@@ -45,6 +114,9 @@ export function formulUrunleri(baslangic) {
     }
   };
 }
+
+// Seçilen ürünlerden otomatik formül yazısı: "6.0 Boya 40 gr + 9% Oksidan 60 ml"
+export function formulMetni(urunler) { return urunYazisi({ urunler }); }
 
 // Bir randevu kaleminin (hizmetin) formül ve notunu kaydeder. Kayıt adı: randevu_kalemSırası
 // (Boya formülü şimdilik serbest yazı; 6. teslimde "ürün + gram" satırlarına dönüşecek.)

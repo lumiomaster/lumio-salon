@@ -61,7 +61,8 @@ function uyeKarti(k, benRol, lisansOk) {
     h('div', { class: 'uye-alt' },
       h('a', { href: 'tel:+' + k.telefon }, telGoster(k.telefon)),
       k.silindi ? h('span', { class: 'rozet pasif-rozet' }, t('Silindi')) : (k.aktif ? null : h('span', { class: 'rozet pasif-rozet' }, t('Pasif')))),
-    duzenlenebilir && !k.silindi ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(k) }, t('Düzenle')) : null);
+    duzenlenebilir && !k.silindi ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(k) }, t('Düzenle')) : null,
+    k.silindi && yetkiliMi(benRol) && k.id !== auth.currentUser.uid && sunucuHazir() ? h('button', { class: 'dugme ikincil kucuk-dugme tehlike', type: 'button', onclick: () => kaliciSil(k) }, t('Kalıcı sil')) : null);
 }
 
 function rolSecimi(roller, secili) {
@@ -160,7 +161,8 @@ function duzenleFormu(k) {
         } catch (err) { console.error(err); hataKutu.textContent = hataMetni(err); }
       });
     } },
-    h('p', { class: 'soluk' }, telGoster(k.telefon)),
+    h('div', { class: 'tel-satir' }, h('span', { class: 'soluk' }, telGoster(k.telefon)),
+      sunucuHazir() ? h('button', { class: 'baglanti kucuk', type: 'button', onclick: () => telefonDegistir(k, pencere) }, t('Telefonu değiştir')) : null),
     h('label', null, t('Adı soyadı'), ad),
     h('label', null, t('Görevi'), rol),
     h('label', { class: 'onay', for: 'uye-aktif' }, aktif, h('span', null, t('Aktif (pasif yapılırsa uygulamaya giremez)'))),
@@ -195,6 +197,66 @@ async function sifreSifirla(k, pencere) {
         h('button', { class: 'dugme ikincil', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(metin); bildir(t('Kopyalandı')); } catch (_) { bildir(t('Kopyalanamadı, elle yazın.'), 'hata'); } } }, t('Kopyala')),
         h('button', { class: 'dugme', type: 'button', onclick: p.kapat }, t('Tamam'))));
   } catch (e) { console.error(e); bildir(e.message || hataMetni(e), 'hata'); }
+}
+
+// Giriş telefonunu değiştirir: şifre, geçmiş randevu/kazanç ve müşteriler olduğu gibi kalır
+function telefonDegistir(k, pencere) {
+  pencere.kapat();
+  const yeni = h('input', { type: 'tel', inputmode: 'tel', placeholder: '05xx xxx xx xx', required: true });
+  const hataKutu = h('div', { class: 'hata', role: 'alert' });
+  const dugme = h('button', { class: 'dugme', type: 'submit' }, t('Telefonu değiştir'));
+  const icerik = h('div', null);
+  const p = pencereAc(t('Telefonu değiştir') + ' · ' + k.ad, icerik);
+  icerik.append(h('form', { class: 'form', novalidate: true,
+    onsubmit: (e) => {
+      e.preventDefault(); hataKutu.textContent = '';
+      const d = telNormalize(yeni.value);
+      if (!d) { hataKutu.textContent = t('Geçerli bir telefon numarası yazın.'); return; }
+      if (d === k.telefon) { hataKutu.textContent = t('Yeni numara eskisiyle aynı.'); return; }
+      kilitli(dugme, async () => {
+        try {
+          await sunucuyaSor('/telefon-degistir', { uid: k.id, yeniTel: d });
+          try {
+            const b = writeBatch(db); kayitEkle(b, 'uye_degistir', k.id, k.ad + ': telefon ' + k.telefon + ' → ' + d); await b.commit();
+          } catch (e2) { console.error(e2); }
+          liste = null; uyelerGecersiz();
+          icerik.replaceChildren(
+            h('div', { class: 'kart bilgi' }, h('strong', null, k.ad), h('p', null, t('Yeni giriş numarası') + ': ' + telGoster(d))),
+            h('p', { class: 'kucuk' }, t('Şifresi değişmedi; kişi yeni numarasıyla eski şifresiyle girer. Açıksa oturumu kapanabilir, yeniden girmesi gerekir.')),
+            h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme', type: 'button', onclick: p.kapat }, t('Tamam'))));
+          goster();
+        } catch (err) { console.error(err); hataKutu.textContent = err.message || hataMetni(err); }
+      });
+    } },
+    h('p', { class: 'soluk' }, t('Şu an') + ': ' + telGoster(k.telefon)),
+    h('label', null, t('Yeni telefon numarası'), yeni),
+    hataKutu, dugme));
+}
+
+// Eski çalışanı tamamen kaldırır (kişi kartı + giriş hesabı); randevu, ödeme ve kasa kayıtları durur
+function kaliciSil(k) {
+  const ad = h('input', { type: 'text', autocomplete: 'off', placeholder: k.ad });
+  const hataKutu = h('div', { class: 'hata', role: 'alert' });
+  const dugme = h('button', { class: 'dugme tehlike', type: 'submit', disabled: true }, t('Kalıcı olarak sil'));
+  const norm = (x) => String(x || '').trim().toLocaleLowerCase(yerel());
+  ad.addEventListener('input', () => { dugme.disabled = norm(ad.value) !== norm(k.ad); });
+  const icerik = h('div', null);
+  const p = pencereAc(t('Kalıcı sil') + ' · ' + k.ad, icerik);
+  icerik.append(h('form', { class: 'form', novalidate: true,
+    onsubmit: (e) => {
+      e.preventDefault(); hataKutu.textContent = '';
+      if (norm(ad.value) !== norm(k.ad)) return;
+      kilitli(dugme, async () => {
+        try {
+          await sunucuyaSor('/hesap-sil', { uid: k.id, kalici: true });
+          try { const b = writeBatch(db); kayitEkle(b, 'uye_kalici_sil', k.id, k.ad); await b.commit(); } catch (e2) { console.error(e2); }
+          p.kapat(); liste = null; uyelerGecersiz(); bildir(t('{ad} kalıcı olarak silindi.', { ad: k.ad })); goster();
+        } catch (err) { console.error(err); hataKutu.textContent = err.message || hataMetni(err); }
+      });
+    } },
+    h('p', null, t('Bu kişinin kartı ve giriş hesabı tamamen silinir; geri alınamaz. Geçmiş randevu, ödeme ve kasa kayıtlarında adı kalır. Telefon numarası serbest kalır.')),
+    h('label', null, t('Onay için adını yazın') + ': ' + k.ad, ad),
+    hataKutu, dugme));
 }
 
 // Başka ekrandan dönünce liste yenilensin

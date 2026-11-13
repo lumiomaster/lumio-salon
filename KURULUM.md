@@ -1,3 +1,23 @@
+# Teslim 17 (1.7.0)
+
+## Yenilikler
+Randevu formu: stoktan akıllı ürün arama (formül otomatik), "Not ekle", müşteri akıllı arama, sonraki ziyaret planı. Ekip: telefon düzenleme, eski çalışanı kalıcı silme. Aydınlık/karanlık tema ve yazı boyutu, muhasebe CSV dışa aktarma, kâr grafikleri, internet kesilince uyarı, destek modu (salonun izniyle, süreli, salt okunur), yönetici ek doğrulama (2 adım) ve vekil.
+
+## Kurulum sırası
+1. Zip'in içindekileri GitHub'a yükleyin (`.nojekyll` dahil).
+2. Site yayına girince Firebase > Firestore > Kurallar: `firestore.rules` içeriğini yapıştırıp **Yayınla**.
+3. Cloudflare > lumio-salon-ai > Edit code: `worker.js` yapıştırıp **Deploy** (yeni yollar: /telefon-degistir, /mfa-hazirla, kalıcı /hesap-sil). Yeni secret yok.
+4. Salon sahipleri yeni yasal metni (v6) bir kez yeniden kabul eder.
+
+## Veri yedeği (Blaze gerekir)
+Firebase > Firestore > Disaster recovery > Scheduled backups: günlük yedek, saklama 7+ gün. Geri alma: aynı sayfada yedeğin yanındaki Restore ile yeni bir veritabanına; kontrol edip geçiş yapın. Ayrıca Point-in-time recovery açılabilir. Bütçe uyarısı için Billing > Budgets'ta bir limit koyun.
+
+## Ek doğrulama (2 adım)
+Firebase > Authentication > Settings > "Upgrade to Identity Platform" ; sonra Sign-in method > Multi-factor authentication > TOTP etkinleştir. Ardından yönetici panelinde Hesabım > "Ek doğrulamayı aç". Etkinleştirilmezse kart açıklayıcı hata verir; uygulamanın geri kalanı etkilenmez. Önce vekil hesabı ekleyin.
+
+## Dürüst notlar
+Ek doğrulama canlı olarak burada denenemedi; ilk yönetici hesabında deneyin. Destek modu yalnızca salon sahibi açınca çalışır, gizli erişim yoktur.
+
 # Teslim 16 (1.6.0) — kurulum sırası
 Bu zip, 14. ve 15. teslimlerin TÜMÜNÜ de içerir (ayrıca yüklemenize gerek yok).
 

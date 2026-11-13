@@ -1,7 +1,7 @@
 // LUMIO SALON - ayarlar (ad, logo ve bağlantılar tek yerden değişir)
 export const UYGULAMA = {
   ad: 'LUMIO SALON',
-  surum: '1.6.0 (16. teslim)',
+  surum: '1.7.0 (17. teslim)',
   logo: 'icons/logo.png'
 };
 
@@ -19,7 +19,7 @@ export const ALIAS_ALAN = 'uye.lumiosalon.app';
 
 export const DENEME_GUN = 14;          // Yalnız bitisMs'i olmayan ESKİ deneme salonları için (firestore.rules içindeki 14 ile aynı); yenilerinde süreyi yönetici paneli belirler
 export const DESTEK_TEL = '905354049392';   // Lisans yenileme için salonların WhatsApp'tan yazacağı destek numarası (90 ile başlayan, boşluksuz)
-export const YASAL_SURUM = 'v5';  // yasal metinler değişince artırın
+export const YASAL_SURUM = 'v6';  // yasal metinler değişince artırın
 // Yasal metinlerde görünen sağlayıcı bilgileri
 export const SIRKET = { unvan: 'LUMIO SALON', iletisim: 'WhatsApp +90 535 404 93 92', saklamaAy: 12 };
 

@@ -11,7 +11,10 @@ import { tarihTR } from '../mesaj.js';
 import { yuvarla } from '../kasa-mantik.js';
 import { stokYazi } from '../stok-mantik.js';
 import { karHesapla, hizmetKarliligi, ayAralik, ayEkle, ayYazi } from '../kar-mantik.js';
+import { ustaOzetleri, gunOzeti } from '../kasa-mantik.js';
 import { sembol } from '../ulke.js';
+import { uyeleriYukle } from '../veri.js';
+import { csvYap, dosyaAdi, odemeSatirlari, kalemSatirlari, ustaSatirlari, giderSatirlari, ozetSatirlari } from '../disa-aktar-mantik.js';
 
 const bugun = () => tarihMetin(new Date());
 const K = { ay: bugun().slice(0, 7), alt: 'ozet' };
@@ -28,11 +31,13 @@ export function karEkrani() {
 async function yukle(kutu, yenile) {
   try {
     const { bas, bit } = ayAralik(K.ay);
-    const [odemeler, u, ayar, hareketler, urunler, giderler, islemler, alislar, ikramiyeler] = await Promise.all([
+    const onc = ayAralik(ayEkle(K.ay, -1));
+    const [odemeler, u, ayar, hareketler, urunler, giderler, islemler, alislar, ikramiyeler, oncekiOdemeler, uyeler] = await Promise.all([
       aralikOdemeleriniYukle(bas, bit), ustalariYukle(), ayariYukle(), aralikHareketleriniYukle(bas, bit), urunleriYukle(), giderleriYukle(),
-      aralikIslemleriniYukle(bas, bit), aralikAlislariniYukle(bas, bit), ikramiyeleriYukle(K.ay).catch(() => [])
+      aralikIslemleriniYukle(bas, bit), aralikAlislariniYukle(bas, bit), ikramiyeleriYukle(K.ay).catch(() => []),
+      aralikOdemeleriniYukle(onc.bas, onc.bit).catch(() => []), uyeleriYukle().catch(() => [])
     ]);
-    ciz(kutu, { odemeler, mali: u.mali, taban: (ayar && ayar.urunTaban) || 'kar', hareketler, urunler, giderler, islemler, alislar, ikramiyeler }, yenile);
+    ciz(kutu, { oncekiOdemeler, uyeler, odemeler, mali: u.mali, taban: (ayar && ayar.urunTaban) || 'kar', hareketler, urunler, giderler, islemler, alislar, ikramiyeler }, yenile);
   } catch (e) {
     console.error(e);
     kutu.replaceChildren(h('div', { class: 'uyari' }, hataMetni(e)), h('button', { class: 'dugme ikincil', type: 'button', onclick: yenile }, t('Tekrar dene')));
@@ -46,6 +51,7 @@ function ciz(kutu, D, yenile) {
       h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Önceki ay'), onclick: () => { K.ay = ayEkle(K.ay, -1); yenile(); } }, '‹'),
       h('strong', null, ayYazi(K.ay)),
       h('button', { class: 'ikon-dugme', type: 'button', 'aria-label': t('Sonraki ay'), disabled: K.ay >= bugun().slice(0, 7), onclick: () => { K.ay = ayEkle(K.ay, 1); yenile(); } }, '›')),
+    yetkiliMi(S.profil.rol) ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'baglanti', type: 'button', onclick: () => disaAktar(D) }, '⬇ ' + t('Muhasebeye aktar (CSV / Excel)'))) : null,
     h('div', { class: 'sekme-cubugu dort' }, ALT.map(([id, ad]) => h('button', { type: 'button', class: id === K.alt ? 'secili' : '', onclick: () => { K.alt = id; ciz(kutu, D, yenile); } }, t(ad)))),
     bolum(D, yenile));
 }
@@ -72,6 +78,7 @@ function ozet(D) {
       r.ikramiye > 0 ? sat(t('Hedef ikramiyeleri'), '− ' + para(r.ikramiye)) : null,
       h('div', { class: 'hesap-satir ust-cizgi kar-satir' }, h('strong', null, t('Kâr')), h('strong', { class: r.kar < 0 ? 'eksi' : 'kar-artı' }, para(r.kar))),
       marj != null ? h('div', { class: 'kucuk soluk' }, t('Ciroya oranı: %{m}', { m: marj })) : null),
+    grafikKarti(D),
     fiyatsiz ? h('div', { class: 'kart uyari' }, h('p', { class: 'kucuk' }, t('{n} ürünün alış fiyatı girilmemiş; formül maliyeti eksik hesaplanır. Salon > Stok bölümünden girin.', { n: fiyatsiz }))) : null,
     r.formul.kalemler.length ? h('div', { class: 'kart' }, h('strong', null, t('Formülde en çok kullanılan ürünler')),
       r.formul.kalemler.slice(0, 8).map(k => sat(k.urun.ad + ' · ' + stokYazi(k.urun, k.miktar), para(k.maliyet)))) : null,
@@ -158,4 +165,65 @@ function faturaDetay(x) {
     h('div', null, h('strong', null, x.tedarikci || '—')), h('div', { class: 'soluk' }, tarihYazi(x.tarih) + (x.faturaNo ? ' · ' + x.faturaNo : '')),
     h('div', { class: 'kart kasa-ozet' }, (x.kalemler || []).map(k => sat(k.ad + ' · ' + k.miktar + ' ' + k.birim + ' × ' + para(k.birimFiyat), para(k.tutar))),
       h('div', { class: 'hesap-satir ust-cizgi' }, h('strong', null, t('Toplam')), h('strong', null, para(x.toplam))))));
+}
+
+// ---- Muhasebe için aylık dışa aktarma: yalnız yönetici, kıdemli ve ortak; CSV Excel'de doğrudan açılır ----
+function indir(ad, icerik) {
+  const a = h('a', { href: URL.createObjectURL(new Blob([icerik], { type: 'text/csv;charset=utf-8' })), download: ad });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch (_) { /* gerek yok */ } }, 4000);
+}
+async function disaAktar(D) {
+  const uyeler = await uyeleriYukle().catch(() => []);
+  const adOf = (uid) => { const u = uyeler.find(x => x.id === uid); return u ? u.ad : ''; };
+  const ay = K.ay, salonAd = S.salon.ad;
+  const T = { kart: t('Kart'), nakit: t('Nakit'), gecerli: t('Geçerli'), iptal: t('İptal'), urun: t('Ürün'), hizmet: t('Hizmet'), aylik: t('Her ay'), tek: t('Tek sefer'),
+    ciro: t('Ciro'), komisyon: t('Kart komisyonu'), hakedis: t('Ustaların hakedişi'), salonPayi: t('Salonda kalan'), urunMaliyet: t('Satılan ürün alış maliyeti'),
+    formulMaliyet: t('Formülde kullanılan ürün maliyeti'), gider: t('Giderler'), ikramiye: t('Hedef ikramiyeleri'), kar: t('Kâr'), adet: t('Ödeme sayısı') };
+  const Dd = { ...D, ay };
+  const dosyalar = [
+    ['odemeler', t('Ödemeler'), () => csvYap([t('Tarih'), t('Müşteri'), t('Yöntem'), t('Hizmet / ürün'), t('Usta'), t('Toplam'), t('Komisyon oranı %'), t('Komisyon'), t('Net'), t('Durum')], odemeSatirlari(D.odemeler, adOf, T))],
+    ['kalemler', t('Kalem dökümü (usta payıyla)'), () => csvYap([t('Tarih'), t('Müşteri'), t('Kalem'), t('Tür'), t('Usta'), t('Tutar'), t('Alış maliyeti'), t('Usta payı')], kalemSatirlari(D.odemeler, D.mali, D.taban, adOf, T))],
+    ['usta-hakedis', t('Usta hakedişleri'), () => csvYap([t('Usta'), t('Hizmet cirosu'), t('Ürün satışı'), t('Çapraz satış primi'), t('Kart komisyonu payı'), t('Hakediş')], ustaSatirlari(D.odemeler, D.mali, D.taban, adOf))],
+    ['giderler', t('Giderler'), () => csvYap([t('Tarih'), t('Kategori'), t('Tutar'), t('Not'), t('Tür')], giderSatirlari(D.giderler, ay, T))],
+    ['ozet', t('Aylık özet'), () => csvYap([t('Kalem'), t('Tutar')], ozetSatirlari(Dd, T))]
+  ];
+  const icerik = h('div', null);
+  const p = pencereAc(t('Muhasebeye aktar') + ' · ' + ayYazi(ay), icerik);
+  const tek = (d) => { indir(dosyaAdi(salonAd, ay, d[0]), d[2]()); };
+  icerik.append(
+    h('p', { class: 'kucuk' }, t('CSV dosyaları Excel\'de doğrudan açılır (Türkçe karakterler bozulmaz). Dosyalar seçili aya aittir; iptal edilen ödemeler "Durum" sütunuyla görünür.')),
+    ...dosyalar.map(d => h('div', { class: 'arama-satir' }, h('span', null, d[1]), h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => tek(d) }, t('İndir')))),
+    h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme', type: 'button', onclick: () => { dosyalar.forEach((d, i) => setTimeout(() => tek(d), i * 400)); } }, t('Hepsini indir'))));
+  try { const b = writeBatch(db); b.set(doc(collection(db, 'salons', S.salon.id, 'kayitlar')), { uid: auth.currentUser.uid, islem: 'disa_aktar', hedef: ay, ayrinti: ay + ' muhasebe dışa aktarma açıldı', zaman: serverTimestamp() }); await b.commit(); } catch (e) { console.error(e); }
+  void p;
+}
+
+// ---- Grafikler: bu ay / geçen ay, en çok satan hizmet, en çok kazandıran usta (saf CSS çubukları) ----
+function cubuklar(satirlar) {
+  const en = Math.max(1, ...satirlar.map(x => x.deger));
+  return h('div', { class: 'cubuk-liste' }, satirlar.map(x => h('div', { class: 'cubuk-satir' },
+    h('div', { class: 'cubuk-ust' }, h('span', null, x.etiket), h('span', { class: 'kucuk' }, x.yazi)),
+    h('div', { class: 'cubuk-iz' }, h('div', { class: 'cubuk-dolu' + (x.sinif ? ' ' + x.sinif : ''), style: 'width:' + Math.max(2, Math.round(x.deger / en * 100)) + '%' })))));
+}
+export function grafikVerisi(D, ay) {
+  const gec = D.odemeler.filter(o => o.durum === 'gecerli');
+  const bu = gunOzeti(gec), once = gunOzeti((D.oncekiOdemeler || []).filter(o => o.durum === 'gecerli'));
+  const hz = hizmetKarliligi(D).slice().sort((a, b) => b.adet - a.adet || b.ciro - a.ciro).slice(0, 5);
+  const oz = ustaOzetleri(gec, D.mali, D.taban);
+  const adOf = (uid) => { const u = (D.uyeler || []).find(x => x.id === uid); return u ? u.ad : t('(silinmiş)'); };
+  const ustalar = Object.entries(oz).map(([uid, v]) => ({ ad: adOf(uid), ciro: yuvarla(v.hizmet + v.urun), hakedis: v.hakedis })).sort((a, b) => b.ciro - a.ciro).slice(0, 5);
+  return { bu: yuvarla(bu.nakit + bu.kart), once: yuvarla(once.nakit + once.kart), buAdet: bu.adet, onceAdet: once.adet, hz, ustalar };
+}
+function grafikKarti(D) {
+  const g = grafikVerisi(D, K.ay);
+  if (!g.buAdet && !g.onceAdet) return null;
+  const fark = g.once > 0 ? Math.round((g.bu - g.once) / g.once * 100) : null;
+  return h('div', { class: 'kart grafik-kart' },
+    h('h3', { class: 'ilk' }, t('Grafikler')),
+    h('div', { class: 'kucuk soluk' }, t('Ciro: bu ay ve önceki ay')),
+    cubuklar([{ etiket: ayYazi(K.ay), deger: g.bu, yazi: para(g.bu) + ' · ' + t('{n} ödeme', { n: g.buAdet }), sinif: 'vurgulu' }, { etiket: ayYazi(ayEkle(K.ay, -1)), deger: g.once, yazi: para(g.once) + ' · ' + t('{n} ödeme', { n: g.onceAdet }) }]),
+    fark != null ? h('div', { class: 'kucuk ' + (fark < 0 ? 'eksi' : 'kar-artı') }, (fark >= 0 ? '▲ +' : '▼ ') + fark + '% ' + t('önceki aya göre')) : null,
+    g.hz.length ? h('div', null, h('div', { class: 'kucuk soluk grafik-baslik' }, t('En çok yapılan hizmetler')), cubuklar(g.hz.map(x => ({ etiket: x.ad, deger: x.adet, yazi: t('{n} kez', { n: x.adet }) + ' · ' + para(x.ciro) })))) : null,
+    g.ustalar.length ? h('div', null, h('div', { class: 'kucuk soluk grafik-baslik' }, t('En çok ciro getiren ustalar')), cubuklar(g.ustalar.map(x => ({ etiket: x.ad, deger: x.ciro, yazi: para(x.ciro) })))) : null);
 }

@@ -12,6 +12,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="LUMIO SALON">
+  <script>
+    /* Tema ve yazı boyutunu sayfa çizilmeden uygula (js/tema.js ile aynı kural) */
+    (function () { try {
+      var t = localStorage.getItem('lumio_tema') || 'koyu', y = { kucuk: 15, normal: 16, buyuk: 18, cokbuyuk: 20 }[localStorage.getItem('lumio_yazi') || 'normal'] || 16;
+      var acik = t === 'acik' || (t === 'sistem' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.dataset.tema = acik ? 'acik' : 'koyu'; document.documentElement.style.setProperty('--yazi-boyu', y + 'px');
+    } catch (e) {} })();
+  </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>

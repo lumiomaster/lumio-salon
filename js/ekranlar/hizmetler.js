@@ -105,6 +105,7 @@ function hizmetFormu(x, yenile, oran) {
   const fiyat = h('input', { type: 'text', inputmode: 'decimal', value: x ? String(x.fiyat).replace('.', ',') : '', placeholder: '0', required: true });
   const sure = h('input', { type: 'text', inputmode: 'numeric', value: x ? String(x.sure) : '30', required: true });
   const grupSec = h('select', { 'aria-label': t('Oran grubu') }, h('option', { value: '' }, t('Genel')), oran.gruplar.map(g => h('option', { value: g.id, selected: x && x.oranGrup === g.id }, g.ad)));
+  const tekrar = h('input', { type: 'text', inputmode: 'numeric', value: x && x.tekrarHafta ? String(x.tekrarHafta) : '', placeholder: t('örn. 4 (boş bırakılabilir)'), maxlength: 2 });
   const aktif = h('input', { type: 'checkbox', id: 'hizmet-aktif', checked: x ? !!x.aktif : true });
   const asamaVar = h('input', { type: 'checkbox', id: 'asama-var', checked: !!(x && x.asamalar && x.asamalar.length) });
   let asamalar = x && x.asamalar ? x.asamalar.map(a => ({ ...a })) : [];
@@ -151,11 +152,13 @@ function hizmetFormu(x, yenile, oran) {
         s = toplam();
       } else s = parseInt(sure.value, 10);
       if (!Number.isInteger(s) || s < 5 || s > 600) { hata.textContent = t('Süre 5 ile 600 dakika arasında olmalı.'); return; }
+      const th = tekrar.value.trim() === '' ? 0 : parseInt(tekrar.value, 10);
+      if (!Number.isInteger(th) || th < 0 || th > 52) { hata.textContent = t('Tekrar süresi 1 ile 52 hafta arasında olmalı.'); return; }
       kilitli(dugme, async () => {
         try {
           const ref = x ? doc(db, 'salons', S.salon.id, 'hizmetler', x.id) : doc(collection(db, 'salons', S.salon.id, 'hizmetler'));
           const b = writeBatch(db);
-          b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), guncelleme: serverTimestamp() });
+          b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), ...(th > 0 ? { tekrarHafta: th } : {}), guncelleme: serverTimestamp() });
           kayit(b, (yeni ? 'Eklendi: ' : 'Değişti: ') + adT + ' ' + f + ' ' + sembol() + ', ' + s + ' dk');
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
@@ -166,6 +169,7 @@ function hizmetFormu(x, yenile, oran) {
     h('label', null, t('Fiyat (₺)'), fiyat),
     h('label', null, t('Usta oran grubu'), grupSec), h('p', { class: 'kucuk' }, t('Ustanın bu hizmetten alacağı yüzde, seçilen gruba göre belirlenir (Ustalar bölümünde her usta için yüzdeleri yazarsınız).')),
     h('label', null, t('Toplam süre (dakika)'), sure),
+    h('label', null, t('Genelde kaç haftada bir tekrarlanır?'), tekrar), h('p', { class: 'kucuk' }, t('Randevuda "Sonraki ziyaret" için bu süre önerilir (örn. dip boya 4 hafta).')),
     h('label', { class: 'onay', for: 'asama-var' }, asamaVar, h('span', null, t('Bu hizmet aşamalı (örn. boya: sür, bekle, durula)'))),
     asamaKutu,
     h('label', { class: 'onay', for: 'hizmet-aktif' }, aktif, h('span', null, t('Aktif (pasif hizmet takvimde seçilemez)'))),

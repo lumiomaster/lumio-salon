@@ -109,11 +109,16 @@ export function onayIste(metin, evetMetni) {
 }
 
 // Bir düğmeyi işlem sürerken kilitler (çift tıklama koruması)
+// İnternet yokken kayıt başlatılmaz (Firebase yazıyı kuyruğa alıp sonra uygular; kişi tekrar bastıkça çift kayıt olurdu).
+// Bağlantı yavaşsa 20 sn sonra "tekrar basmayın" uyarısı çıkar.
 export async function kilitli(dugme, yap) {
   if (dugme.disabled) return;
+  if (globalThis.__destekGorunumu && globalThis.__destekGorunumu()) { bildir(t('Destek görünümü salt okunurdur; değişiklik yapılamaz.'), 'hata'); return; }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { bildir(t('İnternet yok; kayıt yapılmadı. Bağlantı gelince tekrar deneyin.'), 'hata'); return; }
   const eski = dugme.textContent;
   dugme.disabled = true; dugme.textContent = t('Bekleyin…');
-  try { return await yap(); } finally { dugme.disabled = false; dugme.textContent = eski; }
+  const bekci = setTimeout(() => bildir(t('Bağlantı yavaş. Kaydınız bağlantı gelince tamamlanır; lütfen tekrar basmayın.'), 'hata'), 20000);
+  try { return await yap(); } finally { clearTimeout(bekci); dugme.disabled = false; dugme.textContent = eski; }
 }
 
 export function rastgeleSifre() {

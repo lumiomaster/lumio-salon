@@ -10,8 +10,9 @@ import {
   doc, collection, getDocs, writeBatch, serverTimestamp
 } from '../fb.js';
 import { goster } from '../main.js';
-import { sifreKarti } from './ayarlar.js';
+import { sifreKarti, ekDogrulamaKarti } from './ayarlar.js';
 import { sunucuyaSor } from '../sunucu.js';
+import { destekBitis, destekGoruntule } from '../destek.js';
 import { ULKELER, PARALAR, telNormalize as telNorm, telGirdi } from '../ulke.js';
 
 const GUN = 864e5;
@@ -92,7 +93,7 @@ export function yoneticiCikisKarti() {
 }
 function hesapKarti() {
   return h('div', null, h('div', { class: 'kart' }, h('strong', null, S.yonetici ? S.yonetici.ad : ''), h('p', { class: 'soluk' }, t('Platform yöneticisi') + (S.yonetici && S.yonetici.telefon ? ' · ' + telGoster(S.yonetici.telefon) : ''))),
-    sifreKarti(), yoneticiCikisKarti(), h('p', { class: 'kucuk ortala' }, UYGULAMA.ad + ' · ' + UYGULAMA.surum));
+    sifreKarti(), ekDogrulamaKarti(), yoneticiCikisKarti(), h('p', { class: 'kucuk ortala' }, UYGULAMA.ad + ' · ' + UYGULAMA.surum));
 }
 
 // ---------- salon listesi ----------
@@ -171,6 +172,7 @@ function salonKarti(s) {
       s.sahipAd ? h('span', null, s.sahipAd) : null,
       s.sahipTel ? h('a', { href: 'tel:+' + s.sahipTel }, telGoster(s.sahipTel)) : h('span', { class: 'soluk' }, t('Telefon kayıtlı değil')),
       s.satis === true ? h('span', { class: 'rozet' }, t('Satış paketi açık')) : null,
+      destekBitis(s) ? h('span', { class: 'rozet kabul-tamam' }, t('Destek erişimi açık')) : null,
       bitisYazi ? h('span', { class: b.yaklasan ? 'rozet yaklasan' : 'soluk' }, bitisYazi) : null,
       s.ownerUid ? (s.kabul ? h('span', { class: 'rozet kabul-tamam' }, t('Kabul etti: {t}', { t: kabulTarih(s.kabul) })) : h('span', { class: 'rozet kabul-bekle' }, t('Kabul bekliyor'))) : null,
       h('span', { class: 'soluk' }, (s.ulke || s.ulkeKayit) && ULKELER[s.ulke || s.ulkeKayit] ? t(ULKELER[s.ulke || s.ulkeKayit].ad) + (PARALAR[s.para] ? ' · ' + PARALAR[s.para].sembol : ' · ' + t('para birimi seçilmedi')) : t('Ülke seçilmedi'))),
@@ -182,6 +184,7 @@ function salonKarti(s) {
         ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'AKTIF') }, t('Aktif yap'))
         : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => durumDegistir(s, 'PASIF') }, t('Pasif yap')),
       (s.sahipTel || s.ownerUid) ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => mesajSecimi(s) }, t('Mesaj gönder')) : null,
+      destekBitis(s) ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => destekGoruntule(s) }, '🛟 ' + t('Destek görünümü')) : null,
       h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => duzenleFormu(s) }, t('Düzenle'))));
 }
 
@@ -409,6 +412,7 @@ function yoneticiListesi() {
     h('div', { class: 'baslik-satir' }, h('strong', null, t('Platform yöneticileri')),
       h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: yoneticiEkleFormu }, t('+ Yönetici / vekil ekle'))),
     h('p', { class: 'kucuk' }, t('Yöneticiler salonları açabilir, lisans süresini değiştirebilir. İlk (sahip) yönetici panelden pasif yapılamaz.')),
+    yoneticiler.filter(y => y.aktif).length < 2 ? h('div', { class: 'kart uyari' }, h('p', { class: 'kucuk' }, '⚠️ ' + t('Tek yönetici hesabı var. Telefonunuz kaybolursa ya da şifrenizi unutursanız panele giremezsiniz; güvendiğiniz birini vekil olarak ekleyin.'))) : null,
     h('div', { class: 'liste' }, yoneticiler.map(y => h('div', { class: 'kart uye' + (y.aktif ? '' : ' pasif') },
       h('div', { class: 'uye-ust' }, h('strong', null, y.ad, y.id === ben ? ' ' + t('(siz)') : ''),
         y.sahip ? h('span', { class: 'rozet' }, t('Sahip')) : null),

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// LUMIO SALON - Firestore güvenlik kuralları (16. teslim)
+// LUMIO SALON - Firestore güvenlik kuralları (17. teslim)
 // Kural özeti:
 //  - Bir salonun verisini yalnızca o salonun AKTİF üyeleri okur.
 //  - Yazma için salonun lisansı (deneme ya da aktif) geçerli olmalı.
@@ -62,6 +62,12 @@ service cloud.firestore {
     }
 
 
+    // Destek modu: salon sahibi/yetkilisi izin verdiyse (salon.destek.bitisMs gelecekte) platform yöneticisi SALT OKUR
+    function destekAcik(salonId) {
+      let s = get(salonYolu(salonId)).data;
+      return yoneticiMi() && ('destek' in s) && s.destek.bitisMs > request.time.toMillis();
+    }
+
     // Satış ve analiz paketi: salon belgesindeki "satis" bayrağını YALNIZ platform yöneticisi açar
     function satisAcik(salonId) {
       return get(salonYolu(salonId)).data.get('satis', false) == true;
@@ -82,7 +88,8 @@ service cloud.firestore {
 
     function hizmetGecerli() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['ad', 'kategori', 'fiyat', 'sure', 'asamalar', 'aktif', 'oranGrup', 'guncelleme'])
+      return d.keys().hasOnly(['ad', 'kategori', 'fiyat', 'sure', 'asamalar', 'aktif', 'oranGrup', 'tekrarHafta', 'guncelleme'])
+        && (!('tekrarHafta' in d) || (d.tekrarHafta is int && d.tekrarHafta >= 1 && d.tekrarHafta <= 52))
         && (!('oranGrup' in d) || (d.oranGrup is string && d.oranGrup.size() >= 1 && d.oranGrup.size() <= 20))
         && d.ad is string && d.ad.size() >= 2 && d.ad.size() <= 60
         && d.kategori is string && d.kategori.size() <= 40
@@ -308,6 +315,15 @@ service cloud.firestore {
           && request.resource.data.kabul.dil in ['tr', 'ru', 'kk', 'de', 'en']
           && request.resource.data.kabul.surum is string
           && request.resource.data.kabul.surum.size() <= 20)
+        // Destek erişimi: yalnız salonun yetkilisi açar/kapatır (en çok 7 gün; kimin açtığı saklanır)
+        || (yetkiliMi(salonId)
+          && lisansAktif(salonId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['destek'])
+          && request.resource.data.destek.keys().hasOnly(['bitisMs', 'baslangicMs', 'veren', 'verenAd'])
+          && request.resource.data.destek.bitisMs is number
+          && request.resource.data.destek.bitisMs <= request.time.toMillis() + 7 * 86400000 + 60000
+          && request.resource.data.destek.veren == request.auth.uid
+          && request.resource.data.destek.verenAd is string && request.resource.data.destek.verenAd.size() <= 60)
         // Salonun yetkilisi ülke ve para birimini yalnız BİR KEZ (henüz seçilmemişse) seçebilir
         || (yetkiliMi(salonId)
           && lisansAktif(salonId)
@@ -320,9 +336,9 @@ service cloud.firestore {
 
       // ---- İşlem kayıtları: yalnız eklenir, değiştirilemez, silinemez ----
       match /kayitlar/{kayitId} {
-        allow read: if gorenMi(salonId);
-        allow create: if uyeMi(salonId)
-          && lisansAktif(salonId)
+        allow read: if destekAcik(salonId) || (gorenMi(salonId));
+        allow create: if (uyeMi(salonId) || (destekAcik(salonId) && request.resource.data.islem == 'destek_goruntule'))
+          && (lisansAktif(salonId) || destekAcik(salonId))
           && request.resource.data.keys().hasOnly(['uid', 'islem', 'hedef', 'ayrinti', 'zaman'])
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.zaman == request.time;
@@ -331,7 +347,7 @@ service cloud.firestore {
 
       // ---- Genel ayarlar (POS oranı, randevu adımı) ve hesap dönemi sayacı ----
       match /ayarlar/{ayarId} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && (
             (
@@ -403,14 +419,14 @@ service cloud.firestore {
 
       // ---- Hizmetler (silinmez, pasif yapılır) ----
       match /hizmetler/{hizmetId} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId) && hizmetGecerli();
         allow delete: if false;
       }
 
       // ---- Usta profili: çalışma durumu, hizmetleri, mesai, izin (salondaki herkes okur) ----
       match /ustalar/{ustaUid} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && uyeSalonda(salonId, ustaUid) && ustaGecerli();
         allow delete: if false;
@@ -418,7 +434,7 @@ service cloud.firestore {
 
       // ---- Usta payı ve ürün primi: yalnız yönetici, kıdemli, ortak ve ustanın kendisi okur ----
       match /ustaMali/{ustaUid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && uyeSalonda(salonId, ustaUid)
           && request.resource.data.keys().hasOnly(['yuzde', 'urunPrimi', 'oranlar', 'guncelleme'])
@@ -436,8 +452,7 @@ service cloud.firestore {
       // Her kilit ayrı bir belgedir; aynı adlı belge ikinci kez OLUŞTURULAMAZ. Çakışma kilidini sunucu böyle sağlar.
       match /randevular/{rid} {
         // Usta, müşteri adlarını yalnızca kendi randevularında görür. Diğer ustaların dolu saatlerini "slotlar"dan görür.
-        allow read: if uyeMi(salonId)
-          && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId) && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar));
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['musteriAd', 'musteriTel', 'musteriId', 'ustalar', 'tarih', 'bas', 'bit', 'kalemler', 'kilitler', 'durum', 'not', 'olusturan', 'olusturma', 'guncelleme'])
           && request.resource.data.durum == 'bekliyor'
@@ -484,7 +499,7 @@ service cloud.firestore {
       }
 
       match /slotlar/{kid} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['rid', 'ustaUid', 'tarih'])
           && request.resource.data.rid is string
@@ -498,7 +513,7 @@ service cloud.firestore {
       // ---- Ödemeler: yalnız eklenir; iptal edilince durum "iptal" olur, silinmez ----
       match /odemeler/{oid} {
         // Usta bu belgeyi okuyamaz (başka ustaların tutarları da içinde); kendi satırlarını "ustaSatirlari"ndan okur.
-        allow read: if uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
+        allow read: if destekAcik(salonId) || (uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter']);
         allow create: if odemeYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['rid', 'musteriId', 'tarih', 'donem', 'yontem', 'musteriAd', 'kalemler', 'ustalar', 'toplam', 'komisyonOrani', 'komisyon', 'durum', 'alan', 'zaman', 'duzeltmeOf', 'sadakat'])
           && (!('sadakat' in request.resource.data) || (request.resource.data.sadakat is map
@@ -535,7 +550,7 @@ service cloud.firestore {
 
       // ---- Ustanın kendi ödeme satırları: her ustanın yalnız kendi kazanç satırı (başkasının tutarını göremez) ----
       match /ustaSatirlari/{sid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid));
         allow create: if odemeYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ustaUid', 'odemeId', 'tarih', 'donem', 'musteriAd', 'ad', 'tutar', 'alis', 'tur', 'grup', 'yuzde', 'yontem', 'komisyonOrani', 'durum'])
           && (!('grup' in request.resource.data) || (request.resource.data.grup is string && request.resource.data.grup.size() <= 20))
@@ -561,7 +576,7 @@ service cloud.firestore {
       // ---- İşlem kayıtları: müşterinin her hizmetindeki formül ve not ----
       // Usta yalnız kendi kayıtlarını yazar/okur. Yönetici ve kıdemli hepsini yazar, ortak okur. Sekreter göremez.
       match /islemler/{iid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid));
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
           && (ben().rol in ['yonetici', 'kidemli', 'ortak'] || (ben().rol == 'usta' && request.resource.data.ustaUid == request.auth.uid))
           && request.resource.data.keys().hasOnly(['musteriId', 'ustaUid', 'rid', 'tarih', 'hizmet', 'formul', 'not', 'urunler', 'guncelleme'])
@@ -580,7 +595,7 @@ service cloud.firestore {
 
       // ---- Avans (düzeltme için eksi tutar girilebilir; değiştirilmez, silinmez) ----
       match /avanslar/{aid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ustaUid', 'tutar', 'tarih', 'donem', 'not', 'veren', 'zaman'])
           && uyeSalonda(salonId, request.resource.data.ustaUid)
@@ -596,7 +611,7 @@ service cloud.firestore {
 
       // ---- Aylık hedef ikramiyesi: "hesaba eklendi" işareti. Belge numarası {ustaUid}_{YYYY-MM}; bir kez yazılır, değiştirilmez, silinmez ----
       match /ikramiyeler/{iid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && resource.data.ustaUid == request.auth.uid));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ustaUid', 'ay', 'tutar', 'veren', 'zaman'])
           && uyeSalonda(salonId, request.resource.data.ustaUid)
@@ -611,7 +626,7 @@ service cloud.firestore {
       // ---- Akşam mutabakatı: usta kendi gününü onaylar ya da itiraz eder ----
       match /mutabakat/{mid} {
         // (resource == null: henüz olmayan belgeyi sormak da izinlidir; yoksa usta "yok" cevabını alamaz ve ekran boş kalır)
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && (resource == null || resource.data.ustaUid == request.auth.uid));
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && (resource == null || resource.data.ustaUid == request.auth.uid)));
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ustaUid', 'tarih', 'durum', 'not', 'tutar', 'guncelleme'])
           && request.resource.data.ustaUid == request.auth.uid
@@ -649,7 +664,7 @@ service cloud.firestore {
       // ---- Satış ve analiz paketi (16. teslim): paket yalnız platform yöneticisinin açtığı salonlarda çalışır ----
       // Salonun kendi ürün listesi (ad, hangi konuda yardımcı olduğu, kullanım, serbest satın alma bağlantısı)
       match /satisUrunler/{sid} {
-        allow read: if uyeMi(salonId) && satisAcik(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId) && satisAcik(salonId));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId) && satisAcik(salonId)
           && request.resource.data.keys().hasOnly(['ad', 'turler', 'etiketler', 'kullanim', 'link', 'aktif', 'guncelleme'])
           && request.resource.data.ad is string && request.resource.data.ad.size() >= 2 && request.resource.data.ad.size() <= 80
@@ -666,7 +681,7 @@ service cloud.firestore {
 
       // Fotoğraf analizi kaydı: FOTOĞRAF SAKLANMAZ; yalnız kim, hangi müşteri, ne zaman, hangi ürünler ve müşterinin onay verdiği kaydedilir
       match /analizler/{aid} {
-        allow read: if gorenMi(salonId) && satisAcik(salonId);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) && satisAcik(salonId));
         allow create: if uyeMi(salonId) && lisansAktif(salonId) && satisAcik(salonId)
           && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'urunler', 'alan', 'onay', 'dil', 'zaman'])
           && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0 && request.resource.data.musteriId.size() <= 40
@@ -681,7 +696,7 @@ service cloud.firestore {
 
       // ---- Müşteriye gönderilen mesajların kaydı (aynı mesaj iki kez gitmesin; yalnız eklenir) ----
       match /mesajlar/{kid} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['musteriId', 'tur', 'anahtar', 'gonderen', 'gun', 'zaman'])
           && request.resource.data.musteriId is string && request.resource.data.musteriId.size() > 0
@@ -697,7 +712,7 @@ service cloud.firestore {
       // ---- Stok (6. teslim): ürün kartı, fiyat (alış maliyeti gizli), hareket günlüğü, alış faturaları ----
       // Ürün kartı: herkes okur (formülde ürün seçilir). Stok miktarını formül/satış yazanlar da düşürebilir (yalnız 'stok' alanı).
       match /urunler/{urunId} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId) && urunGecerli();
         allow update: if lisansAktif(salonId) && (
           (yetkiliMi(salonId) && urunGecerli())
@@ -713,7 +728,7 @@ service cloud.firestore {
       }
       // Alış ve satış fiyatı: ustalar göremez
       match /urunFiyat/{urunId} {
-        allow read: if uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'];
+        allow read: if destekAcik(salonId) || (uyeMi(salonId) && ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter']);
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['alis', 'satis', 'guncelleme'])
           && request.resource.data.alis is number && request.resource.data.alis >= 0 && request.resource.data.alis <= 10000000
@@ -722,7 +737,7 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /stokHareket/{hid} {
-        allow read: if gorenMi(salonId);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId));
         allow create: if uyeMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['urunId', 'miktar', 'tur', 'ref', 'not', 'uid', 'gun', 'zaman'])
           && request.resource.data.urunId is string && request.resource.data.urunId.size() > 0
@@ -736,7 +751,7 @@ service cloud.firestore {
         allow update, delete: if false;
       }
       match /alislar/{aid} {
-        allow read: if gorenMi(salonId);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['tarih', 'tedarikci', 'faturaNo', 'kalemler', 'toplam', 'not', 'uid', 'zaman'])
           && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
@@ -752,7 +767,7 @@ service cloud.firestore {
 
       // ---- Salon giderleri (8. teslim): kira, fatura, malzeme... Aylık tekrarlayanlar her ay sayılır. Yalnız yönetici/kıdemli/ortak. ----
       match /giderler/{gid} {
-        allow read: if gorenMi(salonId);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['tarih', 'kategori', 'tutar', 'not', 'aylik', 'uid', 'zaman'])
           && request.resource.data.tarih is string && request.resource.data.tarih.size() == 10
@@ -772,7 +787,7 @@ service cloud.firestore {
 
       // ---- Ekip sohbeti: salondaki herkes okur ve yazar; kendi mesajını (yönetici/kıdemli/ortak hepsini) siler ----
       match /sohbet/{mid} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create: if uyeMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['uid', 'metin', 'gun', 'zaman'])
           && request.resource.data.uid == request.auth.uid
@@ -784,7 +799,7 @@ service cloud.firestore {
       }
       // Okunmamış mesaj rozeti için son mesajın zamanı (tek belge)
       match /sohbetDurum/{did} {
-        allow read: if uyeMi(salonId);
+        allow read: if destekAcik(salonId) || (uyeMi(salonId));
         allow create, update: if uyeMi(salonId) && lisansAktif(salonId) && did == 'son'
           && request.resource.data.keys().hasOnly(['uid', 'gun', 'zaman'])
           && request.resource.data.uid == request.auth.uid
@@ -795,7 +810,7 @@ service cloud.firestore {
 
       // ---- Ustanın dönemden devreden borcu (yalnız Hesabı kapat yazar) ----
       match /ustaDevir/{ustaUid} {
-        allow read: if gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId) || (uyeMi(salonId) && request.auth.uid == ustaUid));
         allow create, update: if yetkiliMi(salonId) && lisansAktif(salonId)
           && uyeSalonda(salonId, ustaUid)
           && request.resource.data.keys().hasOnly(['devir', 'guncelleme'])
@@ -806,7 +821,7 @@ service cloud.firestore {
 
       // ---- Kapanmış dönemlerin dökümü ----
       match /donemler/{did} {
-        allow read: if gorenMi(salonId);
+        allow read: if destekAcik(salonId) || (gorenMi(salonId));
         allow create: if yetkiliMi(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['donem', 'ustalar', 'toplam', 'kapatan', 'zaman'])
           && request.resource.data.donem == suankiDonem(salonId)
@@ -820,9 +835,8 @@ service cloud.firestore {
       // Belge adı telefon numarasıdır (telefonu olmayanlarda rastgele); böylece aynı telefon iki kez açılamaz.
       // "ustalar": müşteriye hizmet vermiş / randevu almış ustalar. Usta yalnızca adının geçtiği müşterileri listeler.
       match /musteriler/{mid} {
-        allow get: if uyeMi(salonId);
-        allow list: if uyeMi(salonId)
-          && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar);
+        allow get: if destekAcik(salonId) || (uyeMi(salonId));
+        allow list: if destekAcik(salonId) || (uyeMi(salonId) && (ben().rol in ['yonetici', 'kidemli', 'ortak', 'sekreter'] || request.auth.uid in resource.data.ustalar));
         allow create: if randevuYazar(salonId) && lisansAktif(salonId)
           && request.resource.data.keys().hasOnly(['ad', 'tel', 'not', 'dogum', 'sonraki', 'sonZiyaret', 'ustalar', 'olusturan', 'olusturma', 'guncelleme'])
           && request.resource.data.ad is string && request.resource.data.ad.size() >= 2 && request.resource.data.ad.size() <= 60

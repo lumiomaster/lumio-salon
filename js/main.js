@@ -23,6 +23,8 @@ import { ulkeSecilmeli, ulkeSecEkrani } from './ekranlar/ulke-sec.js';
 import { kabulGerekli, kabulEkrani } from './ekranlar/kabul.js';
 import { sihirbazKontrol } from './ekranlar/yardim.js';
 import { salonAyarla } from './ulke.js';
+import { temaBaslat } from './tema.js';
+import { destekSeridi, destekBekci } from './destek.js';
 
 const kok = document.getElementById('uygulama');
 
@@ -96,6 +98,7 @@ export function goster() {
   const sekmeler = sekmelerim(S.profil.rol, !!S.yonetici);
   const ekran = { yonetici: yoneticiEkrani, ana: anaEkrani, takvim: takvimEkrani, kasa: kasaEkrani, musteri: musterilerEkrani, ekip: ekipEkrani, salon: salonEkrani, ayarlar: ayarlarEkrani }[S.sekme] || anaEkrani;
   kok.append(
+    destekSeridi(),
     h('header', { class: 'ust' },
       h('img', { src: 'icons/logo.png', alt: '', class: 'ust-logo' }),
       h('div', { class: 'ust-ad' }, h('strong', null, S.salon ? S.salon.ad : UYGULAMA.ad), h('small', null, UYGULAMA.ad)),
@@ -128,6 +131,7 @@ export function gitAyarla(g) { bekleyenGit = g; gitUygula(); }
 try { const q = new URLSearchParams(location.search).get('git'); if (q) { bekleyenGit = q; history.replaceState(null, '', location.pathname); } } catch (e) { /* yok */ }
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.tur === 'git') gitAyarla(e.data.git); });
 
+temaBaslat(); destekBekci();
 geriTusunuBaslat(() => { S.sekme = 'ana'; goster(); });
 
 onAuthStateChanged(auth, () => { if (!S.kayitSuruyor) oturumuYukle(); });
