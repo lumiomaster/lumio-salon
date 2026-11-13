@@ -1,13 +1,14 @@
 # Teslim 17 (1.7.0)
 
 ## Yenilikler
-Randevu formu: stoktan akıllı ürün arama (formül otomatik), "Not ekle", müşteri akıllı arama, sonraki ziyaret planı. Ekip: telefon düzenleme, eski çalışanı kalıcı silme. Aydınlık/karanlık tema ve yazı boyutu, muhasebe CSV dışa aktarma, kâr grafikleri, internet kesilince uyarı, destek modu (salonun izniyle, süreli, salt okunur), yönetici ek doğrulama (2 adım) ve vekil.
+Hesap kapatma onaysız ustayla yapılamaz. Randevu formu: stoktan akıllı ürün arama (formül otomatik), "Not ekle", müşteri akıllı arama, sonraki ziyaret planı. Ekip: telefon düzenleme, eski çalışanı kalıcı silme. Aydınlık/karanlık tema ve yazı boyutu, muhasebe CSV dışa aktarma, kâr grafikleri, internet kesilince uyarı, destek modu (salonun izniyle, süreli, salt okunur), yönetici ek doğrulama (2 adım) ve vekil.
 
 ## Kurulum sırası
 1. Zip'in içindekileri GitHub'a yükleyin (`.nojekyll` dahil).
 2. Site yayına girince Firebase > Firestore > Kurallar: `firestore.rules` içeriğini yapıştırıp **Yayınla**.
 3. Cloudflare > lumio-salon-ai > Edit code: `worker.js` yapıştırıp **Deploy** (yeni yollar: /telefon-degistir, /mfa-hazirla, kalıcı /hesap-sil). Yeni secret yok.
-4. Salon sahipleri yeni yasal metni (v6) bir kez yeniden kabul eder.
+4. Yeni salonlar yasal metnin v6 sürümünü kabul eder; mevcut salonlar yeniden onaylamaz (kabul bir kez yazılır).
+5. Danışmana fotoğraf eklenebilir (worker.js bunun için güncellendi; Deploy şart). Hizmetler Bölüm'e göre gruplanır: Firestore kuralı şart, mevcut hizmetleri Düzenle'den bölüme atayın.
 
 ## Veri yedeği (Blaze gerekir)
 Firebase > Firestore > Disaster recovery > Scheduled backups: günlük yedek, saklama 7+ gün. Geri alma: aynı sayfada yedeğin yanındaki Restore ile yeni bir veritabanına; kontrol edip geçiş yapın. Ayrıca Point-in-time recovery açılabilir. Bütçe uyarısı için Billing > Budgets'ta bir limit koyun.

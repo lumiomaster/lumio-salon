@@ -37,6 +37,19 @@ const PAKETLER = [
   ] }
 ];
 
+// Bölümler: hizmetler önce bölüme, sonra gruba (Kesim, Boya…) ayrılır. "Diğer" ile salon kendi bölümünü yazabilir.
+const BOLUMLER = ['Kadın kuaförü', 'Erkek kuaförü', 'Bakım', 'Tırnak'];
+const DIGER = 'Diğer';
+let BOLUM_SEC = '';   // üstteki süzgeç: '' = hepsi
+// Bölümü olmayan eski hizmetler için grubundan tahmin
+export function bolumuBul(x) {
+  if (x.bolum) return x.bolum;
+  if (x.kategori === 'Tırnak') return 'Tırnak';
+  if (x.kategori === 'Bakım' || x.kategori === 'Güzellik') return 'Bakım';
+  return DIGER;
+}
+export const bolumSirasi = (b) => { const i = BOLUMLER.indexOf(b); return i >= 0 ? i : (b === DIGER ? 999 : 100); };
+
 const TUR = { mesgul: 'Usta çalışıyor', bekleme: 'Bekleme (usta başka işe bakabilir)' };
 
 export function hizmetlerEkrani() {
@@ -56,17 +69,27 @@ function ciz(kutu, liste, yenile, oran) {
   const yetkili = yetkiliMi(S.profil.rol);
   const lisansOk = lisansDurumu(S.salon).aktif;
   const duzenle = yetkili && lisansOk;
-  const gruplar = {};
-  liste.forEach(x => { (gruplar[x.kategori || t('Diğer')] = gruplar[x.kategori || t('Diğer')] || []).push(x); });
+  const bolumler = {};
+  liste.forEach(x => { const b = bolumuBul(x); (bolumler[b] = bolumler[b] || []).push(x); });
+  const bolumAdlari = Object.keys(bolumler).sort((a, b) => bolumSirasi(a) - bolumSirasi(b) || a.localeCompare(b));
+  if (BOLUM_SEC && !bolumler[BOLUM_SEC]) BOLUM_SEC = '';
+  const gorunen = BOLUM_SEC ? [BOLUM_SEC] : bolumAdlari;
+  const bolumKutusu = (b) => {
+    const gruplar = {};
+    bolumler[b].forEach(x => { const k = x.kategori || t('Diğer'); (gruplar[k] = gruplar[k] || []).push(x); });
+    return h('section', { class: 'bolum' },
+      h('h3', { class: 'bolum-baslik' }, t(b) + ' ', h('span', { class: 'soluk' }, '(' + bolumler[b].length + ')')),
+      Object.keys(gruplar).map(k => h('div', { class: 'grup' }, h('div', { class: 'grup-baslik' }, k), gruplar[k].map(x => hizmetKarti(x, duzenle, yenile, oran)))));
+  };
   doldur(kutu,
     h('div', { class: 'baslik-satir' },
       h('h2', { class: 'ilk' }, t('Hizmetler')),
       duzenle ? h('button', { class: 'dugme kucuk-dugme', type: 'button', onclick: () => hizmetFormu(null, yenile, oran) }, t('+ Hizmet')) : null),
     duzenle ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'baglanti', type: 'button', onclick: () => grupYonetimi(oran, yenile) }, t('Oran grupları') + ' (' + (1 + oran.gruplar.length) + ')')) : null,
     liste.length === 0 ? paketKarti(duzenle, yenile) : null,
-    Object.keys(gruplar).map(k => h('div', { class: 'grup' },
-      h('div', { class: 'grup-baslik' }, k),
-      gruplar[k].map(x => hizmetKarti(x, duzenle, yenile, oran)))));
+    bolumAdlari.length > 1 ? h('div', { class: 'chip-satir bolum-chip' },
+      [['', t('Hepsi')]].concat(bolumAdlari.map(b => [b, t(b)])).map(([k, ad]) => h('button', { type: 'button', class: 'chip' + (k === BOLUM_SEC ? ' secili' : ''), onclick: () => { BOLUM_SEC = k; ciz(kutu, liste, yenile, oran); } }, ad))) : null,
+    gorunen.map(bolumKutusu));
 }
 
 function hizmetKarti(x, duzenle, yenile, oran) {
@@ -79,6 +102,12 @@ function hizmetKarti(x, duzenle, yenile, oran) {
     duzenle ? h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => hizmetFormu(x, yenile, oran) }, t('Düzenle')) : null);
 }
 
+function paketBolumu(p, x) {
+  if (p.ad === 'Kadın kuaförü') return 'Kadın kuaförü';
+  if (p.ad === 'Erkek berberi') return 'Erkek kuaförü';
+  return x.kategori === 'Tırnak' ? 'Tırnak' : 'Bakım';
+}
+
 function paketKarti(duzenle, yenile) {
   if (!duzenle) return h('p', { class: 'soluk' }, t('Henüz hizmet eklenmemiş.'));
   return h('div', { class: 'kart bilgi' },
@@ -89,7 +118,7 @@ function paketKarti(duzenle, yenile) {
         try {
           const b = writeBatch(db);
           p.hizmetler.forEach(x => b.set(doc(collection(db, 'salons', S.salon.id, 'hizmetler')), {
-            ad: t(x.ad), kategori: t(x.kategori), fiyat: 0, sure: x.sure, asamalar: (x.asamalar || []).map(a => ({ ...a, ad: t(a.ad) })), aktif: true, ...(x.kategori === 'Boya' ? { oranGrup: 'malzemeli' } : {}), guncelleme: serverTimestamp()
+            ad: t(x.ad), kategori: t(x.kategori), bolum: paketBolumu(p, x), fiyat: 0, sure: x.sure, asamalar: (x.asamalar || []).map(a => ({ ...a, ad: t(a.ad) })), aktif: true, ...(x.kategori === 'Boya' ? { oranGrup: 'malzemeli' } : {}), guncelleme: serverTimestamp()
           }));
           kayit(b, 'Hazır paket: ' + p.ad);
           await b.commit(); bildir(t('Hizmetler eklendi. Fiyatları girmeyi unutmayın.')); yenile(true);
@@ -101,6 +130,13 @@ function hizmetFormu(x, yenile, oran) {
   const yeni = !x;
   const ad = h('input', { type: 'text', value: x ? x.ad : '', maxlength: 60, placeholder: t('örn. Dip boya'), required: true });
   const kat = h('input', { type: 'text', value: x ? x.kategori : '', maxlength: 40, placeholder: t('örn. Boya'), list: 'kategori-listesi' });
+  const bol0 = x ? bolumuBul(x) : '';
+  const ozelBolum = !!bol0 && !BOLUMLER.includes(bol0);
+  const bolSec = h('select', { 'aria-label': t('Bölüm') }, h('option', { value: '' }, t('Seçin…')),
+    BOLUMLER.map(b => h('option', { value: b, selected: b === bol0 }, t(b))), h('option', { value: DIGER, selected: ozelBolum }, t('Diğer (kendi bölümünüzü yazın)')));
+  const bolOzel = h('input', { type: 'text', maxlength: 30, placeholder: t('Bölüm adı (örn. Solaryum, Masaj)'), value: ozelBolum && bol0 !== DIGER ? bol0 : '' });
+  const bolOzelGoster = () => { bolOzel.hidden = bolSec.value !== DIGER; };
+  bolSec.addEventListener('change', bolOzelGoster); bolOzelGoster();
   const katListe = h('datalist', { id: 'kategori-listesi' }, ['Kesim', 'Şekillendirme', 'Boya', 'Bakım', 'Tırnak', 'Güzellik'].map(k => h('option', { value: k })));
   const fiyat = h('input', { type: 'text', inputmode: 'decimal', value: x ? String(x.fiyat).replace('.', ',') : '', placeholder: '0', required: true });
   const sure = h('input', { type: 'text', inputmode: 'numeric', value: x ? String(x.sure) : '30', required: true });
@@ -152,19 +188,22 @@ function hizmetFormu(x, yenile, oran) {
         s = toplam();
       } else s = parseInt(sure.value, 10);
       if (!Number.isInteger(s) || s < 5 || s > 600) { hata.textContent = t('Süre 5 ile 600 dakika arasında olmalı.'); return; }
+      let bolum = bolSec.value === DIGER ? (bolOzel.value.trim() || DIGER) : bolSec.value;
+      if (!bolum) { hata.textContent = t('Hizmetin bölümünü seçin (Kadın kuaförü, Erkek kuaförü, Bakım, Tırnak ya da Diğer).'); return; }
       const th = tekrar.value.trim() === '' ? 0 : parseInt(tekrar.value, 10);
       if (!Number.isInteger(th) || th < 0 || th > 52) { hata.textContent = t('Tekrar süresi 1 ile 52 hafta arasında olmalı.'); return; }
       kilitli(dugme, async () => {
         try {
           const ref = x ? doc(db, 'salons', S.salon.id, 'hizmetler', x.id) : doc(collection(db, 'salons', S.salon.id, 'hizmetler'));
           const b = writeBatch(db);
-          b.set(ref, { ad: adT, kategori: kat.value.trim(), fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), ...(th > 0 ? { tekrarHafta: th } : {}), guncelleme: serverTimestamp() });
+          b.set(ref, { ad: adT, kategori: kat.value.trim(), bolum, fiyat: f, sure: s, asamalar: as, aktif: aktif.checked, ...(grupSec.value ? { oranGrup: grupSec.value } : {}), ...(th > 0 ? { tekrarHafta: th } : {}), guncelleme: serverTimestamp() });
           kayit(b, (yeni ? 'Eklendi: ' : 'Değişti: ') + adT + ' ' + f + ' ' + sembol() + ', ' + s + ' dk');
           await b.commit(); pencere.kapat(); bildir(t('Kaydedildi')); yenile(true);
         } catch (err) { console.error(err); hata.textContent = hataMetni(err); }
       });
     } },
     h('label', null, t('Hizmetin adı'), ad),
+    h('label', null, t('Bölüm'), bolSec), bolOzel,
     h('label', null, t('Grup'), kat), katListe,
     h('label', null, t('Fiyat (₺)'), fiyat),
     h('label', null, t('Usta oran grubu'), grupSec), h('p', { class: 'kucuk' }, t('Ustanın bu hizmetten alacağı yüzde, seçilen gruba göre belirlenir (Ustalar bölümünde her usta için yüzdeleri yazarsınız).')),

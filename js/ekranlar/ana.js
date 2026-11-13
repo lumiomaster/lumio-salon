@@ -71,9 +71,10 @@ function kurulumKarti() {
     ];
     if (adimlar.every(a => a.ok)) return;
     doldur(kutu, h('div', { class: 'kart bilgi' }, h('strong', null, t('Salon kurulumu')),
-      h('ul', { class: 'kontrol-liste' }, adimlar.map(a => h('li', { class: a.ok ? 'bitti' : '' },
-        h('span', null, a.ok ? '✓' : '○'), h('span', null, a.ad),
-        a.ok ? null : h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: a.git }, t('Aç')))))));
+      // Tamamlanan adımlar ekrandan kalkar; yalnız yapılacaklar görünür
+      h('ul', { class: 'kontrol-liste' }, adimlar.filter(a => !a.ok).map(a => h('li', null,
+        h('span', null, '○'), h('span', null, a.ad),
+        h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: a.git }, t('Aç')))))));
   }).catch(() => {});
   return kutu;
 }

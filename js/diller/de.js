@@ -1280,5 +1280,20 @@ export default {
   "1 saat": "1 Stunde",
   "24 saat": "24 Stunden",
   "3 gün": "3 Tage",
-  "7 gün": "7 Tage"
+  "7 gün": "7 Tage",
+  "Hesabını onaylamayan ustalar var:": "Diese Fachkräfte haben die Abrechnung nicht bestätigt:",
+  "Bu ustaların hesabı onaylanmadan dönem kapatılamaz. Usta onaylasın ya da ustanın kartından \"Sözlü onayladı\" ile işaretleyin.": "Ohne Bestätigung dieser Fachkräfte kann der Zeitraum nicht abgeschlossen werden. Sie bestätigen selbst, oder markieren Sie auf ihrer Karte „Mündlich bestätigt“.",
+  "Onaylar kontrol edilemedi. İnternetinizi kontrol edip tekrar deneyin.": "Bestätigungen konnten nicht geprüft werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+  "Onay kontrolü tamamlanmadı; kapatılamaz.": "Die Prüfung der Bestätigungen ist nicht abgeschlossen; Abschluss nicht möglich.",
+  "Erkek kuaförü": "Herrenfriseur",
+  "Bölüm": "Bereich",
+  "Seçin…": "Auswählen…",
+  "Diğer (kendi bölümünüzü yazın)": "Sonstiges (eigenen Bereich eintragen)",
+  "Bölüm adı (örn. Solaryum, Masaj)": "Bereichsname (z. B. Solarium, Massage)",
+  "Hizmetin bölümünü seçin (Kadın kuaförü, Erkek kuaförü, Bakım, Tırnak ya da Diğer).": "Wählen Sie den Bereich der Leistung (Damenfriseur, Herrenfriseur, Pflege, Nägel oder Sonstiges).",
+  "Fotoğraf ekle": "Foto hinzufügen",
+  "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "Bei einem Kundenfoto holen Sie bitte die Einwilligung ein. Das Foto geht nur für diese Frage an die KI und wird nicht gespeichert.",
+  "Bu fotoğrafa bakar mısın?": "Kannst du dir dieses Foto ansehen?",
+  "Cevap gecikti. Biraz sonra tekrar deneyin.": "Die Antwort dauert zu lange. Bitte versuchen Sie es gleich noch einmal.",
+  "Sunucuya ulaşılamadı": "Server nicht erreichbar"
 };

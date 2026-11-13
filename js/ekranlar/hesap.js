@@ -8,7 +8,7 @@ import { kalemDetay } from './kalem-detay.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp } from '../fb.js';
 import {
   uyeleriYukle, ustalariYukle, donemiYukle, donemOdemeleriniYukle, avanslariYukle, devirleriYukle,
-  gunMutabakatiniYukle, donemleriYukle, randevulariYukle, ayariYukle, oranAyariYukle, aralikOdemeleriniYukle, ikramiyeleriYukle
+  gunMutabakatiniYukle, mutabakatlariYukle, donemleriYukle, randevulariYukle, ayariYukle, oranAyariYukle, aralikOdemeleriniYukle, ikramiyeleriYukle
 } from '../veri.js';
 import { ayAralik, ayEkle, ayYazi } from '../kar-mantik.js';
 import { ayOlculeri, ustaAyi } from '../hedef-mantik.js';
@@ -307,7 +307,31 @@ function kapatOnay(D, satirlar, toplam, yenile) {
   const dugme = h('button', { class: 'dugme', type: 'button' }, t('Evet, dönemi kapat'));
   const icerik = h('div', null);
   const p = pencereAc(t('Hesabı kapat'), icerik);
+  const onaysizKutu = h('div', null);
+  // Onaylanmamış mutabakat varsa dönem KAPATILAMAZ (usta onaylar ya da yönetici "Sözlü onayladı" işaretler)
+  let onaysizSayi = 0, kontrolBitti = false;
+  dugme.disabled = true;
+  (async () => {
+    try {
+      const gecerli = D.odemeler.filter(o => o.durum === 'gecerli');
+      if (!gecerli.length) { kontrolBitti = true; dugme.disabled = false; return; }
+      const ilk = gecerli.reduce((m, o) => (o.tarih < m ? o.tarih : m), gecerli[0].tarih);
+      const muts = await mutabakatlariYukle(ilk);
+      const tamam = new Set(muts.filter(m => m.durum === 'onay').map(m => m.ustaUid + '_' + m.tarih));
+      const eksik = [];
+      satirlar.forEach(s => {
+        const gunler = [...new Set(gecerli.map(o => o.tarih))].sort().filter(g => !tamam.has(s.uid + '_' + g) && ustaGunSatirlari(D.odemeler, s.uid, g, D.u.mali[s.uid], D.taban).length);
+        if (gunler.length) eksik.push({ ad: s.ad, gunler });
+      });
+      onaysizSayi = eksik.length;
+      if (!eksik.length) { kontrolBitti = true; dugme.disabled = false; return; }
+      doldur(onaysizKutu, h('div', { class: 'uyari' }, h('strong', null, t('Hesabını onaylamayan ustalar var:')),
+        eksik.map(e => h('div', { class: 'kucuk' }, e.ad + ': ' + e.gunler.map(g => tarihYazi(g).split(' ').slice(0, 2).join(' ')).join(', '))),
+        h('div', { class: 'kucuk' }, t('Bu ustaların hesabı onaylanmadan dönem kapatılamaz. Usta onaylasın ya da ustanın kartından "Sözlü onayladı" ile işaretleyin.'))));
+    } catch (e) { console.error(e); onaysizKutu.replaceChildren(h('div', { class: 'uyari' }, t('Onaylar kontrol edilemedi. İnternetinizi kontrol edip tekrar deneyin.'))); }
+  })();
   doldur(icerik,
+    onaysizKutu,
     D.bekleyen ? h('div', { class: 'uyari' }, t('Ödemesi alınmamış {n} randevu var. Önce Günlük kasa bölümünden ödemelerini alın ya da iptal edin.', { n: D.bekleyen })) : null,
     h('p', null, t('Ustalara ödenecek tutarlar:')),
     satirlar.map(s => h('div', { class: 'hesap-satir' }, h('span', null, s.ad), h('strong', null, s.odenecek < 0 ? t('Borç {tutar}', { tutar: para(-s.odenecek) }) : para(s.odenecek)))),
@@ -315,6 +339,7 @@ function kapatOnay(D, satirlar, toplam, yenile) {
     hata, h('div', { class: 'dugme-satir' }, h('button', { class: 'dugme ikincil', type: 'button', onclick: p.kapat }, t('Vazgeç')), dugme));
   dugme.addEventListener('click', () => kilitli(dugme, async () => {
     try {
+      if (!kontrolBitti) { hata.textContent = t('Onay kontrolü tamamlanmadı; kapatılamaz.'); return; }
       const taze = await donemiYukle();
       if (taze !== D.donem) { hata.textContent = t('Dönem az önce başkası tarafından kapatıldı. Sayfa yenileniyor.'); yenile(); return; }
       const b = writeBatch(db);

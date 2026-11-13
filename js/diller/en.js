@@ -1280,5 +1280,20 @@ export default {
   "1 saat": "1 hour",
   "24 saat": "24 hours",
   "3 gün": "3 days",
-  "7 gün": "7 days"
+  "7 gün": "7 days",
+  "Hesabını onaylamayan ustalar var:": "These stylists have not confirmed their account:",
+  "Bu ustaların hesabı onaylanmadan dönem kapatılamaz. Usta onaylasın ya da ustanın kartından \"Sözlü onayladı\" ile işaretleyin.": "The period cannot be closed until these stylists confirm. Let them confirm, or mark \"Confirmed verbally\" on their card.",
+  "Onaylar kontrol edilemedi. İnternetinizi kontrol edip tekrar deneyin.": "Could not check confirmations. Check your internet and try again.",
+  "Onay kontrolü tamamlanmadı; kapatılamaz.": "Confirmation check not finished; cannot close.",
+  "Erkek kuaförü": "Men's barber",
+  "Bölüm": "Section",
+  "Seçin…": "Select…",
+  "Diğer (kendi bölümünüzü yazın)": "Other (type your own section)",
+  "Bölüm adı (örn. Solaryum, Masaj)": "Section name (e.g. Solarium, Massage)",
+  "Hizmetin bölümünü seçin (Kadın kuaförü, Erkek kuaförü, Bakım, Tırnak ya da Diğer).": "Choose the service's section (women's hair, men's barber, care, nails or other).",
+  "Fotoğraf ekle": "Add photo",
+  "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "If it is a client's photo, get their consent. The photo goes to the AI only for this question and is not saved.",
+  "Bu fotoğrafa bakar mısın?": "Can you take a look at this photo?",
+  "Cevap gecikti. Biraz sonra tekrar deneyin.": "The answer is taking too long. Please try again shortly.",
+  "Sunucuya ulaşılamadı": "Could not reach the server"
 };

@@ -140,6 +140,11 @@ export async function gunMutabakatiniYukle(tarih) {
   kontrol();
   return liste(await getDocs(query(yol('mutabakat'), where('tarih', '==', tarih))));
 }
+// Bir tarihten bu yana tüm mutabakatlar (hesap kapatırken onaysız günleri bulmak için)
+export async function mutabakatlariYukle(tarihten) {
+  kontrol();
+  return liste(await getDocs(query(yol('mutabakat'), where('tarih', '>=', tarihten))));
+}
 export async function benimMutabakatim(uid, tarih) {
   kontrol();
   const d = await getDoc(doc(db, 'salons', S.salon.id, 'mutabakat', uid + '_' + tarih));

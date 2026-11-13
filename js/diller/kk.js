@@ -1280,5 +1280,20 @@ export default {
   "1 saat": "1 сағат",
   "24 saat": "24 сағат",
   "3 gün": "3 күн",
-  "7 gün": "7 күн"
+  "7 gün": "7 күн",
+  "Hesabını onaylamayan ustalar var:": "Есепті растамаған шеберлер бар:",
+  "Bu ustaların hesabı onaylanmadan dönem kapatılamaz. Usta onaylasın ya da ustanın kartından \"Sözlü onayladı\" ile işaretleyin.": "Бұл шеберлер есепті растамайынша кезеңді жабуға болмайды. Шебер растасын немесе оның картасынан «Ауызша растады» деп белгілеңіз.",
+  "Onaylar kontrol edilemedi. İnternetinizi kontrol edip tekrar deneyin.": "Растауларды тексеру мүмкін болмады. Интернетті тексеріп, қайталаңыз.",
+  "Onay kontrolü tamamlanmadı; kapatılamaz.": "Растауларды тексеру аяқталмады; жабуға болмайды.",
+  "Erkek kuaförü": "Ерлер шаштаразы",
+  "Bölüm": "Бөлім",
+  "Seçin…": "Таңдаңыз…",
+  "Diğer (kendi bölümünüzü yazın)": "Басқа (өз бөліміңізді жазыңыз)",
+  "Bölüm adı (örn. Solaryum, Masaj)": "Бөлім атауы (мыс. солярий, массаж)",
+  "Hizmetin bölümünü seçin (Kadın kuaförü, Erkek kuaförü, Bakım, Tırnak ya da Diğer).": "Қызмет бөлімін таңдаңыз (әйелдер шаштаразы, ерлер шаштаразы, күтім, тырнақ немесе басқа).",
+  "Fotoğraf ekle": "Фото қосу",
+  "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "Бұл клиенттің фотосы болса, оның келісімін алыңыз. Фото тек осы сұрақ үшін жасанды интеллектке жіберіледі, сақталмайды.",
+  "Bu fotoğrafa bakar mısın?": "Осы фотоға қарап беріңізші?",
+  "Cevap gecikti. Biraz sonra tekrar deneyin.": "Жауап кешікті. Сәлден кейін қайталап көріңіз.",
+  "Sunucuya ulaşılamadı": "Серверге қосылу мүмкін болмады"
 };

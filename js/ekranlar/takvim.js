@@ -11,6 +11,7 @@ import { mesajYap, waAc, waLink, hitap, tarihTR } from '../mesaj.js';
 import { mesajGonder, gonderimVarMi, gonderilmisYazi } from '../mesaj-kayit.js';
 import { formulStokYaz } from '../stok-yaz.js';
 import { auth, db, doc, collection, writeBatch, serverTimestamp, arrayUnion } from '../fb.js';
+import { bolumuBul, bolumSirasi } from './hizmetler.js';
 import { uyeleriYukle, ustalariYukle, hizmetleriYukle, ayariYukle, randevulariYukle, kilitleriYukle, musterileriYukle, musteriGetir, musteriGeriGetir, islemleriYukle } from '../veri.js';
 import {
   DILIM, hizmetUyarla, dkMetin, metinDk, tarihMetin, tarihEkle, tarihYazi, mesgulAraliklar, dilimler, kilitId, kalemYap,
@@ -255,6 +256,13 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
   const yeni = !mevcut;
   const adim = (ctx.ayar && ctx.ayar.randevuAdimi) || 15;
   const aktifHizmetler = ctx.hizmetler.filter(x => x.aktif);
+  // Hizmet listesi bölümlere göre gruplanır (birden fazla bölüm varsa)
+  const hizmetSecenekleri = (s) => {
+    const sec = (x) => h('option', { value: x.id, selected: x.id === s.hizmetId }, x.ad + ' · ' + x.sure + ' ' + t('dk'));
+    const bol = {}; aktifHizmetler.forEach(x => { const b = bolumuBul(x); (bol[b] = bol[b] || []).push(x); });
+    const adlar = Object.keys(bol).sort((p, q) => bolumSirasi(p) - bolumSirasi(q) || p.localeCompare(q));
+    return adlar.length > 1 ? adlar.map(b => h('optgroup', { label: t(b) }, bol[b].map(sec))) : aktifHizmetler.map(sec);
+  };
   // Usta yalnızca kendine randevu alabilir
   const ustaListe = ustalar(ctx).filter(u => S.profil.rol !== 'usta' || u.id === auth.currentUser.uid);
   let kilitHarita = {};      // sunucudaki dolu dilimler (kendi randevum hariç)
@@ -393,7 +401,7 @@ export function randevuFormu(mevcut, ctx, tarih0, yenile, onDolgu) {
       const s = r.s;
       const hizSec = h('select', { 'aria-label': t('Hizmet'), onchange: (e) => { s.hizmetId = e.target.value; s.snap = null; s.ustaUid = ''; s.ustaElle = false; s.sureK = ''; s.fiyatK = ''; ciz(); } },
         h('option', { value: '' }, t('Hizmet seçin')),
-        aktifHizmetler.map(x => h('option', { value: x.id, selected: x.id === s.hizmetId }, x.ad + ' · ' + x.sure + ' ' + t('dk'))),
+        hizmetSecenekleri(s),
         s.hizmetId && !aktifHizmetler.some(x => x.id === s.hizmetId) && r.hz ? h('option', { value: s.hizmetId, selected: true }, r.hz.ad + ' (' + t('pasif') + ')') : null);
       const ustaSec = h('select', { 'aria-label': t('Usta'), disabled: !r.hz || r.adaylar.length === 0, onchange: (e) => { s.ustaUid = e.target.value; s.ustaElle = true; ciz(); } },
         r.adaylar.map(a => h('option', { value: a.u.id, selected: a.u.id === s.ustaUid, disabled: a.durum === 'izin' || a.durum === 'dolu' },

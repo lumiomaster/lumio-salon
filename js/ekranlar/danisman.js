@@ -1,6 +1,7 @@
 // Usta Danışman: Worker üzerinden yapay zekâ ile sohbet. Salon verisinin kısa bir özeti her soruyla birlikte gider.
 import { t, dilKodu } from '../i18n.js';
-import { h, doldur, pencereAc } from '../util.js';
+import { h, doldur, pencereAc, bildir } from '../util.js';
+import { resimKucult } from '../analiz-resim.js';
 import { S } from '../durum.js';
 import { yetkiliMi } from '../roller.js';
 import { sunucuHazir, sunucuyaSor } from '../sunucu.js';
@@ -66,6 +67,20 @@ export function danismanAc() {
   const yaz = h('textarea', { class: 'dan-yaz', rows: 2, maxlength: 1000, placeholder: t('Meslektaşına danış… (örn. “dip boya fiyatını ne yapayım?”)') });
   const gonder = h('button', { class: 'dugme', type: 'button' }, t('Gönder'));
   let bekliyor = false;
+  let resimler = [];   // ekli fotoğraflar (en çok 2); yalnız bu soruyla gider, hiçbir yerde saklanmaz
+  const dosya = h('input', { type: 'file', accept: 'image/*', class: 'gizli', 'aria-label': t('Fotoğraf'), onchange: async () => {
+    const f = dosya.files && dosya.files[0]; dosya.value = '';
+    if (!f || resimler.length >= 2) return;
+    try { resimler.push(await resimKucult(f)); seritCiz(); } catch (e) { console.error(e); bildir(t('Fotoğraf okunamadı.'), 'hata'); }
+  } });
+  const serit = h('div', { class: 'dan-foto' });
+  const fotoDugme = h('button', { class: 'dugme ikincil kucuk-dugme', type: 'button', onclick: () => dosya.click() }, '📷 ' + t('Fotoğraf ekle'));
+  function seritCiz() {
+    doldur(serit, resimler.length ? [h('div', { class: 'foto-serit' }, resimler.map((r, i) => h('div', { class: 'foto-kare' }, h('img', { src: r, alt: '' }),
+      h('button', { type: 'button', 'aria-label': t('Kaldır'), onclick: () => { resimler.splice(i, 1); seritCiz(); } }, '✕')))),
+      h('p', { class: 'kucuk' }, t('Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.'))] : null);
+    fotoDugme.disabled = resimler.length >= 2;
+  }
   const balon = (m) => h('div', { class: 'dan-balon ' + (m.rol === 'asistan' ? 'dan-o' : 'dan-ben') }, m.metin,
     m.sss ? h('div', { class: 'dugme-satir sol' }, h('button', { class: 'chip', type: 'button', onclick: () => sssAc('', m.sss) }, '❓ ' + t('SSS\'de aç'))) : null);
   const ciz = () => {
@@ -80,10 +95,12 @@ export function danismanAc() {
   };
   async function sor(metin) {
     metin = String(metin || '').trim();
+    const fotolar = resimler.slice();
+    if (fotolar.length && !metin) metin = t('Bu fotoğrafa bakar mısın?');
     if (!metin || bekliyor) return;
-    hata.textContent = ''; GECMIS.liste.push({ rol: 'kullanici', metin }); yaz.value = '';
-    // Önce SSS: uygulama sorusuysa hazır cevap verilir (yapay zekâya gitmez)
-    try {
+    hata.textContent = ''; GECMIS.liste.push({ rol: 'kullanici', metin: fotolar.length ? '📷 ' + metin : metin }); yaz.value = '';
+    // Önce SSS: uygulama sorusuysa hazır cevap verilir (yapay zekâya gitmez); fotoğraflı soruda SSS atlanır
+    if (!fotolar.length) try {
       const d = await sssYukle(dilKodu()), e = sssEslestir(metin, d, S.profil.rol);
       if (e) {
         GECMIS.liste.push({ rol: 'asistan', metin: d.m[e.id][0] + '\n\n' + d.m[e.id][1], sss: e.id });
@@ -93,19 +110,20 @@ export function danismanAc() {
     bekliyor = true; gonder.disabled = true; ciz();
     try {
       if (!OZET.v || OZET.uid !== uid || Date.now() - OZET.t > 5 * 60e3) OZET = { t: Date.now(), uid, v: await salonOzeti() };
-      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu() });
+      const r = await sunucuyaSor('/ai', { mesajlar: GECMIS.liste.slice(-12), veri: OZET.v, dil: dilKodu(), ...(fotolar.length ? { resimler: fotolar } : {}) }, fotolar.length ? 70000 : 50000);
       GECMIS.liste.push({ rol: 'asistan', metin: r.cevap });
-      if (metin.length >= 8) eksikKaydet(metin);   // SSS'de karşılığı yoktu: kimliksiz kaydedilir
+      resimler = []; seritCiz();
+      if (!fotolar.length && metin.length >= 8) eksikKaydet(metin);   // SSS'de karşılığı yoktu: kimliksiz kaydedilir
     } catch (e) {
       GECMIS.liste.pop(); yaz.value = metin;
-      hata.textContent = e.kod === 429 ? e.message : t('Danışmana ulaşılamadı: {h}', { h: e.message || '' });
+      hata.textContent = e.kod === 429 ? e.message : t('Danışmana ulaşılamadı: {h}', { h: e.kod === 0 ? t(e.message) : (e.message || '') });
     }
     bekliyor = false; gonder.disabled = false; ciz(); yaz.focus();
   }
   gonder.onclick = () => sor(yaz.value);
   yaz.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Android|iPhone|iPad/i.test(navigator.userAgent)) { e.preventDefault(); sor(yaz.value); } });
-  ciz();
-  pencereAc('🤖 ' + t('Usta Danışman'), h('div', { class: 'dan' }, liste, hata, yaz, h('div', { class: 'dugme-satir' }, gonder),
+  seritCiz(); ciz();
+  pencereAc('🤖 ' + t('Usta Danışman'), h('div', { class: 'dan' }, liste, hata, serit, yaz, dosya, h('div', { class: 'dugme-satir' }, fotoDugme, gonder),
     h('p', { class: 'kucuk' }, t('Yapay zekâ cevapları yol göstericidir; sağlık, hukuk ve vergi konularında uzmanına danışın.'))));
 }
 

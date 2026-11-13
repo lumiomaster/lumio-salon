@@ -2,13 +2,20 @@
 import { SUNUCU } from './config.js';
 import { auth } from './fb.js';
 import { S } from './durum.js';
+import { t } from './i18n.js';
 
 export const sunucuHazir = () => !!(SUNUCU.url && SUNUCU.vapid);
 
-export async function sunucuyaSor(yol, govde) {
+export async function sunucuyaSor(yol, govde, sureMs) {
   if (!sunucuHazir()) throw new Error('Sunucu kurulmamış');
   const idToken = await auth.currentUser.getIdToken();
-  const r = await fetch(SUNUCU.url.replace(/\/$/, '') + yol, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...govde }) });
+  // Cevap hiç gelmezse (zayıf bağlantı, yoğun yapay zekâ servisi) ekran sonsuza kadar "Düşünüyorum…" demesin
+  let r;
+  try {
+    r = await fetch(SUNUCU.url.replace(/\/$/, '') + yol, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...govde }), ...(sureMs && globalThis.AbortSignal && AbortSignal.timeout ? { signal: AbortSignal.timeout(sureMs) } : {}) });
+  } catch (e) {
+    const z = new Error(e && (e.name === 'TimeoutError' || e.name === 'AbortError') ? t('Cevap gecikti. Biraz sonra tekrar deneyin.') : t('Sunucuya ulaşılamadı')); z.kod = 0; throw z;
+  }
   let j = null; try { j = await r.json(); } catch (e) { /* yanıt yok */ }
   if (!r.ok) { const e = new Error((j && j.hata) || 'Sunucuya ulaşılamadı'); e.kod = r.status; throw e; }
   return j;

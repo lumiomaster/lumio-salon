@@ -1280,5 +1280,20 @@ export default {
   "1 saat": "1 час",
   "24 saat": "24 часа",
   "3 gün": "3 дня",
-  "7 gün": "7 дней"
+  "7 gün": "7 дней",
+  "Hesabını onaylamayan ustalar var:": "Есть мастера, не подтвердившие расчёт:",
+  "Bu ustaların hesabı onaylanmadan dönem kapatılamaz. Usta onaylasın ya da ustanın kartından \"Sözlü onayladı\" ile işaretleyin.": "Пока эти мастера не подтвердят расчёт, период закрыть нельзя. Пусть мастер подтвердит или отметьте «Подтвердил устно» в его карточке.",
+  "Onaylar kontrol edilemedi. İnternetinizi kontrol edip tekrar deneyin.": "Не удалось проверить подтверждения. Проверьте интернет и повторите.",
+  "Onay kontrolü tamamlanmadı; kapatılamaz.": "Проверка подтверждений не завершена; закрыть нельзя.",
+  "Erkek kuaförü": "Мужская парикмахерская",
+  "Bölüm": "Раздел",
+  "Seçin…": "Выберите…",
+  "Diğer (kendi bölümünüzü yazın)": "Другое (впишите свой раздел)",
+  "Bölüm adı (örn. Solaryum, Masaj)": "Название раздела (напр. солярий, массаж)",
+  "Hizmetin bölümünü seçin (Kadın kuaförü, Erkek kuaförü, Bakım, Tırnak ya da Diğer).": "Выберите раздел услуги (женская парикмахерская, мужская, уход, ногти или другое).",
+  "Fotoğraf ekle": "Добавить фото",
+  "Müşterinin fotoğrafıysa onayını alın. Fotoğraf yalnız bu soru için yapay zekâya gider, kaydedilmez.": "Если это фото клиента, получите его согласие. Фото отправляется ИИ только для этого вопроса и не сохраняется.",
+  "Bu fotoğrafa bakar mısın?": "Посмотришь на это фото?",
+  "Cevap gecikti. Biraz sonra tekrar deneyin.": "Ответ задерживается. Попробуйте чуть позже.",
+  "Sunucuya ulaşılamadı": "Не удалось связаться с сервером"
 };
